@@ -19,8 +19,8 @@ TEOBResumS_version = [
     'teobresums-giotto-TD',
     'teobresums-giotto-FD',
 ]
-
 TEOBResumS_domain = {'TD':0,'FD':1}
+TEOBResumS_spins = {'nospin':0,'aligned':1,'precessing':2}
 
 def modes_to_k(modes):
     """
@@ -37,6 +37,7 @@ def eob_parameters():
     waveFlags['use_mode_lm'        ] = modes_to_k[(2,2)]  # List of modes to use/output through EOBRunPy
     waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
     waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+    waveFlags['use_spins'] = TEOBResumS_spins['aligned'] # '0 = nonspinning (deprecated), 1 = spin-aligned, 2 =precessing spins',
     return waveFlags
 
 def JBJF(hp,hc,dt):
@@ -56,15 +57,27 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     domain  = 'TD'
     if 'FD' in approximant: domain = 'FD'    
     q = m1/m2
-    if q<1.: q=1./q
+    if q < 1.:
+        q = 1./q
+        spin1,spin2 = spin2,spin1
+        m1,m2 = m2,m1
+        lambda1,lambda2 = lambda2,lambda1
     srate = deltaF #CHECKME
     # EOB pars to generate wvf
     waveFlags['M'                  ] = m1+m2
-    waveFlags['q'                  ] = q
-    waveFlags['Lambda1'            ] = lambda1
-    waveFlags['Lambda2'            ] = lambda2     
-    waveFlags['chi1'               ] = spin1[2] # hardcoded here for nonprecessing, CHANGEME as needed
-    waveFlags['chi2'               ] = spin2[2]
+    waveFlags['q'                  ] = q    
+    waveFlags['LambdaAl2'          ] = lambda1
+    waveFlags['LambdaBl2'          ] = lambda2
+    if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
+        waveFlags['chi1x'] = spin1[0]
+        waveFlags['chi1y'] = spin1[1]
+        waveFlags['chi1z'] = spin1[2]
+        waveFlags['chi2x'] = spin2[0]
+        waveFlags['chi2y'] = spin2[1]
+        waveFlags['chi2z'] = spin2[2]
+    else:
+        waveFlags['chi1'] = spin1[2] 
+        waveFlags['chi2'] = spin2[2]
     waveFlags['domain'             ] = TEOBResumS_domain[domain]
     waveFlags['srate_interp'       ] = srate  # srate at which to interpolate. Default = 4096.
     waveFlags['initial_frequency'  ] = fmin   # in Hz if use_geometric_units = 0, else in geometric units
