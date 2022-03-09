@@ -22,19 +22,22 @@ TEOBResumS_version = [
 
 TEOBResumS_domain = {'TD':0,'FD':1}
 
-def eob_parameters():
-    """
-    TODO: hardcode here preferences
-    now uses defaults
-    """
-    waveFlags = {}
-    return waveFlags
-
 def modes_to_k(modes):
     """
     Map (l,m) -> k 
     """
     return [int(x[0]*(x[0]-1)/2 + x[1]-2) for x in modes]
+
+def eob_parameters():
+    """
+    TODO: hardcode here preferences
+    now uses many defaults
+    """
+    waveFlags = {}
+    waveFlags['use_mode_lm'        ] = modes_to_k[(2,2)]  # List of modes to use/output through EOBRunPy
+    waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
+    waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+    return waveFlags
 
 def JBJF(hp,hc,dt):
     """
@@ -63,11 +66,8 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     waveFlags['chi1'               ] = spin1[2] # hardcoded here for nonprecessing, CHANGEME as needed
     waveFlags['chi2'               ] = spin2[2]
     waveFlags['domain'             ] = TEOBResumS_domain[domain]
-    waveFlags['use_mode_lm'        ] = 1      # List of modes to use/output through EOBRunPy, (2,2)
     waveFlags['srate_interp'       ] = srate  # srate at which to interpolate. Default = 4096.
-    waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
     waveFlags['initial_frequency'  ] = fmin   # in Hz if use_geometric_units = 0, else in geometric units
-    waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
     waveFlags['distance'           ] = distance
     waveFlags['inclination'        ] = iota
     if domain == 'TD':
