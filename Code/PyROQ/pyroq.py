@@ -12,6 +12,66 @@ import warnings
 import random
 import multiprocessing as mp
 
+import EOBRun_module
+
+# EOB helpers ###
+TEOBResumS_version = {
+    'teobresums-giotto-TD',
+    'teobresums-giotto-FD',
+}
+
+TEOBResumS_domain = {'TD':0,'FD':1}
+
+def modes_to_k(modes):
+    """
+    Map (l,m) -> k 
+    """
+    return [int(x[0]*(x[0]-1)/2 + x[1]-2) for x in modes]
+
+def JBJF(hp,hc,dt):
+    """
+    Fourier transform of TD wfv
+    """
+    hptilde = np.fft.rfft(hp) * dt 
+    hctilde = np.fft.rfft(-hc) * dt 
+    return hptilde, hctilde
+
+def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant):
+    """"
+    """
+    domain  = 'TD'
+    if 'FD' in approximant: domain = 'FD'    
+    q = m1/m2
+    if q<1.: q=1./q
+    srate = deltaF #CHECKME
+    # EOB pars: set as requiredm most hardcoded!
+    pars = {
+        'M'                  : m1+m2,
+        'q'                  : q,
+        'Lambda1'            : lambda1,
+        'Lambda2'            : lambda2,     
+        'chi1'               : spin1,
+        'chi2'               : spin2,
+        'domain'             : TEOBResumS_domain[domain],
+        'use_mode_lm'        : 1,      # List of modes to use/output through EOBRunPy, (2,2)
+        'srate_interp'       : srate,  # srate at which to interpolate. Default = 4096.
+        'use_geometric_units': 0,      # Output quantities in geometric units. Default = 1
+        'initial_frequency'  : fmin,   # in Hz if use_geometric_units = 0, else in geometric units
+        'interp_uniform_grid': 2,      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+        'distance'           : distance,
+        'inclination'        : iota,
+        
+    }
+    if domain == 'TD':
+        T, Hp, Hc = EOBRun_module.EOBRunPy(pars)
+        Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
+    else:
+        F, Hptilde, Hctilde = EOBRun_module.EOBRunPy(pars)
+    #hp = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # kept in main code as for the LAL call
+    #hc = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+    return Hptilde, Hctilde
+# end EOB helpers ###
+    
 def howmany_within_range(row, minimum, maximum):
     """Returns how many numbers lie within `maximum` and `minimum` in a given `row`"""
     count = 0
@@ -53,6 +113,11 @@ def get_m1m2_from_mcq(mc, q):
     return numpy.array([m1,m2])
 
 def generate_a_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant):
+    if approximant in TEOBResumS_version:
+        hp, hc = generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        hp_test = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+        return hp_test
+    
     test_mass1 = m1 * lal.lal.MSUN_SI
     test_mass2 = m2 * lal.lal.MSUN_SI
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
@@ -66,6 +131,11 @@ def generate_a_waveform_from_mcq(mc, q, spin1, spin2, ecc, lambda1, lambda2, iot
     m1,m2 = get_m1m2_from_mcq(mc,q)
     test_mass1 = m1 * lal.lal.MSUN_SI
     test_mass2 = m2 * lal.lal.MSUN_SI
+    if approximant in TEOBResumS_version:
+        hp, hc = generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        hp_test = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+        return hp_test
+
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
     [plus_test, cross_test]=lalsimulation.SimInspiralChooseFDWaveform(test_mass1, test_mass2, spin1[0], spin1[1], spin1[2], spin2[0], spin2[1], spin2[2], distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
@@ -79,7 +149,7 @@ def generate_params_points(npts, nparams, params_low, params_high):
     return paramspoints
 
 def compute_modulus(paramspoint, known_bases, distance, deltaF, f_min, f_max, approximant):
-    waveFlags = lal.CreateDict()
+    waveFlags = lal.CreateDict() # not needed for EOB
     m1, m2 = get_m1m2_from_mcq(paramspoint[0],paramspoint[1])
     s1x, s1y, s1z = spherical_to_cartesian(paramspoint[2:5]) 
     s2x, s2y, s2z = spherical_to_cartesian(paramspoint[5:8]) 
@@ -91,8 +161,9 @@ def compute_modulus(paramspoint, known_bases, distance, deltaF, f_min, f_max, ap
     if len(paramspoint)==12:
         lambda1 = paramspoint[10]
         lambda2 = paramspoint[11]
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
+        if approximant not in TEOBResumS_version:
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
     f_ref = 0 
     RA=0    
     DEC=0   
@@ -100,8 +171,12 @@ def compute_modulus(paramspoint, known_bases, distance, deltaF, f_min, f_max, ap
     phi=0   
     m1 *= lal.lal.MSUN_SI
     m2 *= lal.lal.MSUN_SI
-    [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
-    hp_tmp = plus.data.data[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector 
+    if approximant in TEOBResumS_version:
+        [plus, cross]  = generate_a_waveform_EOB(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        hp_tmp = plus[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector
+    else:
+        [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        hp_tmp = plus.data.data[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector 
     residual = hp_tmp
     for k in numpy.arange(0,len(known_bases)):
         residual -= proj(known_bases[k],hp_tmp)
@@ -109,7 +184,7 @@ def compute_modulus(paramspoint, known_bases, distance, deltaF, f_min, f_max, ap
     return modulus
 
 def compute_modulus_quad(paramspoint, known_quad_bases, distance, deltaF, f_min, f_max, approximant):
-    waveFlags = lal.CreateDict()
+    waveFlags = lal.CreateDict() # not needed for EOB
     m1, m2 = get_m1m2_from_mcq(paramspoint[0],paramspoint[1])
     s1x, s1y, s1z = spherical_to_cartesian(paramspoint[2:5]) 
     s2x, s2y, s2z = spherical_to_cartesian(paramspoint[5:8]) 
@@ -121,8 +196,9 @@ def compute_modulus_quad(paramspoint, known_quad_bases, distance, deltaF, f_min,
     if len(paramspoint)==12:
         lambda1 = paramspoint[10]
         lambda2 = paramspoint[11]
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
+        if approximant not in TEOBResumS_version:
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
     f_ref = 0 
     RA=0    
     DEC=0   
@@ -130,8 +206,12 @@ def compute_modulus_quad(paramspoint, known_quad_bases, distance, deltaF, f_min,
     phi=0   
     m1 *= lal.lal.MSUN_SI
     m2 *= lal.lal.MSUN_SI
-    [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
-    hp_tmp = plus.data.data[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector 
+    if approximant in TEOBResumS_version:
+        [plus, cross]  = generate_a_waveform_EOB(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        hp_tmp = plus[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector
+    else:
+        [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        hp_tmp = plus.data.data[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector 
     hp_quad_tmp = (numpy.absolute(hp_tmp))**2
     residual = hp_quad_tmp
     for k in numpy.arange(0,len(known_quad_bases)):
@@ -171,10 +251,14 @@ def least_match_waveform_unnormalized(parallel, nprocesses, paramspoints, known_
     if len(paramspoint)==12:
         lambda1 = paramspoints[arg_newbasis][10]
         lambda2 = paramspoints[arg_newbasis][11]
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
-    [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
-    hp_new = plus_new.data.data
+        if approximant not in TEOBResumS_version:
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
+    if approximant in TEOBResumS_version:
+        [plus_new, cross_new] = generate_a_waveform_EOB(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+    else:
+        [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
+        hp_new = plus_new.data.data
     hp_new = hp_new[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
     basis_new = gram_schmidt(known_bases, hp_new)
     return numpy.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
@@ -207,10 +291,14 @@ def least_match_quadratic_waveform_unnormalized(parallel, nprocesses, paramspoin
     if len(paramspoint)==12:
         lambda1 = paramspoints[arg_newbasis][10]
         lambda2 = paramspoints[arg_newbasis][11]
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
-        lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2)     
-    [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
-    hp_new = plus_new.data.data
+        if approximant not in TEOBResumS_version:
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
+            lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2)     
+    if approximant in TEOBResumS_version:
+        [plus_new, cross_new] = generate_a_waveform_EOB(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+    else:
+        [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
+        hp_new = plus_new.data.data
     hp_new = hp_new[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
     hp_quad_new = (numpy.absolute(hp_new))**2
     basis_quad_new = gram_schmidt(known_quad_bases, hp_quad_new)    
@@ -310,6 +398,16 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
             params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
+            hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
+    except AttributeError: 
+        pass
+    try:
+        if approximant in TEOBResumS_version:
+            nparams = 12
+            params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
+            params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
+            params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
+
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
         pass
