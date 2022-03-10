@@ -105,7 +105,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     #plt.plot(F, Hptilde)
     #plt.savefig('/home/gregorio.carullo/PyROQ/Code/test.png')
 
-    print('WHAT AM I UNPACKING????')
+    #print('WHAT AM I UNPACKING????')
 
     return Hptilde, Hctilde
 # end EOB helpers ###
