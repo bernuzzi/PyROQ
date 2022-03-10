@@ -209,6 +209,12 @@ def generate_a_waveform_from_mcq(mc, q, spin1, spin2, ecc, lambda1, lambda2, iot
         hp_test = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
         return hp_test
 
+    if approximant == 'mlgw-bns':
+        hp, hc = generate_a_waveform_MLGW_BNS(test_mass1, test_mass2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        hp_test = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+        return hp_test
+        
+
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
     [plus_test, cross_test]=lalsimulation.SimInspiralChooseFDWaveform(test_mass1, test_mass2, spin1[0], spin1[1], spin1[2], spin2[0], spin2[1], spin2[2], distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
@@ -428,6 +434,7 @@ def massrange(mc_low, mc_high, q_low, q_high):
     return [mmin, mmax]
 
 def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s2sphere_low, s2sphere_high, ecc_low, ecc_high, lambda1_low, lambda1_high, lambda2_low, lambda2_high, iota_low, iota_high, phiref_low, phiref_high, distance, deltaF, f_min, f_max, waveFlags, approximant):
+    # TODO: simplify this ungodly mess
     try:
         if approximant==lalsimulation.IMRPhenomPv2:
             nparams = 10
@@ -503,6 +510,17 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
         pass
+    try:
+        if approximant == "mlgw-bns":
+            nparams = 12
+            params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
+            params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
+            params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
+
+            hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
+    except AttributeError: 
+        pass
+    
     return numpy.array([nparams, params_low, params_high, params_start, hp1])
 
 def empnodes(ndim, known_bases): # Here known_bases is the full copy known_bases_copy. Its length is equal to or longer than ndim.
