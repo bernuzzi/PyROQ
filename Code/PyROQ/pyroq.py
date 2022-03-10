@@ -34,7 +34,7 @@ def eob_parameters():
     now uses many defaults
     """
     waveFlags = {}
-    waveFlags['use_mode_lm'        ] = modes_to_k[(2,2)]  # List of modes to use/output through EOBRunPy
+    waveFlags['use_mode_lm'        ] = modes_to_k([2,2])  # List of modes to use/output through EOBRunPy
     waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
     waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
     waveFlags['use_spins'] = TEOBResumS_spins['aligned'] # '0 = nonspinning (deprecated), 1 = spin-aligned, 2 =precessing spins',
@@ -62,7 +62,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         spin1,spin2 = spin2,spin1
         m1,m2 = m2,m1
         lambda1,lambda2 = lambda2,lambda1
-    srate = deltaF #CHECKME
+    srate = f_max*2
     # EOB pars to generate wvf
     waveFlags['M'                  ] = m1+m2
     waveFlags['q'                  ] = q    
@@ -88,6 +88,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
     else:
         F, Hptilde, Hctilde = EOBRun_module.EOBRunPy(waveFlags)
+    # CHECKME: max and min freqs returned
     #hp = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # kept in main code as for the LAL call
     #hc = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
     return Hptilde, Hctilde
@@ -200,7 +201,7 @@ def compute_modulus(paramspoint, known_bases, distance, deltaF, f_min, f_max, ap
     m2 *= lal.lal.MSUN_SI
 
     if approximant in TEOBResumS_version:
-        [plus, cross]  = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        [plus, cross] = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
         hp_tmp = plus[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector
     else:
         [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
@@ -241,7 +242,7 @@ def compute_modulus_quad(paramspoint, known_quad_bases, distance, deltaF, f_min,
     m2 *= lal.lal.MSUN_SI
     
     if approximant in TEOBResumS_version:
-        [plus, cross]  = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        [plus, cross]  = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
         hp_tmp = plus[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector
     else:
         [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
@@ -291,7 +292,8 @@ def least_match_waveform_unnormalized(parallel, nprocesses, paramspoints, known_
             lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
 
     if approximant in TEOBResumS_version:
-        [plus_new, cross_new] = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        [plus_new, cross_new]  = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        hp_new = plus_new
     else:
         [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
         hp_new = plus_new.data.data
@@ -333,7 +335,8 @@ def least_match_quadratic_waveform_unnormalized(parallel, nprocesses, paramspoin
             lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2)     
 
     if approximant in TEOBResumS_version:
-        [plus_new, cross_new] = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
+        [plus_new, cross_new] = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        hp_new = plus_new
     else:
         [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
         hp_new = plus_new.data.data
