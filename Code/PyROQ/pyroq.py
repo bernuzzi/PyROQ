@@ -13,6 +13,7 @@ import random
 import multiprocessing as mp
 
 import EOBRun_module
+from mlgw_bns import ParametersWithExtrinsic, Model
 
 # EOB helpers ###
 TEOBResumS_version = [
@@ -109,7 +110,39 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
 
     return Hptilde, Hctilde
 # end EOB helpers ###
+
+def generate_a_waveform_MLGW_BNS(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant):
+    """
+    mlgw-bns wrapper.
+    """
     
+    # eccentric binaries are not supported
+    assert abs(ecc) < 1e-6
+    # precessing spins are not supported
+    for spin in (spin1, spin2):
+        assert abs(spin[0])<1e-6
+        assert abs(spin[1])<1e-6
+    
+    model = Model.default()
+    
+    frequencies = np.arange(f_min, f_max, step=deltaF)
+
+    q = m1/m2
+    if q < 1.:
+        q = 1./q
+        spin1,spin2 = spin2,spin1
+        m1,m2 = m2,m1
+        lambda1,lambda2 = lambda2,lambda1
+   
+    # Bring back the quantities to units compatible with TEOB
+    m1 = m1/lal.MSUN_SI
+    m2 = m2/lal.MSUN_SI
+    distance = distance/(lal.PC_SI*1e6)
+
+    params = ParametersWithExtrinsic(q, lambda1, lambda2, spin1[2], spin1[2], distance, iota, m1+m2, reference_phase=phiRef)
+
+    return model.predict(frequencies, params)
+
 def howmany_within_range(row, minimum, maximum):
     """Returns how many numbers lie within `maximum` and `minimum` in a given `row`"""
     count = 0
