@@ -72,8 +72,8 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     # EOB pars to generate wvf
     waveFlags['M'                  ] = m1+m2
     waveFlags['q'                  ] = q    
-    waveFlags['LambdaAl2'          ] = lambda1
-    waveFlags['LambdaBl2'          ] = lambda2
+    waveFlags['Lambda1'            ] = lambda1
+    waveFlags['Lambda2'            ] = lambda2
     if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
         waveFlags['chi1x'] = spin1[0]
         waveFlags['chi1y'] = spin1[1]
