@@ -308,7 +308,7 @@ def least_match_waveform_unnormalized(parallel, nprocesses, paramspoints, known_
             lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
 
     if approximant in TEOBResumS_version:
-        [plus_new, cross_new]  = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        [plus_new, cross_new]  = generate_a_waveform_EOB(mass1, mass2, [sp1x, sp1y, sp1z], [sp2x, sp2y, sp2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
         hp_new = plus_new
     else:
         [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
