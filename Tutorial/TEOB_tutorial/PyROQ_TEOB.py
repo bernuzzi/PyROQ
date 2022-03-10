@@ -67,6 +67,8 @@ ndimhigh_quad = nbases_quad+1
 ndimstepsize_quad = 10
 tolerance_quad = 1e-10 # Surrogage error threshold for quadratic basis elements
 
+plot_only = 0
+
 #############################################################
 # Below this point, ideally no parameter should be changed. #
 #############################################################
@@ -94,8 +96,28 @@ nparams, params_low, params_high, params_start, hp1 = pyroq.initial_basis(intrin
 
 print('WHAT AM I UNPACKING????????')
 
-known_bases_start = numpy.array([hp1/numpy.sqrt(numpy.vdot(hp1,hp1))])
-basis_waveforms_start = numpy.array([hp1])
-residual_modula_start = numpy.array([0.0])
-known_bases, params, residual_modula = pyroq.bases_searching_results_unnormalized(parallel, nprocesses, npts, nparams, nbases, known_bases_start, basis_waveforms_start, params_start, residual_modula_start, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant)
-print(known_bases.shape, residual_modula)
+if not plot_only:
+    known_bases_start = numpy.array([hp1/numpy.sqrt(numpy.vdot(hp1,hp1))])
+    basis_waveforms_start = numpy.array([hp1])
+    residual_modula_start = numpy.array([0.0])
+    known_bases, params, residual_modula = pyroq.bases_searching_results_unnormalized(parallel, nprocesses, npts, nparams, nbases, known_bases_start, basis_waveforms_start, params_start, residual_modula_start, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant)
+    print(known_bases.shape, residual_modula)
+
+known_bases = numpy.load('./linearbases.npy')
+pyroq.roqs(tolerance, freq, ndimlow, ndimhigh, ndimstepsize, known_bases, nts, nparams, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant)
+
+fnodes_linear = numpy.load('./fnodes_linear.npy')
+b_linear = numpy.transpose(numpy.load('./B_linear.npy'))
+ndim = b_linear.shape[1]
+emp_nodes = numpy.searchsorted(freq, fnodes_linear)
+print(b_linear)
+print("emp_nodes", emp_nodes)
+
+nsamples = 100 # testing nsamples random samples in parameter space to see their representation surrogate errors
+surros = pyroq.surros_of_test_samples(nsamples, nparams, params_low, params_high, tolerance, b_linear, emp_nodes, distance, deltaF, f_min, f_max, waveFlags, approximant)
+plt.figure(figsize=(15,9))
+plt.semilogy(surros,'o',color='black')
+plt.xlabel("Number of Random Test Points")
+plt.ylabel("Surrogate Error")
+plt.title("TEOB_FD")
+plt.savefig("SurrogateErrorsRandomTestPoints.png")
