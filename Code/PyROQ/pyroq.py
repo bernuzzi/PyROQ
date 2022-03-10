@@ -63,6 +63,12 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         m1,m2 = m2,m1
         lambda1,lambda2 = lambda2,lambda1
     srate = f_max*2
+   
+    # Bring back the quantities to units compatible with TEOB 
+    m1 = m1/lal.MSUN_SI
+    m2 = m2/lal.MSUN_SI
+    distance = distance/(lal.PC_SI*1e6)
+ 
     # EOB pars to generate wvf
     waveFlags['M'                  ] = m1+m2
     waveFlags['q'                  ] = q    
@@ -83,14 +89,24 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
     waveFlags['distance'           ] = distance
     waveFlags['inclination'        ] = iota
+
     if domain == 'TD':
         T, Hp, Hc = EOBRun_module.EOBRunPy(waveFlags)
         Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
     else:
-        F, Hptilde, Hctilde = EOBRun_module.EOBRunPy(waveFlags)
+        F, Hptilde, Hctilde, hlm, dyn = EOBRun_module.EOBRunPy(waveFlags)
     # CHECKME: max and min freqs returned
     #hp = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # kept in main code as for the LAL call
     #hc = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+ 
+    #print(F, Hptilde, Hctilde, hlm, dyn)
+ 
+    #plt.figure()
+    #plt.plot(F, Hptilde)
+    #plt.savefig('/home/gregorio.carullo/PyROQ/Code/test.png')
+
+    print('WHAT AM I UNPACKING????')
+
     return Hptilde, Hctilde
 # end EOB helpers ###
     
@@ -446,6 +462,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
     try:
         if approximant in TEOBResumS_version:
             nparams = 12
+            print('THIS IS ALIGNED SPIN, PARAMETERS ARE LESS THAN 12')
             params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
             params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
