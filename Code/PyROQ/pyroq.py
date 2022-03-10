@@ -34,7 +34,7 @@ def eob_parameters():
     now uses many defaults
     """
     waveFlags = {}
-    waveFlags['use_mode_lm'        ] = modes_to_k([2,2])  # List of modes to use/output through EOBRunPy
+    waveFlags['use_mode_lm'        ] = modes_to_k([[2,2]])  # List of modes to use/output through EOBRunPy
     waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
     waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
     waveFlags['use_spins'] = TEOBResumS_spins['aligned'] # '0 = nonspinning (deprecated), 1 = spin-aligned, 2 =precessing spins',
@@ -80,7 +80,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         waveFlags['chi2'] = spin2[2]
     waveFlags['domain'             ] = TEOBResumS_domain[domain]
     waveFlags['srate_interp'       ] = srate  # srate at which to interpolate. Default = 4096.
-    waveFlags['initial_frequency'  ] = fmin   # in Hz if use_geometric_units = 0, else in geometric units
+    waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
     waveFlags['distance'           ] = distance
     waveFlags['inclination'        ] = iota
     if domain == 'TD':
