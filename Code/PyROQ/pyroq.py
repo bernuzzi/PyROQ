@@ -11,6 +11,7 @@ import h5py
 import warnings
 import random
 import multiprocessing as mp
+import traceback
 
 import EOBRun_module
 
@@ -87,6 +88,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     waveFlags['domain'             ] = TEOBResumS_domain[domain]
     waveFlags['srate_interp'       ] = srate  # srate at which to interpolate. Default = 4096.
     waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
+    waveFlags['df'                 ] = deltaF
     waveFlags['distance'           ] = distance
     waveFlags['inclination'        ] = iota
 
@@ -95,11 +97,6 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
     else:
         F, Hptilde, Hctilde, hlm, dyn = EOBRun_module.EOBRunPy(waveFlags)
-    # CHECKME: max and min freqs returned
-    #hp = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # kept in main code as for the LAL call
-    #hc = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
- 
-    #print(F, Hptilde, Hctilde, hlm, dyn)
  
     #plt.figure()
     #plt.plot(F, Hptilde)
@@ -107,7 +104,8 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
 
     #print('WHAT AM I UNPACKING????')
 
-    return Hptilde, Hctilde
+    # Adapt len to PyROQ conventions
+    return Hptilde[:-1], Hctilde[:-1]
 # end EOB helpers ###
     
 def howmany_within_range(row, minimum, maximum):
@@ -156,8 +154,7 @@ def generate_a_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRe
 
     if approximant in TEOBResumS_version:
         hp, hc = generate_a_waveform_EOB(test_mass1, test_mass2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
-        hp_test = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
-        return hp_test
+        return hp
     
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2)     
@@ -173,8 +170,7 @@ def generate_a_waveform_from_mcq(mc, q, spin1, spin2, ecc, lambda1, lambda2, iot
     
     if approximant in TEOBResumS_version:
         hp, hc = generate_a_waveform_EOB(test_mass1, test_mass2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
-        hp_test = hp[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
-        return hp_test
+        return hp
 
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveFlags, lambda1)
     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveFlags, lambda2) 
@@ -218,7 +214,7 @@ def compute_modulus(paramspoint, known_bases, distance, deltaF, f_min, f_max, ap
 
     if approximant in TEOBResumS_version:
         [plus, cross] = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
-        hp_tmp = plus[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector
+        hp_tmp = plus
     else:
         [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
         hp_tmp = plus.data.data[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector 
@@ -259,7 +255,7 @@ def compute_modulus_quad(paramspoint, known_quad_bases, distance, deltaF, f_min,
     
     if approximant in TEOBResumS_version:
         [plus, cross]  = generate_a_waveform_EOB(m1, m2, [s1x, s1y, s1z], [s2x, s2y, s2z], ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max, waveFlags, approximant)
-        hp_tmp = plus[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector
+        hp_tmp = plus
     else:
         [plus,cross]=lalsimulation.SimInspiralChooseFDWaveform(m1, m2, s1x, s1y, s1z, s2x, s2y, s2z, distance, iota, phiRef, 0, ecc, 0, deltaF, f_min, f_max, f_ref, waveFlags, approximant)
         hp_tmp = plus.data.data[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)] # data_tmp is hplus and is a complex vector 
@@ -313,8 +309,8 @@ def least_match_waveform_unnormalized(parallel, nprocesses, paramspoints, known_
     else:
         [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
         hp_new = plus_new.data.data
+        hp_new = hp_new[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
 
-    hp_new = hp_new[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
     basis_new = gram_schmidt(known_bases, hp_new)
     return numpy.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
 
@@ -356,8 +352,8 @@ def least_match_quadratic_waveform_unnormalized(parallel, nprocesses, paramspoin
     else:
         [plus_new, cross_new]=lalsimulation.SimInspiralChooseFDWaveform(mass1, mass2, sp1x, sp1y, sp1z, sp2x, sp2y, sp2z, distance, inclination, phi_ref, 0, ecc, 0, deltaF, f_min, f_max, 0, waveFlags, approximant)
         hp_new = plus_new.data.data
-
-    hp_new = hp_new[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+        hp_new = hp_new[numpy.int(f_min/deltaF):numpy.int(f_max/deltaF)]
+        
     hp_quad_new = (numpy.absolute(hp_new))**2
     basis_quad_new = gram_schmidt(known_quad_bases, hp_quad_new)    
     return numpy.array([basis_quad_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
@@ -403,7 +399,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant)
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
         if approximant==lalsimulation.IMRPhenomPv3:
             nparams = 10
@@ -412,7 +408,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant)
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
         if approximant==lalsimulation.IMRPhenomPv3HM:
             nparams = 10
@@ -421,7 +417,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant)
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
         if approximant==lalsimulation.IMRPhenomXHM:
             nparams = 10
@@ -430,7 +426,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant)
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
         if approximant==lalsimulation.TaylorF2Ecc:
             nparams = 11
@@ -439,7 +435,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, ecc_low]])
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), ecc_low, 0, 0, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant)
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:    
         if approximant==lalsimulation.IMRPhenomPv2_NRTidal:
             nparams = 12
@@ -449,7 +445,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
 
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
         if approximant==lalsimulation.IMRPhenomNSBH:
             nparams = 12
@@ -458,7 +454,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
         if approximant in TEOBResumS_version:
             nparams = 12
@@ -469,7 +465,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
 
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
-        pass
+        raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     return numpy.array([nparams, params_low, params_high, params_start, hp1])
 
 def empnodes(ndim, known_bases): # Here known_bases is the full copy known_bases_copy. Its length is equal to or longer than ndim.
@@ -479,7 +475,10 @@ def empnodes(ndim, known_bases): # Here known_bases is the full copy known_bases
     interp1 = numpy.multiply(c1,known_bases[0])
     diff1 = interp1 - known_bases[1]
     r1 = numpy.absolute(diff1)
-    emp_nodes[1] = numpy.argmax(r1)
+    if ndim > 1:
+        emp_nodes[1] = numpy.argmax(r1)
+    else:
+        raise ValueError("The minimum number of bases has to be larger than 1.")
     for k in numpy.arange(2,ndim):
         emp_tmp = emp_nodes[0:k]
         Vtmp = numpy.transpose(known_bases[0:k,emp_tmp])
@@ -542,6 +541,7 @@ def surros(tolerance, ndim, inverse_V, emp_nodes, known_bases, nts, nparams, par
     return val
 
 def roqs(tolerance, freq,  ndimlow, ndimhigh, ndimstepsize, known_bases_copy, nts, nparams, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant):
+    flag = 0
     for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
         ndim, inverse_V, emp_nodes = empnodes(num, known_bases_copy)
         if surros(tolerance, ndim, inverse_V, emp_nodes, known_bases_copy, nts, nparams, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant)==0:
@@ -550,24 +550,25 @@ def roqs(tolerance, freq,  ndimlow, ndimhigh, ndimstepsize, known_bases_copy, nt
             numpy.save('./B_linear.npy',numpy.transpose(b_linear))
             numpy.save('./fnodes_linear.npy',f_linear)
             print("Number of linear basis elements is ", ndim, "and the linear ROQ data are saved in B_linear.npy")
+            flag = 1
             break
+    if not flag: raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
     return
 
 def testrep(b_linear, emp_nodes, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref, distance, deltaF, f_min, f_max, waveFlags, approximant):
     hp_test = generate_a_waveform_from_mcq(test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref, distance, deltaF, f_min, f_max, waveFlags, approximant)
     hp_test_emp = hp_test[emp_nodes]
     hp_rep = numpy.dot(b_linear,hp_test_emp)
+    freq = numpy.arange(f_min,f_max,deltaF)
     diff = hp_rep - hp_test
     rep_error = diff/numpy.sqrt(numpy.vdot(hp_test,hp_test))
-    freq = numpy.arange(f_min,f_max,deltaF)
     plt.figure(figsize=(15,9))
     plt.plot(freq, numpy.real(rep_error), label='Real part of h+') 
     plt.plot(freq, numpy.imag(rep_error), label='Imaginary part of h+')
     plt.xlabel('Frequency')
     plt.ylabel('Fractional Representation Error')
-    plt.title('Rep Error with numpy.linalg.pinv()')
     plt.legend(loc=0)
-    plt.show()
+    plt.savefig('./testrep.png')
     return
 
 def empnodes_quad(ndim_quad, known_quad_bases):
@@ -640,6 +641,7 @@ def surros_quad(tolerance_quad, ndim_quad, inverse_V_quad, emp_nodes_quad, known
     return val
 
 def roqs_quad(tolerance_quad, freq,  ndimlow_quad, ndimhigh_quad, ndimstepsize_quad, known_quad_bases_copy, nts, nparams, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant):
+    flag = 0
     for num in np.arange(ndimlow_quad, ndimhigh_quad, ndimstepsize_quad):
         ndim_quad, inverse_V_quad, emp_nodes_quad = empnodes_quad(num, known_quad_bases_copy)
         if surros_quad(tolerance_quad, ndim_quad, inverse_V_quad, emp_nodes_quad, known_quad_bases_copy, nts, nparams, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant)==0:
@@ -648,7 +650,9 @@ def roqs_quad(tolerance_quad, freq,  ndimlow_quad, ndimhigh_quad, ndimstepsize_q
             numpy.save('./B_quadratic.npy', numpy.transpose(b_quad))
             numpy.save('./fnodes_quadratic.npy', f_quad)
             print("Number of quadratic basis elements is ", ndim_quad, "and the linear ROQ data save in B_quadratic.npy")
+            flag = 1
             break
+    if not flag: raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
     return
 
 def testrep_quad(b_quad, emp_nodes_quad, test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad, distance, deltaF, f_min, f_max, waveFlags, approximant):
@@ -662,8 +666,7 @@ def testrep_quad(b_quad, emp_nodes_quad, test_mc_quad, test_q_quad, test_s1_quad
     plt.plot(freq, numpy.real(rep_error_quad))
     plt.xlabel('Frequency')
     plt.ylabel('Fractional Representation Error for Quadratic')
-    plt.title('Rep Error with numpy.linalg.pinv()')
-    plt.show()
+    plt.savefig('./testrepquad.png')
     return
 
 def surros_of_test_samples(nsamples, nparams, params_low, params_high, tolerance, b_linear, emp_nodes, distance, deltaF, f_min, f_max, waveFlags, approximant):
