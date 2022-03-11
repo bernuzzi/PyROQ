@@ -1,3 +1,3 @@
-from . import PyROQ
+from . import pyroq
 
 
