@@ -62,7 +62,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     """
 
     # eccentric binaries are not supported
-    if(ecc > 1e-6): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(ecc))
+    if(abs(ecc) > 1e-6): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(ecc))
 
     # Impose the correct convention on masses
     q = m1/m2
@@ -84,8 +84,8 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         """
 
         # precessing spins are not supported
-        if((spin1[0] > 1e-6) or (spin1[1] > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(spin1[0], spin1[1]))
-        if((spin2[0] > 1e-6) or (spin2[1] > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(spin2[0], spin2[1]))
+        if((abs(spin1[0]) > 1e-6) or (abs(spin1[1]) > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(spin1[0], spin1[1]))
+        if((abs(spin2[0]) > 1e-6) or (abs(spin2[1]) > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(spin2[0], spin2[1]))
 
         model       = Model.default()
         frequencies = np.arange(f_min, f_max, step=deltaF)
