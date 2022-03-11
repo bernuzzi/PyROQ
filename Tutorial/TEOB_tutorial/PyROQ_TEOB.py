@@ -23,20 +23,20 @@ pylab.rcParams.update(plot_params)
 
 # Intrinsic parameter space on which the interpolants will be constructed
 intrinsic_params = {
-    'mc'      : [45, 46]                                  ,
-    'q'       : [1, 1.2]                                  ,
-    's1sphere': [[0, 0, 0], [0.2, numpy.pi, 2.0*numpy.pi]],
-    's2sphere': [[0, 0, 0], [0.2, numpy.pi, 2.0*numpy.pi]],
+    'mc'      : [0.9, 1.4]                                , #training range of MLGW
+    'q'       : [1, 3]                                    ,
+    's1sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]], 
+    's2sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
     'ecc'     : [0.0, 0.0]                                ,
-    'lambda1' : [0, 1000]                                 ,
-    'lambda2' : [0, 1000]                                 ,
+    'lambda1' : [5, 5000]                                 ,
+    'lambda2' : [5, 5000]                                 ,
     'iota'    : [0, numpy.pi]                             ,
     'phiref'  : [0, 2*numpy.pi]                           ,
 }
 
 # Frequency axis on which the interpolant will be constructed
-f_min, f_max, deltaF = 20, 512, 1/4.
-approximant = 'teobresums-giotto-FD'
+f_min, f_max, deltaF = 50, 1024, 1/1.
+approximant = 'teobresums-giotto-FD' #'mlgw-bns'
 
 run_tag = 'test_freqs'
 if not os.path.exists(run_tag): os.makedirs(run_tag)
@@ -70,6 +70,7 @@ ndimstepsize_quad = 1
 tolerance_quad = 1e-5 # Surrogage error threshold for quadratic basis elements
 
 plot_only = 0
+check_mass_range = 0
 
 #############################################################
 # Below this point, ideally no parameter should be changed. #
@@ -80,6 +81,18 @@ distance = 10 * LAL_PC_SI * 1.0e6  # 10 Mpc is default
 
 waveFlags = pyroq.eob_parameters()
 print("mass-min, mass-max: ", pyroq.massrange(intrinsic_params['mc'][0], intrinsic_params['mc'][1], intrinsic_params['q'][0], intrinsic_params['q'][1]))
+
+if check_mass_range:
+    m1_00,m2_00 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][0],intrinsic_params['q'][0])
+    m1_01,m2_01 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][0],intrinsic_params['q'][1])
+    m1_10,m2_10 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][1],intrinsic_params['q'][0])
+    m1_11,m2_11 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][1],intrinsic_params['q'][1])
+
+    print(m1_00,m2_00, m1_00+m2_00)
+    print(m1_01,m2_01, m1_01+m2_01)
+    print(m1_10,m2_10, m1_10+m2_10)
+    print(m1_11,m2_11, m1_11+m2_11)
+    exit()
 
 # Create the ROQ initial basis
 freq = numpy.arange(f_min, f_max, deltaF)
