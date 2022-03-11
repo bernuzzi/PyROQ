@@ -15,6 +15,11 @@ import traceback
 
 import EOBRun_module
 
+try: 
+    from mlgw_bns import ParametersWithExtrinsic, Model
+except:
+    warning.warn('Skipping import of mlgw_bns')
+
 # EOB helpers ###
 TEOBResumS_version = [
     'teobresums-giotto-TD',
@@ -53,59 +58,78 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     """
     TEOBResumS wrapper
     waveFlags is used for EOB parameters
-    spin[12] have 3 entries x,y,z
+    spin{1,2} have 3 entries x,y,z
     """
-    domain  = 'TD'
-    if 'FD' in approximant: domain = 'FD'    
+
+    # eccentric binaries are not supported
+    if(ecc > 1e-6): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(ecc))
+
+    # Impose the correct convention on masses
     q = m1/m2
     if q < 1.:
         q = 1./q
         spin1,spin2 = spin2,spin1
         m1,m2 = m2,m1
         lambda1,lambda2 = lambda2,lambda1
-    srate = f_max*2
-   
-    # Bring back the quantities to units compatible with TEOB 
+
+    # Bring back the quantities to units compatible with TEOB
     m1 = m1/lal.MSUN_SI
     m2 = m2/lal.MSUN_SI
     distance = distance/(lal.PC_SI*1e6)
- 
-    # EOB pars to generate wvf
-    waveFlags['M'                  ] = m1+m2
-    waveFlags['q'                  ] = q    
-    waveFlags['Lambda1'            ] = lambda1
-    waveFlags['Lambda2'            ] = lambda2
-    if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
-        waveFlags['chi1x'] = spin1[0]
-        waveFlags['chi1y'] = spin1[1]
-        waveFlags['chi1z'] = spin1[2]
-        waveFlags['chi2x'] = spin2[0]
-        waveFlags['chi2y'] = spin2[1]
-        waveFlags['chi2z'] = spin2[2]
+
+    if(approximant == 'mlgw-bns'):
+    
+        """
+        mlgw-bns wrapper.
+        """
+
+        # precessing spins are not supported
+        if((spin1[0] > 1e-6) or (spin1[1] > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(spin1[0], spin1[1]))
+        if((spin2[0] > 1e-6) or (spin2[1] > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(spin2[0], spin2[1]))
+
+        model       = Model.default()
+        frequencies = np.arange(f_min, f_max, step=deltaF)
+        params      = ParametersWithExtrinsic(q, lambda1, lambda2, spin1[2], spin1[2], distance, iota, m1+m2, reference_phase=phiRef)
+        hp, hc      = model.predict(frequencies, params)
+
     else:
-        waveFlags['chi1'] = spin1[2] 
-        waveFlags['chi2'] = spin2[2]
-    waveFlags['domain'             ] = TEOBResumS_domain[domain]
-    waveFlags['srate_interp'       ] = srate  # srate at which to interpolate. Default = 4096.
-    waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
-    waveFlags['df'                 ] = deltaF
-    waveFlags['distance'           ] = distance
-    waveFlags['inclination'        ] = iota
 
-    if domain == 'TD':
-        T, Hp, Hc = EOBRun_module.EOBRunPy(waveFlags)
-        Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
-    else:
-        F, Hptilde, Hctilde, hlm, dyn = EOBRun_module.EOBRunPy(waveFlags)
- 
-    #plt.figure()
-    #plt.plot(F, Hptilde)
-    #plt.savefig('/home/gregorio.carullo/PyROQ/Code/test.png')
+        domain  = 'TD'
+        if 'FD' in approximant: domain = 'FD'    
+    
+        # EOB pars to generate wvf
+        waveFlags['M'                  ] = m1+m2
+        waveFlags['q'                  ] = q    
+        waveFlags['Lambda1'            ] = lambda1
+        waveFlags['Lambda2'            ] = lambda2
+        if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
+            waveFlags['chi1x'] = spin1[0]
+            waveFlags['chi1y'] = spin1[1]
+            waveFlags['chi1z'] = spin1[2]
+            waveFlags['chi2x'] = spin2[0]
+            waveFlags['chi2y'] = spin2[1]
+            waveFlags['chi2z'] = spin2[2]
+        else:
+            waveFlags['chi1'] = spin1[2] 
+            waveFlags['chi2'] = spin2[2]
+        waveFlags['domain'             ] = TEOBResumS_domain[domain]
+        waveFlags['srate_interp'       ] = f_max*2  # srate at which to interpolate. Default = 4096.
+        waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
+        waveFlags['df'                 ] = deltaF
+        waveFlags['distance'           ] = distance
+        waveFlags['inclination'        ] = iota
 
-    #print('WHAT AM I UNPACKING????')
+        if domain == 'TD':
+            T, Hp, Hc = EOBRun_module.EOBRunPy(waveFlags)
+            Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
+        else:
+            F, Hptilde, Hctilde, hlm, dyn = EOBRun_module.EOBRunPy(waveFlags)
 
-    # Adapt len to PyROQ conventions
-    return Hptilde[:-1], Hctilde[:-1]
+        # Adapt len to PyROQ frequency axis conventions
+        hp, hc = Hptilde[:-1], Hctilde[:-1]
+
+    return hp, hc
+
 # end EOB helpers ###
     
 def howmany_within_range(row, minimum, maximum):
@@ -458,11 +482,10 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
     try:
         if approximant in TEOBResumS_version:
             nparams = 12
-            print('THIS IS ALIGNED SPIN, PARAMETERS ARE LESS THAN 12')
+            print('\n\nTHIS IS ALIGNED SPIN, PARAMETERS ARE LESS THAN 12?\n\n')
             params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
             params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
             params_start = numpy.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
-
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
         raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))

@@ -57,17 +57,17 @@ npts = 80 # Specify the number of points for each search for a new basis element
           # What value to choose depends on the nature of the waveform, such as how many features it has. 
           # It also depends on the parameter space and the signal length. 
         
-nbases = 20 # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
-ndimlow = 10 # Your estimation of fewest basis elements needed for this chunk of parameter space.
+nbases = 30 # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
+ndimlow = 20 # Your estimation of fewest basis elements needed for this chunk of parameter space.
 ndimhigh = nbases+1 
 ndimstepsize = 1 # Number of linear basis elements increment to check if the basis satisfies the tolerance.
-tolerance = 1e-5 # Surrogage error threshold for linear basis elements
+tolerance = 1e-4 # Surrogage error threshold for linear basis elements
 
-nbases_quad = 20 # Specify the number of quadratic basis elements, depending on the tolerance_quad, usually two thirds of that for linear basis
-ndimlow_quad = 10
+nbases_quad = 30 # Specify the number of quadratic basis elements, depending on the tolerance_quad, usually two thirds of that for linear basis
+ndimlow_quad = 20
 ndimhigh_quad = nbases_quad+1
 ndimstepsize_quad = 1
-tolerance_quad = 1e-6 # Surrogage error threshold for quadratic basis elements
+tolerance_quad = 1e-5 # Surrogage error threshold for quadratic basis elements
 
 plot_only = 0
 
