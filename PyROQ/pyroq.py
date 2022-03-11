@@ -34,7 +34,7 @@ class PyROQ:
                  intrinsic_params = defaults['intrinsic_params_defaults'],
                  # Frequency axis on which the interpolant will be constructed
                  f_min = 20,
-                 f_max 1024,
+                 f_max = 1024,
                  deltaF = 1./4.,
                  # Dummy value, distance does not enter the interolants construction
                  distance = 10 * LAL_PC_SI * 1.0e6,  # 10 Mpc is default 
@@ -159,7 +159,7 @@ class PyROQ:
                                             self.distance, self.deltaF, self.f_min, self.f_max)
         return hp
     
-    def generate_a_waveform_from_mcq(self, mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef)
+    def generate_a_waveform_from_mcq(self, mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):
         m1,m2 = self.get_m1m2_from_mcq(mc,q)
         test_mass1 = m1 * LAL_MSUN_SI
         test_mass2 = m2 * LAL_MSUN_SI

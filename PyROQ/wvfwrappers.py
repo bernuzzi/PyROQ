@@ -56,8 +56,7 @@ try:
                                                                       distance, iota, phiRef,
                                                                       0, ecc, 0,
                                                                       deltaF, f_min, f_max,
-                                                                      0, s
-                                                                      elf.waveFlags, self.approximant)
+                                                                      0, self.waveFlags, self.approximant)
             hp = plus.data.data
             hc = cross.data.data
             hp = hp[np.int(f_min/deltaF):np.int(f_max/deltaF)]
