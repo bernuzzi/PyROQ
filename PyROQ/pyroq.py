@@ -153,16 +153,14 @@ class PyROQ:
         return np.array([m1,m2])
 
     def generate_a_waveform(self, m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):
-        test_mass1 = m1 * LAL_MSUN_SI
-        test_mass2 = m2 * LAL_MSUN_SI
-        hp, hc = self.wvf.generate_waveform(test_mass1, test_mass2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef,
+        m1 *= LAL_MSUN_SI
+        m2 *= LAL_MSUN_SI
+        hp, hc = self.wvf.generate_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef,
                                             self.distance, self.deltaF, self.f_min, self.f_max)
         return hp
     
     def generate_a_waveform_from_mcq(self, mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):
         m1,m2 = self.get_m1m2_from_mcq(mc,q)
-        m1 *= LAL_MSUN_SI
-        m2 *= LAL_MSUN_SI
         return self.generate_a_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef)
  
     def generate_params_points(self):
@@ -212,7 +210,7 @@ class PyROQ:
     def compute_modulus(self, paramspoint, known_bases):
         return self._compute_modulus(paramspoint, known_bases, term='lin'):
 
-    def compute_modulus_quad(self,paramspoint, known_quad_bases):
+    def compute_modulus_quad(self,paramspoint, known_bases):
         return self._compute_modulus(paramspoint, known_bases, term='quad'):
 
     def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term='lin'):
@@ -249,7 +247,7 @@ class PyROQ:
     def least_match_waveform_unnormalized(self, paramspoints, known_bases):
         return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='lin')
 
-    def least_match_quadratic_waveform_unnormalized(self, paramspoints, known_quad_bases):
+    def least_match_quadratic_waveform_unnormalized(self, paramspoints, known_bases):
         return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='quad')
 
     def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term='lin'):
@@ -330,7 +328,6 @@ class PyROQ:
             self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
             self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
             self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
-            
             self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low) 
         else:
             raise ValueError 
@@ -470,6 +467,29 @@ class PyROQ:
 
     def roqs_quad(self, known_bases):
         return self._roqs(known_bases, term='quad')
+
+    def run(self):
+        d = {}
+        hp1 = self.hp1
+        hp1_quad = (np.absolute(hp1))**2
+        params_start = self.params_start
+        # Search for linear basis elements to build & save linear ROQ data in the local directory.
+        known_bases_start = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
+        basis_waveforms_start = np.array([hp1])
+        residual_modula_start = np.array([0.0])
+        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_start, residual_modula, term='lin')
+        d['lin_bases'] = bases
+        d['lin_params'] = params
+        d['lin_res'] = residual_modula
+        # Search for quadratic basis elements to build & save quadratic ROQ data.
+        known_bases_start = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
+        basis_waveforms_start = np.array([hp1_quad])
+        residual_modula_start = np.array([0.0])
+        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_start, residual_modula, term='quad')
+        d['quad_bases'] = bases
+        d['quad_params'] = params
+        d['quad_res'] = residual_modula
+        return d
     
     def _testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin'):
         hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
@@ -538,12 +558,14 @@ if __name__ == '__main__':
     # example
     pyroq = PyROQ(outpudir='./test')
 
-    # Search for linear basis elements to build and save linear ROQ data in the local directory.
     hp1 = pyroq.hp1
+    params_start = pyroq.params_start
+
+    # Search for linear basis elements to build and save linear ROQ data in the local directory.
     known_bases_start = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
     basis_waveforms_start = np.array([hp1])
     residual_modula_start = np.array([0.0])
-    known_bases, params, residual_modula = pyroq.bases_searching_results_unnormalized(known_bases_start, basis_waveforms_start, residual_modula_start)
+    known_bases, params, residual_modula = pyroq.bases_searching_results_unnormalized(known_bases_start, basis_waveforms_start, params_start, residual_modula_start)
     
     print(known_bases.shape, residual_modula)
 
@@ -588,7 +610,7 @@ if __name__ == '__main__':
     known_quad_bases_start = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
     basis_waveforms_quad_start = np.array([hp1_quad])
     residual_modula_start = np.array([0.0])
-    known_quad_bases,params_quad,residual_modula_quad = pyroq.bases_searching_quadratic_results_unnormalized(known_quad_bases_start, basis_waveforms_quad_start, residual_modula_start)
+    known_quad_bases,params_quad,residual_modula_quad = pyroq.bases_searching_quadratic_results_unnormalized(known_quad_bases_start, basis_waveforms_quad_start, params_start, residual_modula_start)
     known_quad_bases_copy = known_quad_bases
 
     known_quad_bases = np.load(pyroq.outpurdir+'/quadraticbases.npy')
