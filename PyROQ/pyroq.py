@@ -161,18 +161,16 @@ class PyROQ:
     
     def generate_a_waveform_from_mcq(self, mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):
         m1,m2 = self.get_m1m2_from_mcq(mc,q)
-        test_mass1 = m1 * LAL_MSUN_SI
-        test_mass2 = m2 * LAL_MSUN_SI
-        hp, hc = self.wvf.generate_waveform(test_mass1, test_mass2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef,
-                                            self.distance, self.deltaF, self.f_min, self.f_max)
-        return hp
-
+        m1 *= LAL_MSUN_SI
+        m2 *= LAL_MSUN_SI
+        return self.generate_a_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef)
+ 
     def generate_params_points(self):
         paramspoints = np.random.uniform(self.params_low, self.params_high, size=(self.npts,self.nparams))
         paramspoints = paramspoints.round(decimals=6)
         return paramspoints
 
-    def compute_modulus(self, paramspoint, known_bases):
+    def _paramspoint_to_wave(self, paramspoint):
         m1, m2 = self.get_m1m2_from_mcq(paramspoint[0],paramspoint[1])
         s1x, s1y, s1z = self.spherical_to_cartesian(paramspoint[2:5]) 
         s2x, s2y, s2z = self.spherical_to_cartesian(paramspoint[5:8]) 
@@ -191,51 +189,33 @@ class PyROQ:
         phi = 0
         m1 *= LAL_MSUN_SI
         m2 *= LAL_MSUN_SI
-        hp = self.wvf.generate_a_waveform(m1, m2,
-                                          [s1x, s1y, s1z],
-                                          [s2x, s2y, s2z],
-                                          ecc,
-                                          lambda1, lambda2,
-                                          iota, phiRef)
-        residual = hp
+        return self.wvf.generate_a_waveform(m1, m2,
+                                            [s1x, s1y, s1z],
+                                            [s2x, s2y, s2z],
+                                            ecc,
+                                            lambda1, lambda2,
+                                            iota, phiRef)
+
+    def _compute_modulus(self, paramspoint, known_bases, term='lin'):
+        hp = self._paramspoint_to_wave(paramspoint)
+        if term == 'lin':
+            residual = hp
+        elif  term == 'quad':
+            hp = (np.absolute(hp))**2
+            residual = hp
+        else:
+            raise ValueError("unknown term")
         for k in np.arange(0,len(known_bases)):
             residual -= self.proj(known_bases[k],hp)
-        modulus = np.sqrt(np.vdot(residual, residual))
-        return modulus
+        return np.sqrt(np.vdot(residual, residual))
+
+    def compute_modulus(self, paramspoint, known_bases):
+        return self._compute_modulus(paramspoint, known_bases, term='lin'):
 
     def compute_modulus_quad(self,paramspoint, known_quad_bases):
-        m1, m2 = self.get_m1m2_from_mcq(paramspoint[0],paramspoint[1])
-        s1x, s1y, s1z = self.spherical_to_cartesian(paramspoint[2:5]) 
-        s2x, s2y, s2z = self.spherical_to_cartesian(paramspoint[5:8]) 
-        iota = paramspoint[8]  
-        phiRef = paramspoint[9]
-        ecc = 0
-        if len(paramspoint)==11:
-            ecc = paramspoint[10]
-        if len(paramspoint)==12:
-            lambda1 = paramspoints[arg_newbasis][10]
-            lambda2 = paramspoints[arg_newbasis][11]
-        f_ref = 0 
-        RA = 0    
-        DEC = 0  
-        psi = 0
-        phi = 0
-        m1 *= LAL_MSUN_SI
-        m2 *= LAL_MSUN_SI
-        hp  = self.wvf.generate_a_waveform(m1, m2,
-                                           [s1x, s1y, s1z],
-                                           [s2x, s2y, s2z],
-                                           ecc,
-                                           lambda1, lambda2,
-                                           iota, phiRef)
-        hp_quad_tmp = (np.absolute(hp))**2
-        residual = hp_quad_tmp
-        for k in np.arange(0,len(known_quad_bases)):
-            residual -= self.proj(known_quad_bases[k],hp_quad_tmp)
-        modulus = np.sqrt(np.vdot(residual, residual))
-        return modulus
+        return self._compute_modulus(paramspoint, known_bases, term='quad'):
 
-    def least_match_waveform_unnormalized(self, paramspoints, known_bases):
+    def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term='lin'):
         """
         Now generating N=npts waveforms at points that are 
         randomly uniformly distributed in parameter space
@@ -246,105 +226,64 @@ class PyROQ:
             paramspointslist = paramspoints.tolist()
             #pool = mp.Pool(mp.cpu_count())
             pool = mp.Pool(processes=nprocesses)
-            modula = [pool.apply(compute_modulus, args=(paramspoint, known_bases)) for paramspoint in paramspointslist]
+            modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
             npts = len(paramspoints)
             modula = np.zeros(npts)
             for i in np.arange(0,npts):
                 paramspoint = paramspoints[i]
-                modula[i] = self.compute_modulus(paramspoint, known_bases)
+                modula[i] = self._compute_modulus(paramspoint, known_bases, term)
         arg_newbasis = np.argmax(modula) 
         paramspoint = paramspoints[arg_newbasis]
-        mass1, mass2 = self.get_m1m2_from_mcq(paramspoints[arg_newbasis][0],paramspoints[arg_newbasis][1])
-        mass1 *= LAL_MSUN_SI
-        mass2 *= LAL_MSUN_SI
-        sp1x, sp1y, sp1z = self.spherical_to_cartesian(paramspoints[arg_newbasis,2:5]) 
-        sp2x, sp2y, sp2z = self.spherical_to_cartesian(paramspoints[arg_newbasis,5:8]) 
-        inclination = paramspoints[arg_newbasis][8]
-        phi_ref = paramspoints[arg_newbasis][9]
-        ecc = 0
-        if len(paramspoint)==11:
-            ecc = paramspoints[arg_newbasis][10]
-        if len(paramspoint)==12:
-            lambda1 = paramspoints[arg_newbasis][10]
-            lambda2 = paramspoints[arg_newbasis][11]
-        hp = self.wvf.generate_a_waveform(mass1, mass2,
-                                          [sp1x, sp1y, sp1z],
-                                          [sp2x, sp2y, sp2z],
-                                          ecc,
-                                          lambda1, lambda2,
-                                          inclination, phi_ref)
+        hp = self._paramspoint_to_wave(paramspoint)
+        if term == 'lin':
+            pass
+        elif term == 'quad':
+            hp = (np.absolute(hp))**2
+        else:
+            raise ValueError("unknown term")
         basis_new = self.gram_schmidt(known_bases, hp)
-        return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
+       return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
+
+    def least_match_waveform_unnormalized(self, paramspoints, known_bases):
+        return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='lin')
 
     def least_match_quadratic_waveform_unnormalized(self, paramspoints, known_quad_bases):
-        if self.parallel:
-            paramspointslist = paramspoints.tolist()
-            pool = mp.Pool(processes=nprocesses)
-            modula = [pool.apply(compute_modulus_quad, args=(paramspoint, known_quad_bases)) for paramspoint in paramspointslist]
-            pool.close()
+        return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='quad')
+
+    def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term='lin'):
+        if term == 'lin':
+            nbases = self.nbases
+            fbase = self.outputdir+'/linearbases.npy'
+            fparams = self.outputdir+'/linearbasiswaveformparams.npy'
+        elif term=='quad':
+            nbases = self.nbases_quad
+            fbase = self.outputdir+'/quadraticbases.npy'
+            fparams = self.outputdir+'/quadraticbasiswaveformparams.npy'
         else:
-            npts = len(paramspoints)
-            modula = np.zeros(npts)
-            for i in np.arange(0,npts):
-                paramspoint = paramspoints[i]
-                modula[i] = compute_modulus_quad(paramspoint, known_quad_bases)
-        arg_newbasis = np.argmax(modula)    
-        paramspoint = paramspoints[arg_newbasis]
-        mass1, mass2 = self.get_m1m2_from_mcq(paramspoints[arg_newbasis][0],paramspoints[arg_newbasis][1])
-        mass1 *= LAL_MSUN_SI
-        mass2 *= LAL_MSUN_SI
-        sp1x, sp1y, sp1z = self.spherical_to_cartesian(paramspoints[arg_newbasis,2:5]) 
-        sp2x, sp2y, sp2z = self.spherical_to_cartesian(paramspoints[arg_newbasis,5:8]) 
-        inclination = paramspoints[arg_newbasis][8]
-        phi_ref = paramspoints[arg_newbasis][9]
-        ecc = 0
-        if len(paramspoint)==11:
-            ecc = paramspoints[arg_newbasis][10]
-        if len(paramspoint)==12:
-            lambda1 = paramspoints[arg_newbasis][10]
-            lambda2 = paramspoints[arg_newbasis][11]
-        hp = self.wvf.generate_a_waveform(mass1, mass2,
-                                          [sp1x, sp1y, sp1z],
-                                          [sp2x, sp2y, sp2z],
-                                          ecc,
-                                          lambda1, lambda2,
-                                          inclination,
-                                          phi_ref)
-        hp_quad_new = (np.absolute(hp))**2
-        basis_quad_new = self.gram_schmidt(known_quad_bases, hp_quad_new)    
-        return np.array([basis_quad_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
-    
-    def bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula):
+            raise ValueError("unknown term")
         if self.verbose:
             if self.nparams == 10: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, and phiRef\n")
             if self.nparams == 11: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, phiRef, and eccentricity\n")
             if self.nparams == 12: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, phiRef, lambda1, and lambda2\n") 
-        for k in np.arange(0,self.nbases-1):
+        for k in np.arange(0,nbases-1):
             paramspoints = self.generate_params_points()
-            basis_new, params_new, rm_new = self.least_match_waveform_unnormalized(paramspoints, known_bases)
+            basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
             if self.verbose:
-                print("Linear Iter: ", k+1, "and new basis waveform", params_new)
+                print("Iter: ", k+1, "and new basis waveform", params_new)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
             params = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
-        np.save(self.outputdir+'/linearbases.npy',known_bases)
-        np.save(self.outputdir+'/linearbasiswaveformparams.npy',params)
+        np.save(fbase,known_bases)
+        np.save(fparams,params)
         return known_bases, params, residual_modula
+    
+    def bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula):
+        return self._bases_searching_results_unnormalized(known_bases, basis_waveforms, params, residual_modula, term='lin')
 
-    def bases_searching_quadratic_results_unnormalized(self,known_quad_bases, basis_waveforms, params_quad, residual_modula):
-        for k in np.arange(0,self.nbases_quad-1):
-            if self.verbose:
-                print("Quadratic Iter: ", k+1)
-            paramspoints = self.generate_params_points()
-            basis_new, params_new, rm_new = self.least_match_quadratic_waveform_unnormalized(paramspoints, known_quad_bases)
-            known_quad_bases= np.append(known_quad_bases, np.array([basis_new]), axis=0)
-            params_quad = np.append(params_quad, np.array([params_new]), axis = 0)
-            residual_modula = np.append(residual_modula, rm_new)
-        np.save(self.outputdir+'/quadraticbases.npy',known_quad_bases)
-        np.save(self.outputdir+'/quadraticbasiswaveformparams.npy',params_quad)
-        return known_quad_bases, params_quad, residual_modula
+    def bases_searching_quadratic_results_unnormalized(self,known_bases, basis_waveforms, params, residual_modula):
+        return self._bases_searching_results_unnormalized(known_bases, basis_waveforms, params, residual_modula, term='quad')
 
     def massrange(self,mc_low, mc_high, q_low, q_high):
         mmin = self.get_m1m2_from_mcq(mc_low,q_high)[1]
@@ -425,29 +364,44 @@ class PyROQ:
             emp_nodes = sorted(emp_nodes)
         u, c = np.unique(emp_nodes, return_counts=True)
         dup = u[c > 1]
-        #print(len(emp_nodes), "\nDuplicates indices:", dup)
         emp_nodes = np.unique(emp_nodes)
         ndim = len(emp_nodes)
-        #print(len(emp_nodes), "\n", emp_nodes)
         V = np.transpose(known_bases[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
         return np.array([ndim, inverse_V, emp_nodes])
 
-    def surroerror(self, ndim, inverse_V, emp_nodes, known_bases, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref):
-        hp_test = self.generate_a_waveform_from_mcq(test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref)
-        Ci = np.dot(inverse_V, hp_test[emp_nodes])
-        interpolantA = np.zeros(len(hp_test))+np.zeros(len(hp_test))*1j
-        #ndim = len(known_bases)
+    def empnodes_quad(self, ndim, known_bases):
+        return empnodes(self, ndim, known_bases) #CHECKME: this routine appears identical to the above (duplicated in original code?)
+
+    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term = 'lin'):
+        hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+        if term == 'lin':
+            pass
+        elif term == 'quad':
+            hp = (np.absolute(hp))**2
+        else:
+            raise ValueError("unknown term")
+        Ci = np.dot(inverse_V, hp[emp_nodes])
+        interpolantA = np.zeros(len(hp))+np.zeros(len(hp))*1j
         for j in np.arange(0, ndim):
             tmp = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
-        surro = (1-overlap_of_two_waveforms(hp_test, interpolantA))*deltaF
+        surro = (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF
         return surro
+    
+    def surroerror(self, ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
+        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term = 'lin')
 
-    def surros(ndim, inverse_V, emp_nodes, known_bases): 
-        """
-        Here known_bases is known_bases_copy
-        """
+    def surroerror_quad(self, ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
+        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term = 'quad')
+    
+    def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term='lin'):
+        if term == 'lin':
+            tol = self.tolerance
+        elif term == 'quad':
+            tol = self.tolerance_quad
+        else:
+              raise ValueError("unknown term")  
         test_points = self.generate_params_points()
         surros = np.zeros(nts)
         count = 0
@@ -466,36 +420,69 @@ class PyROQ:
             if nparams == 12: 
                 test_lambda1 = test_points[i,10]
                 test_lambda2 = test_points[i,11]
-            surros[i] = self.surroerror(ndim, inverse_V, emp_nodes, known_bases[0:ndim], test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref)
-            if (surros[i] > self.tolerance):
+            surros[i] = self._surroerror(ndim, inverse_V, emp_nodes, known_bases[0:ndim],
+                                         test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref
+                                         term = term)
+            if (surros[i] > tol):
                 count = count+1
         if self.verbose:
             print(ndim, "basis elements gave", count, "bad points of surrogate error > ", self.tolerance)
         if count == 0:
-            val = 0
+            return 0
         else:
-            val = 1
-        return val
+            return 1
+    
+    def surros(self, ndim, inverse_V, emp_nodes, known_bases):
+        return self._surros(ndim, inverse_V, emp_nodes, known_bases, term='lin')
 
-    def roqs(self, known_bases_copy): 
-        for num in np.arange(self.ndimlow, self.ndimhigh, self.ndimstepsize):
-            ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases_copy)
-            if self.surros(ndim, inverse_V, emp_nodes, known_bases_copy) == 0:
-                b_linear = np.dot(np.transpose(known_bases_copy[0:ndim]),inverse_V)
-                f_linear = self.freq[emp_nodes]
-                np.save(self.outputdir+'/B_linear.npy',np.transpose(b_linear))
-                np.save(self.outputdir+'/fnodes_linear.npy',f_linear)
+    def surros_quad(self, ndim, inverse_V, emp_nodes, known_bases):
+        return self._surros(ndim, inverse_V, emp_nodes, known_bases, term='quad')
+    
+    def _roqs(self, known_bases, term='lin'):
+        if term == 'lin':
+            ndimlow = self.ndimlow
+            ndimhigh = self.ndimhigh
+            ndimstepsize = self.ndimstepsize
+            froq = self.outputdir+'/B_linear.npy'
+            fnodes = self.outputdir+'/fnodes_linear.npy'
+        elif term == 'quad':
+            ndimlow = self.ndimlow_quad
+            ndimhigh = self.ndimhigh_quad
+            ndimstepsize = self.ndimstepsize_quad
+            froq = self.outputdir+'/B_quadratic.npy'
+            fnodes = self.outputdir+'/fnodes_quadratic.npy'
+        else:
+              raise ValueError("unknown term") 
+        for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
+            ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases)
+            if self._surros(ndim, inverse_V, emp_nodes, known_bases, term=term) == 0:
+                b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
+                f = self.freq[emp_nodes]
+                np.save(froq,np.transpose(b))
+                np.save(fnodes,f)
                 if self.verbose:
-                    print("Number of linear basis elements is ", ndim, "and the linear ROQ data are saved in B_linear.npy")
+                    print("Number of linear basis elements is ", ndim, "and the ROQ data are saved in ",froq)
                 break
         return
 
-    def testrep(self, b_linear, emp_nodes, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref):
-        hp_test = self.generate_a_waveform_from_mcq(test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref)
-        hp_test_emp = hp_test[emp_nodes]
-        hp_rep = np.dot(b_linear,hp_test_emp)
-        diff = hp_rep - hp_test
-        rep_error = diff/np.sqrt(np.vdot(hp_test,hp_test))
+    def roqs(self, known_bases):
+        return self._roqs(known_bases, term='lin')
+
+    def roqs_quad(self, known_bases):
+        return self._roqs(known_bases, term='quad')
+    
+    def _testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin'):
+        hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+        if term == 'lin':
+            pass
+        elif term == 'quad':
+            hp = (np.absolute(hp))**2
+        elif:
+            raise ValueError("unknown term") 
+        hp_emp = hp[emp_nodes]
+        hp_rep = np.dot(b,hp_emp)
+        diff = hp_rep - hp
+        rep_error = diff/np.sqrt(np.vdot(hp,hp))
         freq = np.arange(f_min,f_max,deltaF)
         #TODO return figure handle
         plt.figure(figsize=(15,9))
@@ -507,111 +494,13 @@ class PyROQ:
         plt.legend(loc=0)
         plt.show()
         return
+    
+    def testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
+        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin')
 
-    def empnodes_quad(self, ndim_quad, known_quad_bases):
-        emp_nodes_quad = np.arange(0,ndim_quad)*100000000
-        emp_nodes_quad[0] = np.argmax(np.absolute(known_quad_bases[0]))
-        c1_quad = known_quad_bases[1,emp_nodes_quad[0]]/known_quad_bases[0,1]
-        interp1_quad = np.multiply(c1_quad,known_quad_bases[0])
-        diff1_quad = interp1_quad - known_quad_bases[1]
-        r1_quad = np.absolute(diff1_quad)
-        emp_nodes_quad[1] = np.argmax(r1_quad)
-        for k in np.arange(2,ndim_quad):
-            emp_tmp_quad = emp_nodes_quad[0:k]
-            Vtmp_quad = np.transpose(known_quad_bases[0:k,emp_tmp_quad])
-            inverse_Vtmp_quad = np.linalg.pinv(Vtmp_quad)
-            e_to_interp_quad = known_quad_bases[k]
-            Ci_quad = np.dot(inverse_Vtmp_quad, e_to_interp_quad[emp_tmp_quad])
-            interpolantA_quad = np.zeros(len(known_quad_bases[k]))+np.zeros(len(known_quad_bases[k]))*1j
-            for j in np.arange(0, k):
-                tmp_quad = np.multiply(Ci_quad[j], known_quad_bases[j])
-                interpolantA_quad += tmp_quad
-            diff_quad = interpolantA_quad - known_quad_bases[k]
-            r_quad = np.absolute(diff_quad)
-            emp_nodes_quad[k] = np.argmax(r_quad)
-            emp_nodes_quad = sorted(emp_nodes_quad)
-        u_quad, c_quad = np.unique(emp_nodes_quad, return_counts=True)
-        dup_quad = u_quad[c_quad > 1]
-        #print(len(emp_nodes_quad), "\nduplicates quad indices:", dup_quad)
-        emp_nodes_quad = np.unique(emp_nodes_quad)
-        ndim_quad = len(emp_nodes_quad)
-        #print(len(emp_nodes_quad), "\n", emp_nodes_quad)
-        V_quad = np.transpose(known_quad_bases[0:ndim_quad,emp_nodes_quad])
-        inverse_V_quad = np.linalg.pinv(V_quad)
-        return np.array([ndim_quad, inverse_V_quad, emp_nodes_quad])
-
-    def surroerror_quad(self, ndim_quad, inverse_V_quad, emp_nodes_quad, known_quad_bases, test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad):
-        hp = self.generate_a_waveform_from_mcq(test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad)
-        hp_test_quad = (np.absolute(hp))**2
-        Ci_quad = np.dot(inverse_V_quad, hp_test_quad[emp_nodes_quad])
-        interpolantA_quad = np.zeros(len(hp_test_quad))+np.zeros(len(hp_test_quad))*1j    
-        #ndim_quad = len(known_quad_bases)
-        for j in np.arange(0, ndim_quad):
-            tmp_quad = np.multiply(Ci_quad[j], known_quad_bases[j])
-            interpolantA_quad += tmp_quad
-        surro_quad = (1-overlap_of_two_waveforms(hp_test_quad, interpolantA_quad))*deltaF
-        return surro_quad
-
-    def surros_quad(self, tolerance_quad, ndim_quad, inverse_V_quad, emp_nodes_quad, known_quad_bases):
-        test_points = self.generate_params_points()
-        surros = np.zeros(nts)
-        count = 0
-        for i in np.arange(0,nts):
-            test_mc_quad =  test_points[i,0]
-            test_q_quad = test_points[i,1]
-            test_s1_quad = spherical_to_cartesian(test_points[i,2:5])
-            test_s2_quad = spherical_to_cartesian(test_points[i,5:8])
-            test_iota_quad = test_points[i,8]
-            test_phiref_quad = test_points[i,9]
-            test_ecc_quad = 0
-            test_lambda1_quad = 0
-            test_lambda2_quad = 0
-            if self.nparams == 11:
-                test_ecc_quad = test_points[i,10]
-            if self.nparams == 12: 
-                test_lambda1_quad = test_points[i,10]
-                test_lambda2_quad = test_points[i,11]
-            surros[i] = self.surroerror_quad(ndim_quad, inverse_V_quad, emp_nodes_quad, known_quad_bases[0:ndim_quad], test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad)
-            if (surros[i] > tolerance_quad):
-                count = count+1
-        if self.verbose:
-            print(ndim_quad, "basis elements gave", count, "bad points of surrogate error > ", tolerance_quad)
-        if count == 0:
-            val =0
-        else:
-            val = 1
-        return val
-
-    def roqs_quad(self, tolerance_quad, freq,  ndimlow_quad, ndimhigh_quad, ndimstepsize_quad, known_quad_bases_copy):
-        for num in np.arange(ndimlow_quad, ndimhigh_quad, ndimstepsize_quad):
-            ndim_quad, inverse_V_quad, emp_nodes_quad = empnodes_quad(num, known_quad_bases_copy)
-            if self.surros_quad(tolerance_quad, ndim_quad, inverse_V_quad, emp_nodes_quad, known_quad_bases_copy)==0:
-                b_quad = np.dot(np.transpose(known_quad_bases_copy[0:ndim_quad]), inverse_V_quad)
-                f_quad = freq[emp_nodes_quad]
-                np.save(self.outputdir+'/B_quadratic.npy', np.transpose(b_quad))
-                np.save(self.outputdir+'/fnodes_quadratic.npy', f_quad)
-                if self.verbose:
-                    print("Number of quadratic basis elements is ", ndim_quad, "and the linear ROQ data save in B_quadratic.npy")
-                break
-        return
-
-    def testrep_quad(self, b_quad, emp_nodes_quad, test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad):
-        hp = self.generate_a_waveform_from_mcq(test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad)
-        hp_test_quad = (np.absolute(hp))**2
-        hp_test_quad_emp = hp_test_quad[emp_nodes_quad]
-        hp_rep_quad = np.dot(b_quad,hp_test_quad_emp)
-        diff_quad = hp_rep_quad - hp_test_quad
-        rep_error_quad = diff_quad/np.vdot(hp_test_quad,hp_test_quad)**0.5
-        freq = np.arange(f_min,f_max,deltaF)
-        #TODO return figure handle
-        plt.figure(figsize=(15,9))
-        plt.plot(freq, np.real(rep_error_quad))
-        plt.xlabel('Frequency')
-        plt.ylabel('Fractional Representation Error for Quadratic')
-        plt.title('Rep Error with np.linalg.pinv()')
-        plt.show()
-        return
-
+    def testrep_quad(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
+        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='quad')
+    
     def surros_of_test_samples(self, nsamples, b_linear, emp_nodes):
         nts = nsamples
         ndim = len(emp_nodes)
