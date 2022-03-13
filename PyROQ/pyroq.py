@@ -318,17 +318,17 @@ class PyROQ:
             self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low] 
             self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high]
             self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
-            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low)
+            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low, self.spherical_to_cartesian(s1sphere_low),self.spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low)
         elif self.nparams == 11:
             self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, ecc_low] 
             self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, ecc_high]
             self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, ecc_low]])
-            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), ecc_low, 0, 0, iota_low, phiref_low)
+            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low,self.spherical_to_cartesian(s1sphere_low),self.spherical_to_cartesian(s2sphere_low), ecc_low, 0, 0, iota_low, phiref_low)
         elif self.nparams == 12:
             self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
             self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
             self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
-            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low) 
+            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low,self.spherical_to_cartesian(s1sphere_low),self.spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low) 
         else:
             raise ValueError 
         
@@ -399,26 +399,26 @@ class PyROQ:
             tol = self.tolerance_quad
         else:
               raise ValueError("unknown term")  
-        test_points = self.generate_params_points()
+        points = self.generate_params_points()
         surros = np.zeros(nts)
         count = 0
         for i in np.arange(0,nts):
-            test_mc =  test_points[i,0]
-            test_q = test_points[i,1]
-            test_s1 = self.spherical_to_cartesian(test_points[i,2:5])
-            test_s2 = self.spherical_to_cartesian(test_points[i,5:8])
-            test_iota = test_points[i,8]
-            test_phiref = test_points[i,9]
-            test_ecc = 0
-            test_lambda1 = 0
-            test_lambda2 = 0
+            mc =  points[i,0]
+            q = points[i,1]
+            s1 = self.spherical_to_cartesian(points[i,2:5])
+            s2 = self.spherical_to_cartesian(points[i,5:8])
+            iota = points[i,8]
+            phiref = points[i,9]
+            ecc = 0
+            lambda1 = 0
+            lambda2 = 0
             if nparams == 11:
-                test_ecc = test_points[i,10]
+                ecc = points[i,10]
             if nparams == 12: 
-                test_lambda1 = test_points[i,10]
-                test_lambda2 = test_points[i,11]
+                lambda1 = points[i,10]
+                lambda2 = points[i,11]
             surros[i] = self._surroerror(ndim, inverse_V, emp_nodes, known_bases[0:ndim],
-                                         test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref
+                                         mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref
                                          term = term)
             if (surros[i] > tol):
                 count = count+1
@@ -502,7 +502,9 @@ class PyROQ:
         
         return d
     
-    def _testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin', show=True):
+    def _testrep(self, b, emp_nodes,
+                 mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                 term='lin', show=True):
         hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
         if term == 'lin':
             pass
@@ -526,39 +528,47 @@ class PyROQ:
             plt.show()
         return freq, rep_error
     
-    def testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, show=True):
-        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin', show=show)
+    def testrep(self, b, emp_nodes,
+                mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                show=True):
+        return self._testrep(b, emp_nodes,
+                             mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                             term='lin', show=show)
 
-    def testrep_quad(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, show=True):
-        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='quad', show=show)
+    def testrep_quad(self, b, emp_nodes,
+                     mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                     show=True):
+        return self._testrep(b, emp_nodes,
+                             mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                             term='quad', show=show)
     
     def surros_of_test_samples(self, nsamples, b_linear, emp_nodes):
         nts = nsamples
         ndim = len(emp_nodes)
-        test_points = self.generate_params_points()
+        points = self.generate_params_points()
         surros = np.zeros(nts)
         for i in np.arange(0,nts):
-            test_mc = test_points[i,0]
-            test_q = test_points[i,1]
-            test_s1 = spherical_to_cartesian(test_points[i,2:5])
-            test_s2 = spherical_to_cartesian(test_points[i,5:8])
-            test_iota = test_points[i,8]
-            test_phiref = test_points[i,9]
-            test_ecc = 0
-            test_lambda1 = 0
-            test_lambda2 = 0
+            mc = points[i,0]
+            q = points[i,1]
+            s1 = self.spherical_to_cartesian(points[i,2:5])
+            s2 = self.spherical_to_cartesian(points[i,5:8])
+            iota = points[i,8]
+            phiref = points[i,9]
+            ecc = 0
+            lambda1 = 0
+            lambda2 = 0
             if self.nparams == 11:
-                test_ecc = test_points[i,10]
+                ecc = points[i,10]
             if self.nparams == 12: 
-                test_lambda1 = test_points[i,10]
-                test_lambda2 = test_points[i,11]
-            hp_test = self.generate_a_waveform_from_mcq(test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref)
-            hp_test_emp = hp_test[emp_nodes]
-            hp_rep = np.dot(b_linear,hp_test_emp) 
-            surros[i] = (1-overlap_of_two_waveforms(hp_test, hp_rep))*deltaF
+                lambda1 = points[i,10]
+                lambda2 = points[i,11]
+            hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+            hp_emp = hp[emp_nodes]
+            hp_rep = np.dot(b_linear,hp_emp) 
+            surros[i] = (1-overlap_of_two_waveforms(hp, hp_rep))*deltaF
             if self.verbose:
                 if (surros[i] > tolerance):
-                    print("iter", i, surros[i], test_points[i])
+                    print("iter", i, surros[i], points[i])
                 if i%100==0:
                     print("iter", i, surros[i])
         return surros
@@ -567,7 +577,6 @@ class PyROQ:
 if __name__ == '__main__':
 
     # example
-    #TODO: cleanup
     pyroq = PyROQ(outpudir='./test')
 
     hp1 = pyroq.hp1
@@ -600,17 +609,17 @@ if __name__ == '__main__':
     print("emp_nodes", emp_nodes)
 
     # Test one
-    test_mc = 25
-    test_q = 2
-    test_s1 = [0.,0.2,-0.]
-    test_s2 = [0.,0.15,-0.1]
-    test_ecc = 0
-    test_lambda1 = 0
-    test_lambda2 = 0
-    test_iota = 1.9
-    test_phiref = 0.6
+    mc = 25
+    q = 2
+    s1 = [0.,0.2,-0.]
+    s2 = [0.,0.15,-0.1]
+    ecc = 0
+    lambda1 = 0
+    lambda2 = 0
+    iota = 1.9
+    phiref = 0.6
     
-    pyroq.testrep(b_linear, emp_nodes, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref)
+    pyroq.testrep(b_linear, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
 
     # Test nsamples random samples in parameter space to see their representation surrogate errors
     nsamples = 1000 
@@ -641,16 +650,16 @@ if __name__ == '__main__':
     emp_nodes_quad = np.searchsorted(freq, fnodes_quad)
 
     # Test one
-    test_mc_quad = 22
-    test_q_quad = 1.2
-    test_s1_quad = [0.0, 0.1, 0.0]
-    test_s2_quad = [0.0, 0.0, 0.0]
-    test_ecc_quad = 0
-    test_lambda1_quad = 0
-    test_lambda2_quad = 0
-    test_iota_quad = 1.9
-    test_phiref_quad = 0.6
+    mc_quad = 22
+    q_quad = 1.2
+    s1_quad = [0.0, 0.1, 0.0]
+    s2_quad = [0.0, 0.0, 0.0]
+    ecc_quad = 0
+    lambda1_quad = 0
+    lambda2_quad = 0
+    iota_quad = 1.9
+    phiref_quad = 0.6
 
-    pyroq.testrep_quad(b_quad, emp_nodes_quad, test_mc_quad, test_q_quad, test_s1_quad, test_s2_quad, test_ecc_quad, test_lambda1_quad, test_lambda2_quad, test_iota_quad, test_phiref_quad)
+    pyroq.testrep_quad(b_quad, emp_nodes_quad, mc_quad, q_quad, s1_quad, s2_quad, ecc_quad, lambda1_quad, lambda2_quad, iota_quad, phiref_quad)
 
 
