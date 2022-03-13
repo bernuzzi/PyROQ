@@ -460,7 +460,7 @@ class PyROQ:
                 if self.verbose:
                     print("Number of linear basis elements is ", ndim, "and the ROQ data are saved in ",froq)
                 break
-        return
+        return b,f
 
     def roqs(self, known_bases):
         return self._roqs(known_bases, term='lin')
@@ -473,22 +473,33 @@ class PyROQ:
         hp1 = self.hp1
         hp1_quad = (np.absolute(hp1))**2
         params_start = self.params_start
+        
         # Search for linear basis elements to build & save linear ROQ data in the local directory.
         known_bases_start = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
         basis_waveforms_start = np.array([hp1])
         residual_modula_start = np.array([0.0])
         bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_start, residual_modula, term='lin')
+        B, f = self._roqs(bases, term='lin')
+
+        d['lin_B'] = B
+        d['lin_f'] = f
         d['lin_bases'] = bases
         d['lin_params'] = params
         d['lin_res'] = residual_modula
+        
         # Search for quadratic basis elements to build & save quadratic ROQ data.
         known_bases_start = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
         basis_waveforms_start = np.array([hp1_quad])
         residual_modula_start = np.array([0.0])
         bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_start, residual_modula, term='quad')
+        B, f = self._roqs(bases, term='quad')
+        
+        d['quad_B'] = B
+        d['quad_f'] = f
         d['quad_bases'] = bases
         d['quad_params'] = params
         d['quad_res'] = residual_modula
+        
         return d
     
     def _testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin'):
@@ -556,6 +567,7 @@ class PyROQ:
 if __name__ == '__main__':
 
     # example
+    #TODO: cleanup
     pyroq = PyROQ(outpudir='./test')
 
     hp1 = pyroq.hp1
