@@ -502,7 +502,7 @@ class PyROQ:
         
         return d
     
-    def _testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin'):
+    def _testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin', show=True):
         hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
         if term == 'lin':
             pass
@@ -514,23 +514,23 @@ class PyROQ:
         hp_rep = np.dot(b,hp_emp)
         diff = hp_rep - hp
         rep_error = diff/np.sqrt(np.vdot(hp,hp))
-        freq = np.arange(f_min,f_max,deltaF)
-        #TODO return figure handle
-        plt.figure(figsize=(15,9))
-        plt.plot(freq, np.real(rep_error), label='Real part of h+') 
-        plt.plot(freq, np.imag(rep_error), label='Imaginary part of h+')
-        plt.xlabel('Frequency')
-        plt.ylabel('Fractional Representation Error')
-        plt.title('Rep Error with np.linalg.pinv()')
-        plt.legend(loc=0)
-        plt.show()
-        return
+        freq = self.freq
+        if show:
+            plt.figure(figsize=(15,9))
+            plt.plot(freq, np.real(rep_error), label='Real part of h+') 
+            plt.plot(freq, np.imag(rep_error), label='Imaginary part of h+')
+            plt.xlabel('Frequency')
+            plt.ylabel('Fractional Representation Error')
+            plt.title('Rep Error with np.linalg.pinv()')
+            plt.legend(loc=0)
+            plt.show()
+        return freq, rep_error
     
-    def testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
-        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin')
+    def testrep(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, show=True):
+        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='lin', show=show)
 
-    def testrep_quad(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
-        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='quad')
+    def testrep_quad(self, b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, show=True):
+        return self._testrep(b, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term='quad', show=show)
     
     def surros_of_test_samples(self, nsamples, b_linear, emp_nodes):
         nts = nsamples
@@ -581,19 +581,25 @@ if __name__ == '__main__':
     
     print(known_bases.shape, residual_modula)
 
-    # Create ROQ (save to file).
-    known_bases = np.load(pyroq.outpudir+'/linearbases.npy')
-    pyroq.roqs(known_bases)
+    #known_bases = np.load(pyroq.outpudir+'/linearbases.npy')
+    #print(known_bases.shape, residual_modula)
 
+    # Create ROQ (save to file).
+    b_linear, fnodes_linear  = pyroq.roqs(known_bases)
+
+    #fnodes_linear = np.load(pyroq.outpudir+'/fnodes_linear.npy')
+    #b_linear = np.transpose(np.load(pyroq.outpudir+'/B_linear.npy'))
+    #print(b_linear, fnodes_linear)
+    
     # Check
-    fnodes_linear = np.load(pyroq.outpudir+'/fnodes_linear.npy')
-    b_linear = np.transpose(np.load(pyroq.outpudir+'/B_linear.npy'))
     ndim = b_linear.shape[1]
-    freq = pyroq.freq # np.arange(f_min, f_max, deltaF)
+    freq = pyroq.freq 
     emp_nodes = np.searchsorted(freq, fnodes_linear)
+
     print(b_linear)
     print("emp_nodes", emp_nodes)
 
+    # Test one
     test_mc = 25
     test_q = 2
     test_s1 = [0.,0.2,-0.]
@@ -603,6 +609,7 @@ if __name__ == '__main__':
     test_lambda2 = 0
     test_iota = 1.9
     test_phiref = 0.6
+    
     pyroq.testrep(b_linear, emp_nodes, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref)
 
     # Test nsamples random samples in parameter space to see their representation surrogate errors
@@ -623,18 +630,17 @@ if __name__ == '__main__':
     basis_waveforms_quad_start = np.array([hp1_quad])
     residual_modula_start = np.array([0.0])
     known_quad_bases,params_quad,residual_modula_quad = pyroq.bases_searching_quadratic_results_unnormalized(known_quad_bases_start, basis_waveforms_quad_start, params_start, residual_modula_start)
-    known_quad_bases_copy = known_quad_bases
+    b_quad, fnodes_quad = pyroq.roqs_quad(known_quad_bases)
+    
+    #known_quad_bases = np.load(pyroq.outpurdir+'/quadraticbases.npy')
+    #fnodes_quad = np.load(pyroq.outpurdir+'/fnodes_quadratic.npy')
+    #b_quad = np.transpose(np.load(pyroq.outpurdir+'/B_quadratic.npy'))
 
-    known_quad_bases = np.load(pyroq.outpurdir+'/quadraticbases.npy')
-    pyroq.roqs_quad(known_quad_bases)
-
-    fnodes_quad = np.load(pyroq.outpurdir+'/fnodes_quadratic.npy')
-    b_quad = np.transpose(np.load(pyroq.outpurdir+'/B_quadratic.npy'))
     ndim_quad = b_quad.shape[1]
-    freq = pyroq.freq # np.arange(f_min, f_max, deltaF)
+    freq = pyroq.freq 
     emp_nodes_quad = np.searchsorted(freq, fnodes_quad)
 
-    # Check
+    # Test one
     test_mc_quad = 22
     test_q_quad = 1.2
     test_s1_quad = [0.0, 0.1, 0.0]
