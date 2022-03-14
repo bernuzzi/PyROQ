@@ -111,8 +111,6 @@ nparams, params_low, params_high, params_start, hp1 = pyroq.initial_basis(intrin
                                                                           deltaF, f_min, f_max, 
                                                                           waveFlags, approximant)
 
-print('WHAT AM I UNPACKING????????')
-
 if not plot_only:
     known_bases_start = numpy.array([hp1/numpy.sqrt(numpy.vdot(hp1,hp1))])
     basis_waveforms_start = numpy.array([hp1])

@@ -81,7 +81,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
     distance = distance/(lal.PC_SI*1e6)
 
     if(approximant == 'mlgw-bns'):
-    
+        
         """
         mlgw-bns wrapper.
         """
@@ -99,7 +99,7 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
 
         domain  = 'TD'
         if 'FD' in approximant: domain = 'FD'    
-    
+
         # System parameters
         waveFlags['M'                  ] = m1+m2
         waveFlags['q'                  ] = q
@@ -130,11 +130,11 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
             T, Hp, Hc = EOBRun_module.EOBRunPy(waveFlags)
             Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
         else:
-            f , rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(waveFlags)
+            f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(waveFlags)
 
         # Adapt len to PyROQ frequency axis conventions
         hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
-    
+
     return hp, hc
 
 # end EOB helpers ###
