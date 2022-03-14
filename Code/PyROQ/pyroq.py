@@ -43,7 +43,10 @@ def eob_parameters():
     waveFlags['use_mode_lm'        ] = modes_to_k([[2,2]])  # List of modes to use/output through EOBRunPy
     waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
     waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
-    waveFlags['use_spins'] = TEOBResumS_spins['aligned'] # '0 = nonspinning (deprecated), 1 = spin-aligned, 2 =precessing spins',
+    waveFlags['use_spins'          ] = TEOBResumS_spins['aligned'] # '0 = nonspinning (deprecated), 1 = spin-aligned, 2 =precessing spins',
+    waveFlags['output_hpc'         ] = 0
+    waveFlags['output_multipoles'  ] = 0
+    
     return waveFlags
 
 def JBJF(hp,hc,dt):
@@ -97,37 +100,41 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         domain  = 'TD'
         if 'FD' in approximant: domain = 'FD'    
     
-        # EOB pars to generate wvf
+        # System parameters
         waveFlags['M'                  ] = m1+m2
-        waveFlags['q'                  ] = q    
+        waveFlags['q'                  ] = q
         waveFlags['Lambda1'            ] = lambda1
         waveFlags['Lambda2'            ] = lambda2
         if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
-            waveFlags['chi1x'] = spin1[0]
-            waveFlags['chi1y'] = spin1[1]
-            waveFlags['chi1z'] = spin1[2]
-            waveFlags['chi2x'] = spin2[0]
-            waveFlags['chi2y'] = spin2[1]
-            waveFlags['chi2z'] = spin2[2]
+            waveFlags['chi1x'          ] = spin1[0]
+            waveFlags['chi1y'          ] = spin1[1]
+            waveFlags['chi1z'          ] = spin1[2]
+            waveFlags['chi2x'          ] = spin2[0]
+            waveFlags['chi2y'          ] = spin2[1]
+            waveFlags['chi2z'          ] = spin2[2]
         else:
-            waveFlags['chi1'] = spin1[2] 
-            waveFlags['chi2'] = spin2[2]
+            waveFlags['chi1'           ] = spin1[2]
+            waveFlags['chi2'           ] = spin2[2]
+        waveFlags['distance'           ] = distance
+        waveFlags['inclination'        ] = iota
+        waveFlags['coalescence_angle'  ] = phiRef
+
+        # Generator parameters
         waveFlags['domain'             ] = TEOBResumS_domain[domain]
+        waveFlags['srate'              ] = f_max*2  # srate at which to interpolate. Default = 4096.
         waveFlags['srate_interp'       ] = f_max*2  # srate at which to interpolate. Default = 4096.
         waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
         waveFlags['df'                 ] = deltaF
-        waveFlags['distance'           ] = distance
-        waveFlags['inclination'        ] = iota
 
         if domain == 'TD':
             T, Hp, Hc = EOBRun_module.EOBRunPy(waveFlags)
             Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
         else:
-            F, Hptilde, Hctilde, hlm, dyn = EOBRun_module.EOBRunPy(waveFlags)
+            f , rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(waveFlags)
 
         # Adapt len to PyROQ frequency axis conventions
-        hp, hc = Hptilde[:-1], Hctilde[:-1]
-
+        hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
+    
     return hp, hc
 
 # end EOB helpers ###

@@ -21,6 +21,8 @@ plot_params = {'legend.fontsize': 'x-large',
                'ytick.labelsize':'x-large' }
 pylab.rcParams.update(plot_params)
 
+print('what about phiref handling and interp_freqs?')
+
 # Intrinsic parameter space on which the interpolants will be constructed
 intrinsic_params = {
     'mc'      : [0.9, 1.4]                                , #training range of MLGW
