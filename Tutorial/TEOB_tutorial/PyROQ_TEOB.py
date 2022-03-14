@@ -177,4 +177,4 @@ print('Indices of new quadratic frequency nodes: ', emp_nodes_quad)
 print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(fnodes_quad), len(freq)/len(fnodes_quad)))
 
 pyroq.testrep_quad(b_quad, emp_nodes_quad, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref, distance, deltaF, f_min, f_max, waveFlags, approximant)
-os.system('mv ./testrep.png ./testrepquad.png {}/.'.format(run_tag)) 
+os.system('mv ./testrep.png ./testrepquad.png {}/.'.format(run_tag))
