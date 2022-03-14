@@ -1,13 +1,6 @@
-import numpy as np
-import matplotlib
-matplotlib.use('Agg') 
+import matplotlib, multiprocessing as mp, numpy as np, random, warnings
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-#import h5py
-import warnings
-warnings.filterwarnings('ignore')
-import random
-import multiprocessing as mp
-#from mpl_toolkits.mplot3d import axes3d
 
 from wvfwrappers import *
 
@@ -103,6 +96,8 @@ class PyROQ:
         
         self.distance          = distance
 
+        if not os.path.exists(outputdir): os.makedirs(outputdir)
+    
         # Choose waveform
         if self.approximant in WfWrapper.keys():
             self.wvf = WfWrapper[self.approximant]
@@ -599,8 +594,65 @@ class PyROQ:
 
 if __name__ == '__main__':
 
+    params_ranges = {
+        'mc'      : [0.9, 1.4]                                ,
+        'q'       : [1, 3]                                    ,
+        's1sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
+        's2sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
+        'ecc'     : [0.0, 0.0]                                ,
+        'lambda1' : [5, 5000]                                 ,
+        'lambda2' : [5, 5000]                                 ,
+        'iota'    : [0, numpy.pi]                             ,
+        'phiref'  : [0, 2*numpy.pi]                           ,
+    }
+
     # example
-    pyroq = PyROQ(outpudir='./test')
+    pyroq = PyROQ(approximant       = 'teobresums-giotto-FD',
+                  intrinsic_params  = params_ranges,
+                  
+                  f_min             = 20,
+                  f_max             = 1024,
+                  deltaF            = 1./4.,
+                  
+                  nts               = 123,
+                  npts              = 80,
+                  
+                  nbases            = 80,
+                  ndimlow           = 40,
+                  ndimstepsize      = 10,
+                  tolerance         = 1e-8,
+                  
+                  nbases_quad       = 80,
+                  ndimlow_quad      = 20,
+                  ndimstepsize_quad = 10,
+                  tolerance_quad    = 1e-10,
+                  
+                  parallel          = False,
+                  nprocesses        = 4,
+                  
+                  outpudir          ='./test',
+                  verbose           = True,
+                  )
+
+    plot_only = 0
+    check_mass_range = 0
+
+    ###########################################################################
+    # Below this point, ideally no parameter should be changed from the user. #
+    ###########################################################################
+
+    print("mass-min, mass-max: ", pyroq.massrange(intrinsic_params['mc'][0], intrinsic_params['mc'][1], intrinsic_params['q'][0], intrinsic_params['q'][1]))
+    if check_mass_range:
+        m1_00,m2_00 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][0],intrinsic_params['q'][0])
+        m1_01,m2_01 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][0],intrinsic_params['q'][1])
+        m1_10,m2_10 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][1],intrinsic_params['q'][0])
+        m1_11,m2_11 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][1],intrinsic_params['q'][1])
+        
+        print(m1_00,m2_00, m1_00+m2_00)
+        print(m1_01,m2_01, m1_01+m2_01)
+        print(m1_10,m2_10, m1_10+m2_10)
+        print(m1_11,m2_11, m1_11+m2_11)
+        exit()
 
     hp1 = pyroq.hp1
     params_start = pyroq.params_start
