@@ -1,14 +1,13 @@
 import numpy as np
-#import h5py
 
-# For each approximant...
-WfWrapper = {} # ... collect the wvf wrappers 
-NParams = {} # ... collect  the number of parameters
+# Structures needed for each approximant...
+WfWrapper = {} # collect the wvf wrappers
+NParams   = {} # collect the number of parameters
 
 # Waveform approximants
 # =====================
 
-# Dummy: each wrapper must be a class like this
+# Example waveform: each wrapper must be a class with this structure
 # ---------------------------------------------
 
 class DummyWf:
@@ -27,10 +26,8 @@ class DummyWf:
 try:
     
     # LAL imports
-    import lal
-    import lalsimulation
-    from lal.lal import PC_SI as LAL_PC_SI
-    from lal.lal import MSUN_SI as LAL_MSUN_SI
+    import lal, lalsimulation
+    from lal.lal import PC_SI as LAL_PC_SI, MSUN_SI as LAL_MSUN_SI
 
     # Add the approximants that can be called
     approximants = []
@@ -47,10 +44,11 @@ try:
         def __init__(self, approximant):
             self.approximant = approximant
             self.waveFlags = lal.CreateDict()
-        def generate_waveform(self,m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max):
+        
+        def generate_waveform(self, m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max):
             lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(self.waveFlags, lambda1)
             lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(self.waveFlags, lambda2)     
-            [plus, cross] = lalsimulation.SimInspiralChooseFDWaveform(test_mass1, test_mass2,
+            [plus, cross] = lalsimulation.SimInspiralChooseFDWaveform(m1, m2,
                                                                       spin1[0], spin1[1], spin1[2],
                                                                       spin2[0], spin2[1], spin2[2],
                                                                       distance, iota, phiRef,
@@ -66,22 +64,25 @@ try:
     # Add a wrapper for each approximant
     for a in approximants:
         WfWrapper[a] = LALWf
+    print('CHECKME: why do we need this call for all approximants?')
 
     # Set NParams
-    NParams[lalsimulation.IMRPhenomPv2] = 10
-    NParams[lalsimulation.IMRPhenomPv3] = 10
-    NParams[lalsimulation.IMRPhenomPv3HM] = 10
-    NParams[lalsimulation.IMRPhenomXHM] = 10
-    NParams[lalsimulation.TaylorF2Ecc] = 11
+    NParams[lalsimulation.IMRPhenomPv2]         = 10
+    NParams[lalsimulation.IMRPhenomPv3]         = 10
+    NParams[lalsimulation.IMRPhenomPv3HM]       = 10
+    NParams[lalsimulation.IMRPhenomXHM]         = 10
+    NParams[lalsimulation.TaylorF2Ecc]          = 11
     NParams[lalsimulation.IMRPhenomPv2_NRTidal] = 12
-    NParams[lalsimulation.IMRPhenomNSBH] = 12
-        
+    NParams[lalsimulation.IMRPhenomNSBH]        = 12
+    print('CHECKME: why are they 10 parameters? Pv2 is not eccentric...')
+    print('CHECKME: the treatment of Nparams in the original code is inconsistent (at least the print statements) and needs to be checked...')
+
 except ModuleNotFoundError:
     print('LAL module not found.')
 
     # Set the constants, they are needed
     # https://lscsoft.docs.ligo.org/lalsuite/lal/group___l_a_l_constants__h.html
-    LAL_PC_SI = 3.085677581491367278913937957796471611e16
+    LAL_PC_SI   = 3.085677581491367278913937957796471611e16
     LAL_MSUN_SI = 1.988409902147041637325262574352366540e30
 
 
@@ -105,12 +106,12 @@ try:
 
     # TEOBResumS wrapper
     TEOBResumS_domain = {'TD':0,'FD':1}
-    TEOBResumS_spins = {'nospin':0,'aligned':1,'precessing':2}
+    TEOBResumS_spins  = {'nospin':0,'aligned':1,'precessing':2}
     class WfTEOBResumS:
         def __init__(self, approximant):
             self.approximant = approximant
-            self.waveFlags = {}
-            self.waveFlags = self.set_parameters()
+            self.waveFlags   = {}
+            self.waveFlags   = self.set_parameters()
 
         def modes_to_k(self,modes):
             """
@@ -123,9 +124,14 @@ try:
             Utility to set EOB parameters based on the selected mode
             Uses defaults for unset parameters
             """            
-            self.waveFlags['use_geometric_units'] = 0 # Output quantities in physical units
-            self.waveFlags['interp_uniform_grid'] = 2 # Interpolate mode by mode on a uniform grid.
 
+            self.waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
+            self.waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+            print('CHECKME: why interp?')
+            print('CHECKME: finish review of all TEOB options')
+            self.waveFlags['output_hpc'         ] = 0
+            self.waveFlags['output_multipoles'  ] = 0
+    
             spins = 'aligned' 
             if 'prec' in self.approximant:
                 spins = 'precessing' 
@@ -138,7 +144,7 @@ try:
 
             domain  = 'FD'
             if 'TD' in self.approximant:
-                domain = 'FD'    
+                domain = 'TD'
             self.waveFlags['domain'] = TEOBResumS_domain[domain]
 
             return
@@ -152,64 +158,98 @@ try:
             return hptilde, hctilde
   
         def generate_waveform(self, m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max):
+            
             """
-            EOB waveform
-            spin[12] have 3 entries x,y,z
+            TEOBResumS wrapper
+            waveFlags is used for EOB parameters
+            spin{1,2} have 3 entries x,y,z
             """
+
+            # eccentric binaries are not supported
+            if(abs(ecc) > 1e-6): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(ecc))
+
+            # Impose the correct convention on masses
             q = m1/m2
-            if q < 1.:
-                q = 1./q
-                spin1,spin2 = spin2,spin1
-                m1,m2 = m2,m1
+            if(q < 1.):
+                q               = 1./q
+                spin1,spin2     = spin2,spin1
+                m1,m2           = m2,m1
                 lambda1,lambda2 = lambda2,lambda1
-            srate = f_max*2
-            # Bring back the quantities to units compatible with TEOB 
-            m1 = m1/LAL_MSUN_SI
-            m2 = m2/LAL_MSUN_SI
-            distance = distance/(LAL_PC_SI*1e6)
-            # EOB pars to generate wvf
-            self.waveFlags['M'                  ] = m1+m2
-            self.waveFlags['q'                  ] = q    
-            self.waveFlags['LambdaAl2'          ] = lambda1
-            self.waveFlags['LambdaBl2'          ] = lambda2
-            if self.waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
-                self.waveFlags['chi1x'] = spin1[0]
-                self.waveFlags['chi1y'] = spin1[1]
-                self.waveFlags['chi1z'] = spin1[2]
-                self.waveFlags['chi2x'] = spin2[0]
-                self.waveFlags['chi2y'] = spin2[1]
-                self.waveFlags['chi2z'] = spin2[2]
+
+            # Bring back the quantities to units compatible with TEOB
+            m1       = m1/lal.MSUN_SI
+            m2       = m2/lal.MSUN_SI
+            distance = distance/(lal.PC_SI*1e6)
+
+            if(approximant == 'mlgw-bns'):
+                
+                """
+                mlgw-bns wrapper.
+                """
+
+                # precessing spins are not supported
+                if((abs(spin1[0]) > 1e-6) or (abs(spin1[1]) > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(spin1[0], spin1[1]))
+                if((abs(spin2[0]) > 1e-6) or (abs(spin2[1]) > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(spin2[0], spin2[1]))
+
+                model       = Model.default()
+                frequencies = np.arange(f_min, f_max, step=deltaF)
+                params      = ParametersWithExtrinsic(q, lambda1, lambda2, spin1[2], spin1[2], distance, iota, m1+m2, reference_phase=phiRef)
+                hp, hc      = model.predict(frequencies, params)
+
             else:
-                self.waveFlags['chi1'] = spin1[2] 
-                self.waveFlags['chi2'] = spin2[2]
-            self.waveFlags['srate_interp'] = srate  # srate at which to interpolate. Default = 4096.
-            self.waveFlags['initial_frequency'] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
-            self.waveFlags['distance'] = distance
-            self.waveFlags['inclination'] = iota
-            if domain == 'TD':
-                T, Hp, Hc = EOBRun_module.EOBRunPy(self.waveFlags)
-                Hptilde, Hctilde = JBJF(Hp,Hc,T[1]-T[0])
-            else:
-                F, Hptilde, Hctilde, hlm, dyn = EOBRun_module.EOBRunPy(self.waveFlags)
-            Hptilde = Hptilde[np.int(f_min/deltaF):np.int(f_max/deltaF)] 
-            Hctilde = Hctilde[np.int(f_min/deltaF):np.int(f_max/deltaF)]
-            return Hptilde, Hctilde
+
+                domain  = 'TD'
+                if 'FD' in approximant: domain = 'FD'
+
+                # System parameters
+                waveFlags['M'                  ] = m1+m2
+                waveFlags['q'                  ] = q
+                waveFlags['Lambda1'            ] = lambda1
+                waveFlags['Lambda2'            ] = lambda2
+                if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
+                    waveFlags['chi1x'          ] = spin1[0]
+                    waveFlags['chi1y'          ] = spin1[1]
+                    waveFlags['chi1z'          ] = spin1[2]
+                    waveFlags['chi2x'          ] = spin2[0]
+                    waveFlags['chi2y'          ] = spin2[1]
+                    waveFlags['chi2z'          ] = spin2[2]
+                else:
+                    waveFlags['chi1'           ] = spin1[2]
+                    waveFlags['chi2'           ] = spin2[2]
+                waveFlags['distance'           ] = distance
+                waveFlags['inclination'        ] = iota
+                waveFlags['coalescence_angle'  ] = phiRef
+
+                # Generator parameters
+                waveFlags['domain'             ] = TEOBResumS_domain[domain]
+                waveFlags['srate'              ] = f_max*2  # srate at which to interpolate. Default = 4096.
+                waveFlags['srate_interp'       ] = f_max*2  # srate at which to interpolate. Default = 4096.
+                waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
+                waveFlags['df'                 ] = deltaF
+
+                if domain == 'TD':
+                    t, hp, hc = EOBRun_module.EOBRunPy(waveFlags)
+                    Hptilde, Hctilde = JBJF(hp,hc,t[1]-t[0])
+                else:
+                    f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(waveFlags)
+
+                # Adapt len to PyROQ frequency axis conventions
+                hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
+
+            return hp, hc
 
     # Add a wrapper for each approximant
     for a in approximants:
         WfWrapper[a] = WfTEOBResumS
 
     # Set NParams
-    NParams['teobresums-giotto-FD'] = 12 # Note: these are less (spin aligned)
-    NParams['teobresums-giotto-TD'] = 12 
-    #NParams['teobresums-giotto-TD-HM'] = 12
-    #NParams['teobresums-giotto-FD-HM'] = 12
-    #NParams['teobresums-giotto-TD-prec'] = 12
-    #NParams['teobresums-giotto-FD-prec'] = 12
+    NParams['teobresums-giotto-FD'] = 9
+    NParams['teobresums-giotto-TD'] = 9
+    #NParams['teobresums-giotto-TD-HM'] = 9
+    #NParams['teobresums-giotto-FD-HM'] = 9
+    #NParams['teobresums-giotto-TD-prec'] = 13
+    #NParams['teobresums-giotto-FD-prec'] = 13
     #...
         
 except ModuleNotFoundError:
     print('TEOBResumS module not found')
-    
-
-    

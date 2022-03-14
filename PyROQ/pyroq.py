@@ -15,85 +15,94 @@ from wvfwrappers import *
 # =====
 
 defaults = {}
+#training range of MLGW
 defaults['intrinsic_params_defaults'] = {
-    'mc'      : [20, 30],
-    'q'       : [1, 2],
-    's1sphere': [[0, 0, 0], [0.2, np.pi, 2.0*np.pi]],
-    's2sphere': [[0, 0, 0], [0.2, np.pi, 2.0*np.pi]],
-    'ecc'     : [0.0, 0.2],
-    'lambda1' : [0, 1000],
-    'lambda2' : [0, 1000],
-    'iota'    : [0, np.pi],
-    'phiref' : [0, 2*np.pi],
+    'mc'      : [0.9, 1.4]                                ,
+    'q'       : [1, 3]                                    ,
+    's1sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
+    's2sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
+    'ecc'     : [0.0, 0.0]                                ,
+    'lambda1' : [5, 5000]                                 ,
+    'lambda2' : [5, 5000]                                 ,
+    'iota'    : [0, numpy.pi]                             ,
+    'phiref'  : [0, 2*numpy.pi]                           ,
 }
 
 class PyROQ:
     def __init__(self,
-                 approximant = 'teobresums-giotto-FD',
+                 approximant       = 'teobresums-giotto-FD',
                  # Intrinsic parameter space on which the interpolants will be constructed
-                 intrinsic_params = defaults['intrinsic_params_defaults'],
+                 intrinsic_params  = defaults['intrinsic_params_defaults'],
                  # Frequency axis on which the interpolant will be constructed
-                 f_min = 20,
-                 f_max = 1024,
-                 deltaF = 1./4.,
-                 # Dummy value, distance does not enter the interolants construction
-                 distance = 10 * LAL_PC_SI * 1.0e6,  # 10 Mpc is default 
-                 # Computing parameters
-                 parallel = False, # The parallel=True will turn on multiprocesses to search for a new basis. To turn it off, set it to be False.
-                 # Do not turn it on if the waveform generation is not slow compared to data reading and writing to files.
-                 # This is more useful when each waveform takes larger than 0.01 sec to generate.
-                 # Set the number of parallel processes when searching for a new basis.  nprocesses=mp.cpu_count()
-                 nprocesses = 4,
+                 f_min             = 20,
+                 f_max             = 1024,
+                 deltaF            = 1./4.,
+                 
                  # Interpolants construction parameters
-                 nts = 123, # Number of random test waveforms
-                 # For diagnostics, 1000 is fine.
-                 # For real ROQs calculation, set it to be 1000000.
-                 npts = 80, # Specify the number of points for each search for a new basis element
-                 # For diagnostic testing, 30 -100 is fine. 
-                 # For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elments.
-                 # What value to choose depends on the nature of the waveform, such as how many features it has. 
-                 # It also depends on the parameter space and the signal length. 
+                 
+                 # Number of random test waveforms. For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
+                 nts               = 123,
+                 # Number of points for each search for a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elments.
+                 # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
+                 npts              = 80,
+                 
                  # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
-                 nbases = 80,
+                 nbases            = 80,
                  # Your estimation of fewest basis elements needed for this chunk of parameter space.
-                 ndimlow = 40,
+                 ndimlow           = 40,
                  # Number of linear basis elements increament to check if the basis satisfies the tolerance.
-                 ndimstepsize = 10,
+                 ndimstepsize      = 10,
                  # Surrogage error threshold for linear basis elements
-                 tolerance = 1e-8,
+                 tolerance         = 1e-8,
+                 
                  # Specify the number of quadratic basis elements, depending on the tolerance_quad, usually two thirds of that for linear basis
-                 nbases_quad = 80,
-                 ndimlow_quad = 20,
+                 nbases_quad       = 80,
+                 ndimlow_quad      = 20,
+                 ndimstepsize_quad = 10,
                  # Surrogage error threshold for quadratic basis elements
-                 tolerance_quad = 1e-10,
-                 outputdir = './',
-                 verbose = True,
+                 tolerance_quad    = 1e-10,
+                 
+                 # Computing parameters
+                 parallel          = False, # The parallel=True will turn on multiprocesses to search for a new basis. To turn it off, set it to be False. Do not turn it on if the waveform generation is not slow compared to data reading and writing to files. This is more useful when each waveform takes larger than 0.01 sec to generate.
+                 # Set the number of parallel processes when searching for a new basis.  nprocesses=mp.cpu_count()
+                 nprocesses        = 4,
+                 
+                 outputdir         = './',
+                 verbose           = True,
+                 
+                 # Dummy value, distance does not enter the interpolants construction
+                 distance          = 10 * LAL_PC_SI * 1.0e6,  # 10 Mpc is default
                  ):
 
-        self.approximant = approximant
-        self.intrinsic_params = intrinsic_params
-        self.f_min = f_min
-        self.f_max = f_max
-        self.deltaF = deltaF 
-        self.distance = distance
-        self.parallel = parallel
-        self.nprocesses = nprocesses
-        self.nts = nts 
-        self.npts = npts 
-        self.nbases = nbases
-        self.ndimlow = ndimlow
-        self.tolerance = tolerance
-        self.nbases_quad  = nbases_quad 
-        self.ndimlow_quad = ndimlow_quad
-        self.ndimstepsize_quad = ndimstepsize_quad
-        self.tolerance_quad = tolerance_quad
-
-        self.outputdir = outputdir
-        self.verbose = verbose
-
-        self.ndimhigh = nbases+1 
-        self.ndimhigh_quad = nbases_quad+1
+        self.approximant       = approximant
+        self.intrinsic_params  = intrinsic_params
+        self.f_min             = f_min
+        self.f_max             = f_max
+        self.deltaF            = deltaF
         
+        self.nts               = nts
+        self.npts              = npts
+        
+        self.nbases            = nbases
+        self.ndimlow           = ndimlow
+        self.ndimhigh          = nbases+1
+        self.ndimstepsize      = ndimstepsize
+        self.tolerance         = tolerance
+        
+        self.nbases_quad       = nbases_quad
+        self.ndimlow_quad      = ndimlow_quad
+        self.ndimhigh_quad     = nbases_quad+1
+        self.ndimstepsize_quad = ndimstepsize_quad
+        self.tolerance_quad    = tolerance_quad
+
+        self.parallel          = parallel
+        self.nprocesses        = nprocesses
+        
+        self.outputdir         = outputdir
+        self.verbose           = verbose
+        
+        self.distance          = distance
+
         # Choose waveform
         if self.approximant in WfWrapper.keys():
             self.wvf = WfWrapper[self.approximant]
@@ -101,7 +110,7 @@ class PyROQ:
             raise ValueError('unknown approximant')
 
         # Initial basis
-        self.freq = np.arange(f_min,f_max,deltaF)
+        self.freq = np.arange(f_min, f_max, deltaF)
         self.initial_basis() # self.nparams, self.params_low, self.params_high, self.params_start, self.hp1
         
     def howmany_within_range(self, row, minimum, maximum):
@@ -262,6 +271,7 @@ class PyROQ:
         else:
             raise ValueError("unknown term")
         if self.verbose:
+            print('IMPROVE THIS MESS')
             if self.nparams == 10: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, and phiRef\n")
             if self.nparams == 11: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, phiRef, and eccentricity\n")
             if self.nparams == 12: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, phiRef, lambda1, and lambda2\n") 
@@ -289,32 +299,34 @@ class PyROQ:
         return [mmin, mmax]
     
     def initial_basis(self):
-        mc_low = self.intrinsic_params['mc'][0]
-        mc_high = self.intrinsic_params['mc'][1], 
-        q_low = self.intrinsic_params['q'][0]
-        q_high = self.intrinsic_params['q'][1]
-        s1sphere_low = self.intrinsic_params['s1sphere'][0]
+        
+        mc_low        = self.intrinsic_params['mc'][0]
+        mc_high       = self.intrinsic_params['mc'][1],
+        q_low         = self.intrinsic_params['q'][0]
+        q_high        = self.intrinsic_params['q'][1]
+        s1sphere_low  = self.intrinsic_params['s1sphere'][0]
         s1sphere_high = self.intrinsic_params['s1sphere'][1]
-        s2sphere_low = self.intrinsic_params['s2sphere'][0]
+        s2sphere_low  = self.intrinsic_params['s2sphere'][0]
         s2sphere_high = self.intrinsic_params['s2sphere'][1]
-        ecc_low = self.intrinsic_params['ecc'][0]
-        ecc_high = self.intrinsic_params['ecc'][1]
-        lambda1_low = self.intrinsic_params['lambda1'][0]
-        lambda1_high = self.intrinsic_params['lambda1'][1]
-        lambda2_low = self.intrinsic_params['lambda2'][0]
-        lambda2_high = self.intrinsic_params['lambda2'][1]
-        iota_low = self.intrinsic_params['iota'][0]
-        iota_high = self.intrinsic_params['iota'][1]
-        phiref_low = self.intrinsic_params['phiref'][0]
-        phiref_high = self.intrinsic_params['iota'][1]
-        distance = self.distance
-        deltaF = self.deltaF
-        f_min = self.f_min
-        f_max = self.f_max
+        ecc_low       = self.intrinsic_params['ecc'][0]
+        ecc_high      = self.intrinsic_params['ecc'][1]
+        lambda1_low   = self.intrinsic_params['lambda1'][0]
+        lambda1_high  = self.intrinsic_params['lambda1'][1]
+        lambda2_low   = self.intrinsic_params['lambda2'][0]
+        lambda2_high  = self.intrinsic_params['lambda2'][1]
+        iota_low      = self.intrinsic_params['iota'][0]
+        iota_high     = self.intrinsic_params['iota'][1]
+        phiref_low    = self.intrinsic_params['phiref'][0]
+        phiref_high   = self.intrinsic_params['iota'][1]
+        distance      = self.distance
+        deltaF        = self.deltaF
+        f_min         = self.f_min
+        f_max         = self.f_max
 
-        self.nparams = NParams[self.approximant]
+        self.nparams  = NParams[self.approximant]
         
         if self.nparams == 10:
+            print('IMPROVE THIS MESS')
             self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low] 
             self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high]
             self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
@@ -403,13 +415,15 @@ class PyROQ:
         surros = np.zeros(nts)
         count = 0
         for i in np.arange(0,nts):
-            mc =  points[i,0]
-            q = points[i,1]
-            s1 = self.spherical_to_cartesian(points[i,2:5])
-            s2 = self.spherical_to_cartesian(points[i,5:8])
-            iota = points[i,8]
-            phiref = points[i,9]
-            ecc = 0
+            print('IMPROVE THIS MESS')
+
+            mc      =  points[i,0]
+            q       = points[i,1]
+            s1      = self.spherical_to_cartesian(points[i,2:5])
+            s2      = self.spherical_to_cartesian(points[i,5:8])
+            iota    = points[i,8]
+            phiref  = points[i,9]
+            ecc     = 0
             lambda1 = 0
             lambda2 = 0
             if nparams == 11:
@@ -436,22 +450,26 @@ class PyROQ:
         return self._surros(ndim, inverse_V, emp_nodes, known_bases, term='quad')
     
     def _roqs(self, known_bases, term='lin'):
+        
         if term == 'lin':
-            ndimlow = self.ndimlow
-            ndimhigh = self.ndimhigh
+            ndimlow      = self.ndimlow
+            ndimhigh     = self.ndimhigh
             ndimstepsize = self.ndimstepsize
-            froq = self.outputdir+'/B_linear.npy'
-            fnodes = self.outputdir+'/fnodes_linear.npy'
+            froq         = self.outputdir+'/B_linear.npy'
+            fnodes       = self.outputdir+'/fnodes_linear.npy'
         elif term == 'quad':
-            ndimlow = self.ndimlow_quad
-            ndimhigh = self.ndimhigh_quad
+            ndimlow      = self.ndimlow_quad
+            ndimhigh     = self.ndimhigh_quad
             ndimstepsize = self.ndimstepsize_quad
-            froq = self.outputdir+'/B_quadratic.npy'
-            fnodes = self.outputdir+'/fnodes_quadratic.npy'
+            froq         = self.outputdir+'/B_quadratic.npy'
+            fnodes       = self.outputdir+'/fnodes_quadratic.npy'
         else:
-              raise ValueError("unknown term") 
+              raise ValueError("unknown term")
+
         for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
+            
             ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases)
+            
             if self._surros(ndim, inverse_V, emp_nodes, known_bases, term=term) == 0:
                 b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
                 f = self.freq[emp_nodes]
@@ -460,6 +478,7 @@ class PyROQ:
                 if self.verbose:
                     print("Number of linear basis elements is ", ndim, "and the ROQ data are saved in ",froq)
                 break
+
         return b,f
 
     def roqs(self, known_bases):
@@ -469,36 +488,38 @@ class PyROQ:
         return self._roqs(known_bases, term='quad')
 
     def run(self):
-        d = {}
-        hp1 = self.hp1
-        hp1_quad = (np.absolute(hp1))**2
+        d            = {}
+        hp1          = self.hp1
+        hp1_quad     = (np.absolute(hp1))**2
         params_start = self.params_start
         
         # Search for linear basis elements to build & save linear ROQ data in the local directory.
-        known_bases_start = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
+        known_bases_start     = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
         basis_waveforms_start = np.array([hp1])
         residual_modula_start = np.array([0.0])
+        
         bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_start, residual_modula, term='lin')
         B, f = self._roqs(bases, term='lin')
 
-        d['lin_B'] = B
-        d['lin_f'] = f
-        d['lin_bases'] = bases
+        d['lin_B']      = B
+        d['lin_f']      = f
+        d['lin_bases']  = bases
         d['lin_params'] = params
-        d['lin_res'] = residual_modula
+        d['lin_res']    = residual_modula
         
         # Search for quadratic basis elements to build & save quadratic ROQ data.
-        known_bases_start = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
+        known_bases_start     = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
         basis_waveforms_start = np.array([hp1_quad])
         residual_modula_start = np.array([0.0])
+        
         bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_start, residual_modula, term='quad')
         B, f = self._roqs(bases, term='quad')
         
-        d['quad_B'] = B
-        d['quad_f'] = f
-        d['quad_bases'] = bases
+        d['quad_B']      = B
+        d['quad_f']      = f
+        d['quad_bases']  = bases
         d['quad_params'] = params
-        d['quad_res'] = residual_modula
+        d['quad_res']    = residual_modula
         
         return d
     
@@ -558,8 +579,10 @@ class PyROQ:
             lambda1 = 0
             lambda2 = 0
             if self.nparams == 11:
+                print('Is this consistent in all cases? change?')
                 ecc = points[i,10]
-            if self.nparams == 12: 
+            if self.nparams == 12:
+                print('Is this consistent in all cases? change?')
                 lambda1 = points[i,10]
                 lambda2 = points[i,11]
             hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
@@ -657,9 +680,7 @@ if __name__ == '__main__':
     ecc_quad = 0
     lambda1_quad = 0
     lambda2_quad = 0
-    iota_quad = 1.9
-    phiref_quad = 0.6
+    iota_quad    = 1.9
+    phiref_quad  = 0.6
 
     pyroq.testrep_quad(b_quad, emp_nodes_quad, mc_quad, q_quad, s1_quad, s2_quad, ecc_quad, lambda1_quad, lambda2_quad, iota_quad, phiref_quad)
-
-
