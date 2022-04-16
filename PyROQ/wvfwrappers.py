@@ -71,7 +71,7 @@ try:
                                                       p['m2']*LAL_MSUN_SI,
                                                       p['s1x'], p['s1y'], p['s1z'],
                                                       p['s2x'], p['s2y'], p['s2z'],
-                                                      p['distance'],
+                                                      p['distance']*(LAL_PC_SI*1e6),
                                                       p['iota'],
                                                       p['phiRef'],
                                                       0,  # float(p['long_asc_nodes'])
@@ -201,7 +201,7 @@ try:
             else:
                 p['chi1'           ] = s1z
                 p['chi2'           ] = s2z
-            p['distance'           ] = p['distance']/(LAL_PC_SI*1e6) # Mpc
+            p['distance'           ] = p['distance'] # Mpc
             p['inclination'        ] = p['iota']
             p['coalescence_angle'  ] = p['phiRef']
 
@@ -286,7 +286,7 @@ try:
                                                   p['lambda2'],
                                                   p['s1z'],
                                                   p['s2z'],
-                                                  p['distance']/(LAL_PC_SI*1e6),
+                                                  p['distance'],
                                                   p['iota'],
                                                   p['m1']+p['m2'],
                                                   reference_phase=p['phiRef'])
