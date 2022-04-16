@@ -201,7 +201,7 @@ try:
             else:
                 p['chi1'           ] = s1z
                 p['chi2'           ] = s2z
-            p['distance'           ] = p['distance']/(LAL_PC_SI*1e6)
+            p['distance'           ] = p['distance']/(LAL_PC_SI*1e6) # Mpc
             p['inclination'        ] = p['iota']
             p['coalescence_angle'  ] = p['phiRef']
 
