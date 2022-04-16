@@ -7,7 +7,8 @@ NParams   = {} # collect the number of parameters
 # Waveform approximants
 # =====================
 
-# Example waveform: each wrapper must be a class with this structure
+# Example waveform:
+# each wrapper must be a class with this structure
 # ---------------------------------------------
 
 class DummyWf:
@@ -60,11 +61,14 @@ try:
             hp = hp[np.int(f_min/deltaF):np.int(f_max/deltaF)]
             hc = hc[np.int(f_min/deltaF):np.int(f_max/deltaF)]
             return hp, hc
+
     
     # Add a wrapper for each approximant
     for a in approximants:
         WfWrapper[a] = LALWf
-    print('CHECKME: why do we need this call for all approximants?')
+    #print('CHECKME: why do we need this call for all approximants?')
+    #SB see L103 of pyroq.py Maybe there's a better way,
+    #   but this way is simple
 
     # Set NParams
     NParams[lalsimulation.IMRPhenomPv2]         = 10
@@ -107,6 +111,7 @@ try:
     # TEOBResumS wrapper
     TEOBResumS_domain = {'TD':0,'FD':1}
     TEOBResumS_spins  = {'nospin':0,'aligned':1,'precessing':2}
+    
     class WfTEOBResumS:
         def __init__(self, approximant):
             self.approximant = approximant
@@ -181,63 +186,46 @@ try:
             m2       = m2/lal.MSUN_SI
             distance = distance/(lal.PC_SI*1e6)
 
-            if(approximant == 'mlgw-bns'):
-                
-                """
-                mlgw-bns wrapper.
-                """
+            domain  = 'TD'
+            if 'FD' in approximant: domain = 'FD'
 
-                # precessing spins are not supported
-                if((abs(spin1[0]) > 1e-6) or (abs(spin1[1]) > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(spin1[0], spin1[1]))
-                if((abs(spin2[0]) > 1e-6) or (abs(spin2[1]) > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(spin2[0], spin2[1]))
-
-                model       = Model.default()
-                frequencies = np.arange(f_min, f_max, step=deltaF)
-                params      = ParametersWithExtrinsic(q, lambda1, lambda2, spin1[2], spin1[2], distance, iota, m1+m2, reference_phase=phiRef)
-                hp, hc      = model.predict(frequencies, params)
-
+            # System parameters
+            waveFlags['M'                  ] = m1+m2
+            waveFlags['q'                  ] = q
+            waveFlags['LambdaAl2'          ] = lambda1
+            waveFlags['LambdaBl2'          ] = lambda2
+            if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
+                waveFlags['chi1x'          ] = spin1[0]
+                waveFlags['chi1y'          ] = spin1[1]
+                waveFlags['chi1z'          ] = spin1[2]
+                waveFlags['chi2x'          ] = spin2[0]
+                waveFlags['chi2y'          ] = spin2[1]
+                waveFlags['chi2z'          ] = spin2[2]
             else:
+                waveFlags['chi1'           ] = spin1[2]
+                waveFlags['chi2'           ] = spin2[2]
+            waveFlags['distance'           ] = distance
+            waveFlags['inclination'        ] = iota
+            waveFlags['coalescence_angle'  ] = phiRef
 
-                domain  = 'TD'
-                if 'FD' in approximant: domain = 'FD'
+            # Generator parameters
+            waveFlags['domain'             ] = TEOBResumS_domain[domain]
+            waveFlags['srate'              ] = f_max*2  # srate at which to interpolate. Default = 4096.
+            waveFlags['srate_interp'       ] = f_max*2  # srate at which to interpolate. Default = 4096.
+            waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
+            waveFlags['df'                 ] = deltaF
 
-                # System parameters
-                waveFlags['M'                  ] = m1+m2
-                waveFlags['q'                  ] = q
-                waveFlags['LambdaAl2'          ] = lambda1
-                waveFlags['LambdaBl2'          ] = lambda2
-                if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
-                    waveFlags['chi1x'          ] = spin1[0]
-                    waveFlags['chi1y'          ] = spin1[1]
-                    waveFlags['chi1z'          ] = spin1[2]
-                    waveFlags['chi2x'          ] = spin2[0]
-                    waveFlags['chi2y'          ] = spin2[1]
-                    waveFlags['chi2z'          ] = spin2[2]
-                else:
-                    waveFlags['chi1'           ] = spin1[2]
-                    waveFlags['chi2'           ] = spin2[2]
-                waveFlags['distance'           ] = distance
-                waveFlags['inclination'        ] = iota
-                waveFlags['coalescence_angle'  ] = phiRef
+            if domain == 'TD':
+                t, hp, hc = EOBRun_module.EOBRunPy(waveFlags)
+                Hptilde, Hctilde = JBJF(hp,hc,t[1]-t[0])
+            else:
+                f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(waveFlags)
 
-                # Generator parameters
-                waveFlags['domain'             ] = TEOBResumS_domain[domain]
-                waveFlags['srate'              ] = f_max*2  # srate at which to interpolate. Default = 4096.
-                waveFlags['srate_interp'       ] = f_max*2  # srate at which to interpolate. Default = 4096.
-                waveFlags['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
-                waveFlags['df'                 ] = deltaF
-
-                if domain == 'TD':
-                    t, hp, hc = EOBRun_module.EOBRunPy(waveFlags)
-                    Hptilde, Hctilde = JBJF(hp,hc,t[1]-t[0])
-                else:
-                    f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(waveFlags)
-
-                # Adapt len to PyROQ frequency axis conventions
-                hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
-
+            # Adapt len to PyROQ frequency axis conventions
+            hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
             return hp, hc
 
+    
     # Add a wrapper for each approximant
     for a in approximants:
         WfWrapper[a] = WfTEOBResumS
@@ -253,3 +241,69 @@ try:
         
 except ModuleNotFoundError:
     print('TEOBResumS module not found')
+
+
+# MLGW-BNS
+# --------
+    
+try:
+    # MLGW imports
+    ##TODO!!!
+
+    # Add the approximants that can be called
+    approximants = []
+    approximants.append('mlgw-bns')
+
+    # MLGW-BNS wrapper
+    class WfMLGW:
+        def __init__(self, approximant):
+            self.approximant = approximant
+            self.waveFlags   = {}
+  
+        def generate_waveform(self, m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef, distance, deltaF, f_min, f_max):
+            
+            """
+            MLGW-BNS wrapper
+            spin{1,2} have 3 entries x,y,z
+            """
+
+            # eccentric binaries are not supported
+            if(abs(ecc) > 1e-6):
+                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(ecc))
+
+            # precessing spins are not supported
+            if((abs(spin1[0]) > 1e-6) or (abs(spin1[1]) > 1e-6)):
+                raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(spin1[0], spin1[1]))
+            if((abs(spin2[0]) > 1e-6) or (abs(spin2[1]) > 1e-6)):
+                raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(spin2[0], spin2[1]))
+            
+            # Impose the correct convention on masses
+            q = m1/m2
+            if(q < 1.):
+                q               = 1./q
+                spin1,spin2     = spin2,spin1
+                m1,m2           = m2,m1
+                lambda1,lambda2 = lambda2,lambda1
+
+            # Bring back the quantities to correct units
+            m1       = m1/lal.MSUN_SI
+            m2       = m2/lal.MSUN_SI
+            distance = distance/(lal.PC_SI*1e6)
+
+            # Call it
+            model       = Model.default() ##TODO here you can use self.approximant to call any MLGW-BNS Model
+            frequencies = np.arange(f_min, f_max, step=deltaF)
+            params      = ParametersWithExtrinsic(q, lambda1, lambda2, spin1[2], spin1[2], distance, iota, m1+m2, reference_phase=phiRef)
+            hp, hc      = model.predict(frequencies, params)
+            return hp, hc
+
+    # Add a wrapper for each approximant
+    for a in approximants:
+        WfWrapper[a] = WfMLGW
+
+    # Set NParams
+    NParams['mlgw-bns'] = 9
+        
+except ModuleNotFoundError:
+    print('mlgw-bns module not found')
+
