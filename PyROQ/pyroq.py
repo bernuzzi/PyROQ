@@ -4,28 +4,67 @@ import matplotlib.pyplot as plt
 
 from wvfwrappers import *
 
+
 # PyRQQ
 # =====
 
+# Set some defaults
 defaults = {}
-#training range of MLGW
-defaults['intrinsic_params_defaults'] = {
-    'mc'      : [0.9, 1.4]                                ,
-    'q'       : [1, 3]                                    ,
-    's1sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
-    's2sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
-    'ecc'     : [0.0, 0.0]                                ,
-    'lambda1' : [5, 5000]                                 ,
-    'lambda2' : [5, 5000]                                 ,
-    'iota'    : [0, numpy.pi]                             ,
-    'phiref'  : [0, 2*numpy.pi]                           ,
+
+# Parameter ranges
+# This is the training range of MLGW-BNS
+defaults['params_ranges'] = {
+    'mc'      : [0.9, 1.4]                          ,
+    'q'       : [1, 3]                              ,
+#    's1sphere': [[0, 0, 0], [0.5, np.pi, 2.0*np.pi]],#note now this is different #TODEL
+#    's2sphere': [[0, 0, 0], [0.5, np.pi, 2.0*np.pi]],#TODEL
+    's1s1'    : [0, 0.5],
+    's1s2'    : [0, np.pi],
+    's1s3'    : [0, 2.0*np.pi],
+    's2s1'    : [0, 0.5],
+    's2s2'    : [0, np.pi],
+    's2s3'    : [0, 2.0*np.pi],
+#    'ecc'     : [0.0, 0.0]                          ,#now not needed for # non-ecc wvf #TODEL
+    'lambda1' : [5, 5000]                           ,
+    'lambda2' : [5, 5000]                           ,
+    'iota'    : [0, np.pi]                          ,
+    'phiref'  : [0, 2*np.pi]                        ,
 }
 
 class PyROQ:
+    """
+    PyROQ Class
+    
+    * Works with a list of very basic waveform wrappers provided in wvfwrappers.py
+
+    * Keywords for parameters:
+
+    'mc'       : chirp mass
+    'm1'       : mass object 1 [Mo]
+    'm2'       : mass object 2 [Mo]
+    'q'        : mass ratio
+    's1s[123]' : spin components object 1, spherical coords (3)
+    's2s[123]' : spin components object 2, "         "
+    's1[xyz]'  : spin components object 1, cartesian coords (3)
+    's2[xyz]'  : spin components object 2, "         "
+    'ecc'      : eccentricity
+    'lambda1'  : tidal polarizability parameter object 1
+    'lambda2'  : tidal polarizability parameter object 2
+    'iota'     : inclination
+    'phiref'   : reference phase
+    'distance' : distance [m]
+
+    Waveform wrappers must work with these keywords
+
+    * The parameter space is *defined* by the keywords of 'params_ranges' 
+
+    """
     def __init__(self,
-                 approximant       = 'teobresums-giotto-FD',
+                 approximant       = 'teobresums-giotto',
+                 # Dictionary with any parameter needed for the waveform approximant
+                 waveform_params   = {},
                  # Intrinsic parameter space on which the interpolants will be constructed
-                 intrinsic_params  = defaults['intrinsic_params_defaults'],
+                 params_ranges     = defaults['params_ranges'],
                  # Frequency axis on which the interpolant will be constructed
                  f_min             = 20,
                  f_max             = 1024,
@@ -34,7 +73,7 @@ class PyROQ:
                  # Interpolants construction parameters
                  
                  # Number of random test waveforms. For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
-                 nts               = 123,
+                 nts               = 1000,
                  # Number of points for each search for a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elments.
                  # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
                  npts              = 80,
@@ -68,20 +107,29 @@ class PyROQ:
                  ):
 
         self.approximant       = approximant
-        self.intrinsic_params  = intrinsic_params
+        self.waveform_params   = waveform_params
+        self.params_ranges     = params_ranges
         self.f_min             = f_min
         self.f_max             = f_max
         self.deltaF            = deltaF
-        
+        self.distance          = distance
+
+        self.waveform_params['distance'] = self.distance
+        self.waveform_params['deltaF'] = self.deltaF
+        self.waveform_params['f_min'] = self.f_min
+        self.waveform_params['f_max'] = self.f_max
+
         self.nts               = nts
         self.npts              = npts
-        
+
+        # linear basis
         self.nbases            = nbases
         self.ndimlow           = ndimlow
         self.ndimhigh          = nbases+1
         self.ndimstepsize      = ndimstepsize
         self.tolerance         = tolerance
-        
+
+        # quadratic basis
         self.nbases_quad       = nbases_quad
         self.ndimlow_quad      = ndimlow_quad
         self.ndimhigh_quad     = nbases_quad+1
@@ -94,19 +142,21 @@ class PyROQ:
         self.outputdir         = outputdir
         self.verbose           = verbose
         
-        self.distance          = distance
-
         if not os.path.exists(outputdir): os.makedirs(outputdir)
     
         # Choose waveform
         if self.approximant in WfWrapper.keys():
-            self.wvf = WfWrapper[self.approximant]
+            self.wvf = WfWrapper[self.approximant](self.approximant,
+                                                   self.waveform_params)
         else:
             raise ValueError('unknown approximant')
 
+        # Build the map between params names and indexes
+        self.map_params_indexs() # self.i2n, self.n2i
+        
         # Initial basis
         self.freq = np.arange(f_min, f_max, deltaF)
-        self.initial_basis() # self.nparams, self.params_low, self.params_high, self.params_start, self.hp1
+        self.initial_basis() # self.nparams, self.params_low, self.params_hig, self.params_ini, self.hp1
         
     def howmany_within_range(self, row, minimum, maximum):
         """
@@ -139,65 +189,110 @@ class PyROQ:
         """
         wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1)) # normalize the first waveform
         wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2)) # normalize the second waveform
-        diff = wf1norm - wf2norm
+        #diff = wf1norm - wf2norm
         #overlap = 1 - 0.5*(np.vdot(diff,diff))
-        overlap = np.real(np.vdot(wf1norm, wf2norm))
-        return overlap
+        #overlap = np.real(np.vdot(wf1norm, wf2norm))
+        return np.real(np.vdot(wf1norm, wf2norm)) # overlap
 
     def spherical_to_cartesian(self, sph):
         x = sph[0]*np.sin(sph[1])*np.cos(sph[2])
         y = sph[0]*np.sin(sph[1])*np.sin(sph[2])
         z = sph[0]*np.cos(sph[1])
-        car = [x,y,z]
-        return car
+        return [x,y,z]
 
     def get_m1m2_from_mcq(self, mc,q):
         m2 = mc * q ** (-0.6) * (1+q)**0.2
         m1 = m2 * q
         return np.array([m1,m2])
 
-    def generate_a_waveform(self, m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):
-        m1 *= LAL_MSUN_SI
-        m2 *= LAL_MSUN_SI
-        hp, hc = self.wvf.generate_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef,
-                                            self.distance, self.deltaF, self.f_min, self.f_max)
+    def mass_range(self,mc_low, mc_high, q_low, q_high):
+        mmin = self.get_m1m2_from_mcq(mc_low,q_high)[1]
+        mmax = self.get_m1m2_from_mcq(mc_high,q_high)[0]
+        return [mmin, mmax]
+
+    def map_params_indexs(self):
+        """
+        Build a map between the parameters names and the indexes of
+        the parameter arrays, and its inverse
+        """
+        names = self.params_ranges.keys()
+        self.nparams = len(names)
+        self.n2i = dict(zip(names,range(self.nparams)))
+        self.i2n = {i: n for n, i in self.n2i.items()}
+        return
+
+    def update_waveform_params(self, paramspoint):
+        """
+        Update the waveform parameters (dictionary) with those in
+        paramspoint (np array)
+        """
+        p = self.waveform_params.copy()
+        for i,k in self.i2n.items():
+            p[k] = paramspoint[i]
+
+        # additionally store spin vectors
+        if 's1s1' and 's1s2' and 's1s3' in self.n2i.keys():       
+            p['s1sphere'] = p['s1s1'],p['s1s2'],p['s1s3']
+        if 's2s1' and 's2s2' and 's2s3' in self.n2i.keys():       
+            p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
+        if 's1x' and 's1y' and 's1z' in self.n2i.keys():       
+            p['s1xyz'] = p['s1x'],p['s1y'],p['s1z']
+        if 's2x' and 's2y' and 's2z' in self.n2i.keys():       
+            p['s2xyz'] = p['s2x'],p['s2y'],p['s2z']
+
+        return p
+         
+    def generate_params_points(self,npts=0,round_to_digits=6):
+        """
+        Uniformly sample the parameter arrays
+        """
+        if npts <= 0:
+            npts = self.npts 
+        paramspoints = np.random.uniform(self.params_low,
+                                         self.params_hig,
+                                         size=(npts,self.nparams))
+        return paramspoints.round(decimals=round_to_digits)
+    
+    def _paramspoint_to_wave(self, paramspoint, update_m1m2=True, update_sxyz=True):
+        """
+        Generate a waveform given a paramspoint
+        By default, 
+         - it assumes that paramspoint contains (mc,q) and updates (m1,m2) accordingly   
+         - if paramspoint contains the spherical spin, then updates the cartesian accordingly
+        """
+        p = self.update_waveform_params(paramspoint)
+
+        if update_m1m2:
+            p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
+
+        if update_sxyz:
+            if 's1s1' and 's1s2' and 's1s3' in self.n2i.keys():
+                p['s1sphere'] = p['s1s1'],p['s1s2'],p['s1s3']
+                p['s1xyz'] = self.spherical_to_cartesian(p['s1sphere']) 
+                p['s1x'],p['s1y'],p['s1z'] = p['s1xyz']
+                
+            if 's2s1' and 's2s2' and 's2s3' in self.n2i.keys():
+                p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
+                p['s2xyz'] = self.spherical_to_cartesian(p['s2sphere'])
+                p['s2x'],p['s2y'],p['s2z'] = p['s2xyz']
+            
+        hp, hc = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max)
         return hp
     
-    def generate_a_waveform_from_mcq(self, mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):
-        m1,m2 = self.get_m1m2_from_mcq(mc,q)
-        return self.generate_a_waveform(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef)
- 
-    def generate_params_points(self):
-        paramspoints = np.random.uniform(self.params_low, self.params_high, size=(self.npts,self.nparams))
-        paramspoints = paramspoints.round(decimals=6)
-        return paramspoints
+    def generate_a_waveform_from_mcq(self, paramspoint): # mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):#TODEL
+        """
+        This assumes paramspoint contains values for mc,q
+        and updates m1,m2 in the waveform parameters before generating
+        the waveform
+        """
+        return self._paramspoint_to_wave(paramspoint)
 
-    def _paramspoint_to_wave(self, paramspoint):
-        m1, m2 = self.get_m1m2_from_mcq(paramspoint[0],paramspoint[1])
-        s1x, s1y, s1z = self.spherical_to_cartesian(paramspoint[2:5]) 
-        s2x, s2y, s2z = self.spherical_to_cartesian(paramspoint[5:8]) 
-        iota = paramspoint[8]  
-        phiRef = paramspoint[9]
-        ecc = 0
-        if len(paramspoint)==11:
-            ecc = paramspoint[10]
-        if len(paramspoint)==12:
-            lambda1 = paramspoints[arg_newbasis][10]
-            lambda2 = paramspoints[arg_newbasis][11]
-        f_ref = 0 
-        RA = 0    
-        DEC = 0   
-        psi = 0
-        phi = 0
-        m1 *= LAL_MSUN_SI
-        m2 *= LAL_MSUN_SI
-        return self.wvf.generate_a_waveform(m1, m2,
-                                            [s1x, s1y, s1z],
-                                            [s2x, s2y, s2z],
-                                            ecc,
-                                            lambda1, lambda2,
-                                            iota, phiRef)
-
+    def generate_a_waveform(self, paramspoint): # m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):#TODEL
+        """
+        This does not assume data for (mc,q)
+        """
+        return self._paramspoint_to_wave(paramspoint, update_m1m2=False, update_sxyz=True)
+    
     def _compute_modulus(self, paramspoint, known_bases, term='lin'):
         hp = self._paramspoint_to_wave(paramspoint)
         if term == 'lin':
@@ -210,7 +305,7 @@ class PyROQ:
         for k in np.arange(0,len(known_bases)):
             residual -= self.proj(known_bases[k],hp)
         return np.sqrt(np.vdot(residual, residual))
-
+    
     def compute_modulus(self, paramspoint, known_bases):
         return self._compute_modulus(paramspoint, known_bases, term='lin'):
 
@@ -231,11 +326,14 @@ class PyROQ:
             modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
-            npts = len(paramspoints)
-            modula = np.zeros(npts)
-            for i in np.arange(0,npts):
-                paramspoint = paramspoints[i]
+            #npts = len(paramspoints) # = self.npts #TODEL
+            modula = np.zeros(self.npts)
+            #for i in np.arange(0,npts): #TODEL
+            #    paramspoint = paramspoints[i] #TODEL
+            #    modula[i] = self._compute_modulus(paramspoint, known_bases, term)#TODEL
+            for i,paramspoint in enumerate(paramspoints):
                 modula[i] = self._compute_modulus(paramspoint, known_bases, term)
+
         arg_newbasis = np.argmax(modula) 
         paramspoint = paramspoints[arg_newbasis]
         hp = self._paramspoint_to_wave(paramspoint)
@@ -265,11 +363,13 @@ class PyROQ:
             fparams = self.outputdir+'/quadraticbasiswaveformparams.npy'
         else:
             raise ValueError("unknown term")
-        if self.verbose:
-            print('IMPROVE THIS MESS')
-            if self.nparams == 10: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, and phiRef\n")
-            if self.nparams == 11: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, phiRef, and eccentricity\n")
-            if self.nparams == 12: print("The parameters are Mc, q, s1(mag, theta, phi), s2(mag, theta, phi), iota, phiRef, lambda1, and lambda2\n") 
+        
+        # if self.verbose:
+        #     print('nparams = {}'.format(self.nparams))
+        #     print('name | index')
+        #     for n,i in self.n2i.items():
+        #         print('{} | {}'.format(i,n))
+
         for k in np.arange(0,nbases-1):
             paramspoints = self.generate_params_points()
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
@@ -287,65 +387,35 @@ class PyROQ:
 
     def bases_searching_quadratic_results_unnormalized(self,known_bases, basis_waveforms, params, residual_modula):
         return self._bases_searching_results_unnormalized(known_bases, basis_waveforms, params, residual_modula, term='quad')
-
-    def massrange(self,mc_low, mc_high, q_low, q_high):
-        mmin = self.get_m1m2_from_mcq(mc_low,q_high)[1]
-        mmax = self.get_m1m2_from_mcq(mc_high,q_high)[0]
-        return [mmin, mmax]
     
     def initial_basis(self):
-        
-        mc_low        = self.intrinsic_params['mc'][0]
-        mc_high       = self.intrinsic_params['mc'][1],
-        q_low         = self.intrinsic_params['q'][0]
-        q_high        = self.intrinsic_params['q'][1]
-        s1sphere_low  = self.intrinsic_params['s1sphere'][0]
-        s1sphere_high = self.intrinsic_params['s1sphere'][1]
-        s2sphere_low  = self.intrinsic_params['s2sphere'][0]
-        s2sphere_high = self.intrinsic_params['s2sphere'][1]
-        ecc_low       = self.intrinsic_params['ecc'][0]
-        ecc_high      = self.intrinsic_params['ecc'][1]
-        lambda1_low   = self.intrinsic_params['lambda1'][0]
-        lambda1_high  = self.intrinsic_params['lambda1'][1]
-        lambda2_low   = self.intrinsic_params['lambda2'][0]
-        lambda2_high  = self.intrinsic_params['lambda2'][1]
-        iota_low      = self.intrinsic_params['iota'][0]
-        iota_high     = self.intrinsic_params['iota'][1]
-        phiref_low    = self.intrinsic_params['phiref'][0]
-        phiref_high   = self.intrinsic_params['iota'][1]
-        distance      = self.distance
-        deltaF        = self.deltaF
-        f_min         = self.f_min
-        f_max         = self.f_max
+        """
+        Initialize parameter ranges and basis
+        """
+        if self.verbose:
+            print('nparams = {}'.format(self.nparams))
+            print('name | index | ( min , max ) | start')
 
-        self.nparams  = NParams[self.approximant]
+        # Set bounds
+        for n,i in self.n2i.items():
+            self.params_low[i] = self.params_ranges[k][0]
+            self.params_hig[i] = self.params_ranges[k][1] 
+            self.params_ini[i] = self.params_low[i] #CHECKME
         
-        if self.nparams == 10:
-            print('IMPROVE THIS MESS')
-            self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low] 
-            self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high]
-            self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi]])
-            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low, self.spherical_to_cartesian(s1sphere_low),self.spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low)
-        elif self.nparams == 11:
-            self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, ecc_low] 
-            self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, ecc_high]
-            self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, ecc_low]])
-            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low,self.spherical_to_cartesian(s1sphere_low),self.spherical_to_cartesian(s2sphere_low), ecc_low, 0, 0, iota_low, phiref_low)
-        elif self.nparams == 12:
-            self.params_low = [mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low, lambda1_low, lambda2_low]
-            self.params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high, lambda1_high, lambda2_high]
-            self.params_start = np.array([[mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], 0.33333*np.pi, 1.5*np.pi, lambda1_low, lambda2_low]])
-            self.hp1 = self.generate_a_waveform_from_mcq(mc_low, q_low,self.spherical_to_cartesian(s1sphere_low),self.spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low) 
-        else:
-            raise ValueError 
-        
+            if self.verbose:
+                print('{} | {} | ( {} - {} )| {}'.format(i,n,
+                                                     self.params_low[i],
+                                                     self.params_hig[i],
+                                                     self.params_ini[i]))
+        # First waveform
+        self.hp1 = self.generate_a_waveform_from_mcq(self.params_ini)
         return 
 
-    def empnodes(self, ndim, known_bases):
+    def empnodes(self, ndim, known_bases, fact=100000000):
         """
         Here known_bases is the full copy known_bases_copy. Its length is equal to or longer than ndim.
         """
-        emp_nodes = np.arange(0,ndim)*100000000
+        emp_nodes = np.arange(0,ndim) * fact
         emp_nodes[0] = np.argmax(np.absolute(known_bases[0]))
         c1 = known_bases[1,emp_nodes[0]]/known_bases[0,1]
         interp1 = np.multiply(c1,known_bases[0])
@@ -377,27 +447,36 @@ class PyROQ:
     def empnodes_quad(self, ndim, known_bases):
         return empnodes(self, ndim, known_bases) #CHECKME: this routine appears identical to the above (duplicated in original code?)
 
-    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term = 'lin'):
-        hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases,
+                    #mc, q, s1, s2, ecc, lambda1, lambda2, iota,phiref,#TODEL
+                    paramspoint,
+                    term = 'lin'):
+        hp = self.generate_a_waveform_from_mcq(paramspoint) #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)#TODEL
         if term == 'lin':
             pass
         elif term == 'quad':
             hp = (np.absolute(hp))**2
         else:
             raise ValueError("unknown term")
+        
         Ci = np.dot(inverse_V, hp[emp_nodes])
         interpolantA = np.zeros(len(hp))+np.zeros(len(hp))*1j
         for j in np.arange(0, ndim):
             tmp = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
-        surro = (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF
-        return surro
-    
-    def surroerror(self, ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
-        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term = 'lin')
 
-    def surroerror_quad(self, ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):
-        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref, term = 'quad')
+        #surro = (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF #TODEL
+        return (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF 
+    
+    def surroerror(self, ndim, inverse_V, emp_nodes, known_bases,
+                   paramspoint):
+        #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):#TODEL
+        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin')
+
+    def surroerror_quad(self, ndim, inverse_V, emp_nodes, known_bases,
+                        paramspoint):
+        #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):#TODEL
+        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'quad')
     
     def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term='lin'):
         if term == 'lin':
@@ -405,29 +484,14 @@ class PyROQ:
         elif term == 'quad':
             tol = self.tolerance_quad
         else:
-              raise ValueError("unknown term")  
-        points = self.generate_params_points()
-        surros = np.zeros(nts)
+              raise ValueError("unknown term")
+        
+        paramspoints = self.generate_params_points()
+        surros = np.zeros(self.pnts)
         count = 0
-        for i in np.arange(0,nts):
-            print('IMPROVE THIS MESS')
-
-            mc      =  points[i,0]
-            q       = points[i,1]
-            s1      = self.spherical_to_cartesian(points[i,2:5])
-            s2      = self.spherical_to_cartesian(points[i,5:8])
-            iota    = points[i,8]
-            phiref  = points[i,9]
-            ecc     = 0
-            lambda1 = 0
-            lambda2 = 0
-            if nparams == 11:
-                ecc = points[i,10]
-            if nparams == 12: 
-                lambda1 = points[i,10]
-                lambda2 = points[i,11]
+        for i, paramspoint in enumerate(paramspoints):
             surros[i] = self._surroerror(ndim, inverse_V, emp_nodes, known_bases[0:ndim],
-                                         mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref
+                                         paramspoint, #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref#TODEL
                                          term = term)
             if (surros[i] > tol):
                 count = count+1
@@ -519,9 +583,10 @@ class PyROQ:
         return d
     
     def _testrep(self, b, emp_nodes,
-                 mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                 paramspoint,
+                 #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
                  term='lin', show=True):
-        hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+        hp = self.generate_a_waveform_from_mcq(paramspoint) #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
         if term == 'lin':
             pass
         elif term == 'quad':
@@ -545,42 +610,31 @@ class PyROQ:
         return freq, rep_error
     
     def testrep(self, b, emp_nodes,
-                mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                paramspoint,
+                #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
                 show=True):
         return self._testrep(b, emp_nodes,
-                             mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                             paramspoint,
+                             #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
                              term='lin', show=show)
 
     def testrep_quad(self, b, emp_nodes,
-                     mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                     paramspoint,
+                     #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
                      show=True):
         return self._testrep(b, emp_nodes,
-                             mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
+                             paramspoint,
+                             #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
                              term='quad', show=show)
     
-    def surros_of_test_samples(self, nsamples, b_linear, emp_nodes):
-        nts = nsamples
+    def surros_of_test_samples(self, b_linear, emp_nodes, nsamples=0):
+        if nsamples <= 0:
+            nsamples = self.nts
         ndim = len(emp_nodes)
-        points = self.generate_params_points()
-        surros = np.zeros(nts)
-        for i in np.arange(0,nts):
-            mc = points[i,0]
-            q = points[i,1]
-            s1 = self.spherical_to_cartesian(points[i,2:5])
-            s2 = self.spherical_to_cartesian(points[i,5:8])
-            iota = points[i,8]
-            phiref = points[i,9]
-            ecc = 0
-            lambda1 = 0
-            lambda2 = 0
-            if self.nparams == 11:
-                print('Is this consistent in all cases? change?')
-                ecc = points[i,10]
-            if self.nparams == 12:
-                print('Is this consistent in all cases? change?')
-                lambda1 = points[i,10]
-                lambda2 = points[i,11]
-            hp = self.generate_a_waveform_from_mcq(mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+        paramspoints = self.generate_params_points(npts=nsamples)
+        surros = np.zeros(self.nts)
+        for i,paramspoint in enumerate(paramspoints):
+            hp = self.generate_a_waveform_from_mcq(paramspoint)
             hp_emp = hp[emp_nodes]
             hp_rep = np.dot(b_linear,hp_emp) 
             surros[i] = (1-overlap_of_two_waveforms(hp, hp_rep))*deltaF
@@ -594,21 +648,10 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    params_ranges = {
-        'mc'      : [0.9, 1.4]                                ,
-        'q'       : [1, 3]                                    ,
-        's1sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
-        's2sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
-        'ecc'     : [0.0, 0.0]                                ,
-        'lambda1' : [5, 5000]                                 ,
-        'lambda2' : [5, 5000]                                 ,
-        'iota'    : [0, numpy.pi]                             ,
-        'phiref'  : [0, 2*numpy.pi]                           ,
-    }
-
+    
     # example
-    pyroq = PyROQ(approximant       = 'teobresums-giotto-FD',
-                  intrinsic_params  = params_ranges,
+    pyroq = PyROQ(approximant       = 'teobresums-giotto',
+                  params_ranges     = params_ranges,
                   
                   f_min             = 20,
                   f_max             = 1024,
@@ -641,12 +684,12 @@ if __name__ == '__main__':
     # Below this point, ideally no parameter should be changed from the user. #
     ###########################################################################
 
-    print("mass-min, mass-max: ", pyroq.massrange(intrinsic_params['mc'][0], intrinsic_params['mc'][1], intrinsic_params['q'][0], intrinsic_params['q'][1]))
+    print("mass-min, mass-max: ", pyroq.mass_range(params_ranges['mc'][0], params_ranges['mc'][1], params_ranges['q'][0], params_ranges['q'][1]))
     if check_mass_range:
-        m1_00,m2_00 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][0],intrinsic_params['q'][0])
-        m1_01,m2_01 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][0],intrinsic_params['q'][1])
-        m1_10,m2_10 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][1],intrinsic_params['q'][0])
-        m1_11,m2_11 = pyroq.get_m1m2_from_mcq(intrinsic_params['mc'][1],intrinsic_params['q'][1])
+        m1_00,m2_00 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][0],params_ranges['q'][0])
+        m1_01,m2_01 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][0],params_ranges['q'][1])
+        m1_10,m2_10 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][1],params_ranges['q'][0])
+        m1_11,m2_11 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][1],params_ranges['q'][1])
         
         print(m1_00,m2_00, m1_00+m2_00)
         print(m1_01,m2_01, m1_01+m2_01)
@@ -697,8 +740,7 @@ if __name__ == '__main__':
     pyroq.testrep(b_linear, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
 
     # Test nsamples random samples in parameter space to see their representation surrogate errors
-    nsamples = 1000 
-    surros = pyroq.surros_of_test_samples(nsamples, b_linear, emp_nodes)
+    surros = pyroq.surros_of_test_samples(b_linear, emp_nodes)
 
     plt.figure(figsize=(15,9))
     plt.semilogy(surros,'o',color='black')
