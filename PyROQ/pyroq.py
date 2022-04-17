@@ -16,15 +16,12 @@ defaults = {}
 defaults['params_ranges'] = {
     'mc'      : [0.9, 1.4]                          ,
     'q'       : [1, 3]                              ,
-#    's1sphere': [[0, 0, 0], [0.5, np.pi, 2.0*np.pi]],#note now this is different #TODEL
-#    's2sphere': [[0, 0, 0], [0.5, np.pi, 2.0*np.pi]],#TODEL
     's1s1'    : [0, 0.5],
     's1s2'    : [0, np.pi],
     's1s3'    : [0, 2.0*np.pi],
     's2s1'    : [0, 0.5],
     's2s2'    : [0, np.pi],
     's2s3'    : [0, 2.0*np.pi],
-#    'ecc'     : [0.0, 0.0]                          ,#now not needed for # non-ecc wvf #TODEL
     'lambda1' : [5, 5000]                           ,
     'lambda2' : [5, 5000]                           ,
     'iota'    : [0, np.pi]                          ,
@@ -187,12 +184,9 @@ class PyROQ:
         """
         Calculating overlap of two waveforms
         """
-        wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1)) # normalize the first waveform
-        wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2)) # normalize the second waveform
-        #diff = wf1norm - wf2norm
-        #overlap = 1 - 0.5*(np.vdot(diff,diff))
-        #overlap = np.real(np.vdot(wf1norm, wf2norm))
-        return np.real(np.vdot(wf1norm, wf2norm)) # overlap
+        wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1)) 
+        wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2)) 
+        return np.real(np.vdot(wf1norm, wf2norm)) 
 
     def spherical_to_cartesian(self, sph):
         x = sph[0]*np.sin(sph[1])*np.cos(sph[2])
@@ -246,8 +240,7 @@ class PyROQ:
         """
         Uniformly sample the parameter arrays
         """
-        if npts <= 0:
-            npts = self.npts 
+        if npts <= 0: npts = self.npts 
         paramspoints = np.random.uniform(self.params_low,
                                          self.params_hig,
                                          size=(npts,self.nparams))
@@ -279,7 +272,7 @@ class PyROQ:
         hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max)
         return hp
     
-    def generate_a_waveform_from_mcq(self, paramspoint): # mc, q, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):#TODEL
+    def generate_a_waveform_from_mcq(self, paramspoint): 
         """
         This assumes paramspoint contains values for mc,q
         and updates m1,m2 in the waveform parameters before generating
@@ -287,7 +280,7 @@ class PyROQ:
         """
         return self._paramspoint_to_wave(paramspoint)
 
-    def generate_a_waveform(self, paramspoint): # m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, phiRef):#TODEL
+    def generate_a_waveform(self, paramspoint): 
         """
         This does not assume data for (mc,q)
         """
@@ -321,18 +314,14 @@ class PyROQ:
         """
         if self.parallel:
             paramspointslist = paramspoints.tolist()
-            #pool = mp.Pool(mp.cpu_count())
             pool = mp.Pool(processes=nprocesses)
-            modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
+            modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term=term)) for paramspoint in paramspointslist]
             pool.close()
         else:
-            #npts = len(paramspoints) # = self.npts #TODEL
-            modula = np.zeros(self.npts)
-            #for i in np.arange(0,npts): #TODEL
-            #    paramspoint = paramspoints[i] #TODEL
-            #    modula[i] = self._compute_modulus(paramspoint, known_bases, term)#TODEL
+            npts = len(paramspoints) # = self.npts #TODEL
+            modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = self._compute_modulus(paramspoint, known_bases, term)
+                modula[i] = self._compute_modulus(paramspoint, known_bases, term=term)
 
         arg_newbasis = np.argmax(modula) 
         paramspoint = paramspoints[arg_newbasis]
@@ -364,12 +353,6 @@ class PyROQ:
         else:
             raise ValueError("unknown term")
         
-        # if self.verbose:
-        #     print('nparams = {}'.format(self.nparams))
-        #     print('name | index')
-        #     for n,i in self.n2i.items():
-        #         print('{} | {}'.format(i,n))
-
         for k in np.arange(0,nbases-1):
             paramspoints = self.generate_params_points()
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
@@ -400,7 +383,7 @@ class PyROQ:
         for n,i in self.n2i.items():
             self.params_low[i] = self.params_ranges[k][0]
             self.params_hig[i] = self.params_ranges[k][1] 
-            self.params_ini[i] = self.params_low[i] #CHECKME
+            self.params_ini[i] = self.params_low[i] * 1.1 #CHECKME
         
             if self.verbose:
                 print('{} | {} | ( {} - {} )| {}'.format(i,n,
@@ -447,11 +430,8 @@ class PyROQ:
     def empnodes_quad(self, ndim, known_bases):
         return empnodes(self, ndim, known_bases) #CHECKME: this routine appears identical to the above (duplicated in original code?)
 
-    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases,
-                    #mc, q, s1, s2, ecc, lambda1, lambda2, iota,phiref,#TODEL
-                    paramspoint,
-                    term = 'lin'):
-        hp = self.generate_a_waveform_from_mcq(paramspoint) #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)#TODEL
+    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin'):
+        hp = self.generate_a_waveform_from_mcq(paramspoint) 
         if term == 'lin':
             pass
         elif term == 'quad':
@@ -465,17 +445,12 @@ class PyROQ:
             tmp = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
 
-        #surro = (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF #TODEL
         return (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF 
     
-    def surroerror_lin(self, ndim, inverse_V, emp_nodes, known_bases,
-                   paramspoint):
-        #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):#TODEL
+    def surroerror_lin(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint):
         return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin')
 
-    def surroerror_quad(self, ndim, inverse_V, emp_nodes, known_bases,
-                        paramspoint):
-        #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref):#TODEL
+    def surroerror_quad(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint):
         return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'quad')
     
     def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term='lin'):
@@ -491,7 +466,7 @@ class PyROQ:
         count = 0
         for i, paramspoint in enumerate(paramspoints):
             surros[i] = self._surroerror(ndim, inverse_V, emp_nodes, known_bases[0:ndim],
-                                         paramspoint, #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref#TODEL
+                                         paramspoint, 
                                          term = term)
             if (surros[i] > tol):
                 count = count+1
@@ -502,7 +477,7 @@ class PyROQ:
         else:
             return 1
     
-    def surros_linself, ndim, inverse_V, emp_nodes, known_bases):
+    def surros_lin(self, ndim, inverse_V, emp_nodes, known_bases):
         return self._surros(ndim, inverse_V, emp_nodes, known_bases, term='lin')
 
     def surros_quad(self, ndim, inverse_V, emp_nodes, known_bases):
@@ -540,7 +515,7 @@ class PyROQ:
 
         return b,f
 
-    def roqs_linself, known_bases):
+    def roqs_lin(self, known_bases):
         return self._roqs(known_bases, term='lin')
 
     def roqs_quad(self, known_bases):
@@ -582,11 +557,8 @@ class PyROQ:
         
         return d
     
-    def _testrep(self, b, emp_nodes,
-                 paramspoint,
-                 #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
-                 term='lin', show=True):
-        hp = self.generate_a_waveform_from_mcq(paramspoint) #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+    def _testrep(self, b, emp_nodes, paramspoint, term='lin', show=True):
+        hp = self.generate_a_waveform_from_mcq(paramspoint) 
         if term == 'lin':
             pass
         elif term == 'quad':
@@ -609,27 +581,14 @@ class PyROQ:
             plt.show()
         return freq, rep_error
     
-    def testrep(self, b, emp_nodes,
-                paramspoint,
-                #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
-                show=True):
-        return self._testrep(b, emp_nodes,
-                             paramspoint,
-                             #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,
-                             term='lin', show=show)
+    def testrep_lin(self, b, emp_nodes, paramspoint, show=True):
+        return self._testrep(b, emp_nodes, paramspoint, term='lin', show=show)
 
-    def testrep_quad(self, b, emp_nodes,
-                     paramspoint,
-                     #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
-                     show=True):
-        return self._testrep(b, emp_nodes,
-                             paramspoint,
-                             #mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref,#TODEL
-                             term='quad', show=show)
+    def testrep_quad(self, b, emp_nodes, paramspoint, show=True):
+        return self._testrep(b, emp_nodes, paramspoint, term='quad', show=show)
     
     def surros_of_test_samples(self, b_linear, emp_nodes, nsamples=0):
-        if nsamples <= 0:
-            nsamples = self.nts
+        if nsamples <= 0: nsamples = self.nts
         ndim = len(emp_nodes)
         paramspoints = self.generate_params_points(npts=nsamples)
         surros = np.zeros(self.nts)
@@ -649,7 +608,8 @@ class PyROQ:
 if __name__ == '__main__':
 
     
-    # example
+    # Basic example
+
     pyroq = PyROQ(approximant       = 'teobresums-giotto',
                   params_ranges     = params_ranges,
                   
@@ -677,9 +637,43 @@ if __name__ == '__main__':
                   verbose           = True,
                   )
 
+    # Create the bases and save them
+    data = pyroq.run()
+
+    # Test waveform
+    parampoint = []
+    parampoint[pyroq.n2i['mc']] = 1.3
+    parampoint[pyroq.n2i['q']] = 2
+    parampoint[pyroq.n2i['s1s1']],parampoint[pyroq.n2i['s1s2']],parampoint[pyroq.n2i['s1s3']]=0.,0.2,-0.#CHECKME sph or cart?
+    parampoint[pyroq.n2i['s2s1']],parampoint[pyroq.n2i['s2s2']],parampoint[pyroq.n2i['s2s3']]=0.,0.15,-0.1#CHECKME sph or cart?
+    parampoint[pyroq.n2i['lambda1']] = 1000
+    parampoint[pyroq.n2i['lambda2']] = 1000
+    parampoint[pyroq.n2i['iota']] = 1.9
+    parampoint[pyroq.n2i['phiref']] = 0.6
+
+    freq = pyroq.freq
+    data['lin_emp_nodes'] = np.searchsorted(freq, data['lin_f'])
+    data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
+    
+    pyroq.testrep_lin(data['lin_B'], data['lin_emp_nodes'],parampoint)
+    pyroq.testrep_quad(data['quad_B'], data['quad_emp_nodes'], parampoint)
+
+    # Test nsamples random samples in parameter space to see their representation surrogate errors
+    surros = pyroq.surros_of_test_samples(data['lin_B'], data['lin_emp_nodes'])
+
+    plt.figure(figsize=(15,9))
+    plt.semilogy(surros,'o',color='black')
+    plt.xlabel("Number of Random Test Points")
+    plt.ylabel("Surrogate Error")
+    plt.title("IMRPhenomPv2")
+    plt.savefig("SurrogateErrorsRandomTestPoints.png")
+    plt.show()
+
+    # More tests
+    
     plot_only = 0
     check_mass_range = 0
-
+    
     ###########################################################################
     # Below this point, ideally no parameter should be changed from the user. #
     ###########################################################################
@@ -708,36 +702,18 @@ if __name__ == '__main__':
     
     print(known_bases.shape, residual_modula)
 
-    #known_bases = np.load(pyroq.outpudir+'/linearbases.npy')
-    #print(known_bases.shape, residual_modula)
-
     # Create ROQ (save to file).
-    b_linear, fnodes_linear  = pyroq.roqs_linknown_bases)
+    b_linear, fnodes_linear  = pyroq.roqs_lin(known_bases)
 
-    #fnodes_linear = np.load(pyroq.outpudir+'/fnodes_linear.npy')
-    #b_linear = np.transpose(np.load(pyroq.outpudir+'/B_linear.npy'))
-    #print(b_linear, fnodes_linear)
-    
-    # Check
+    # Check on test waveform
     ndim = b_linear.shape[1]
     freq = pyroq.freq 
     emp_nodes = np.searchsorted(freq, fnodes_linear)
 
     print(b_linear)
     print("emp_nodes", emp_nodes)
-
-    # Test one
-    mc = 25
-    q = 2
-    s1 = [0.,0.2,-0.]
-    s2 = [0.,0.15,-0.1]
-    ecc = 0
-    lambda1 = 0
-    lambda2 = 0
-    iota = 1.9
-    phiref = 0.6
     
-    pyroq.testrep(b_linear, emp_nodes, mc, q, s1, s2, ecc, lambda1, lambda2, iota, phiref)
+    pyroq.testrep_lin(b_linear, emp_nodes, parampoint)
 
     # Test nsamples random samples in parameter space to see their representation surrogate errors
     surros = pyroq.surros_of_test_samples(b_linear, emp_nodes)
@@ -758,23 +734,9 @@ if __name__ == '__main__':
     known_quad_bases,params_quad,residual_modula_quad = pyroq.bases_searching_quadratic_results_unnormalized(known_quad_bases_start, basis_waveforms_quad_start, params_ini, residual_modula_start)
     b_quad, fnodes_quad = pyroq.roqs_quad(known_quad_bases)
     
-    #known_quad_bases = np.load(pyroq.outpurdir+'/quadraticbases.npy')
-    #fnodes_quad = np.load(pyroq.outpurdir+'/fnodes_quadratic.npy')
-    #b_quad = np.transpose(np.load(pyroq.outpurdir+'/B_quadratic.npy'))
-
     ndim_quad = b_quad.shape[1]
     freq = pyroq.freq 
     emp_nodes_quad = np.searchsorted(freq, fnodes_quad)
 
-    # Test one
-    mc_quad = 22
-    q_quad = 1.2
-    s1_quad = [0.0, 0.1, 0.0]
-    s2_quad = [0.0, 0.0, 0.0]
-    ecc_quad = 0
-    lambda1_quad = 0
-    lambda2_quad = 0
-    iota_quad    = 1.9
-    phiref_quad  = 0.6
-
-    pyroq.testrep_quad(b_quad, emp_nodes_quad, mc_quad, q_quad, s1_quad, s2_quad, ecc_quad, lambda1_quad, lambda2_quad, iota_quad, phiref_quad)
+    pyroq.testrep_quad(b_quad, emp_nodes_quad, parampoint)
+    
