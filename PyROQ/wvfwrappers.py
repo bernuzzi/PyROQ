@@ -23,7 +23,7 @@ class ZeroWf:
             print('masses must be always passed')
             raise 
         if 'iota' or 'phiRef' is not in p.keys():
-            print('sky location must be always passed')
+            print('iota and phiRef must be always passed')
             raise
         freq = np.arange(f_min,f_max,deltaF)
         hp = np.zeros(len(freq))
@@ -193,18 +193,18 @@ try:
             s1x,s1y,s1z = 0,0,0
             s2x,s2y,s2z = 0,0,0
             if p['use_spins'] == TEOBResumS_spins['precessing']:
-                if 's1x' or 's1y' or 's1z' not is in p.keys():
+                if 's1x' or 's1y' or 's1z' is not in p.keys():
                     raise ValueError('spin1 parameters missing')
-                if 's2x' or 's2y' or 's2z' not is in p.keys():
+                if 's2x' or 's2y' or 's2z' is not in p.keys():
                     raise ValueError('spin2 parameters missing')
 
                 s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
                 s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
                 
             elif p['use_spins'] == TEOBResumS_spins['aligned']:
-                if 's1z' not is in p.keys():
+                if 's1z' is not in p.keys():
                     raise ValueError('spin1 parameters missing')
-                if 's2z' not is in p.keys():
+                if 's2z' is not in p.keys():
                     raise ValueError('spin2 parameters missing')
 
                 s1z = p['s1z']
@@ -306,9 +306,9 @@ try:
 
             s1x,s1y,s1z = 0,0,0
             s2x,s2y,s2z = 0,0,0
-            if 's1z' not is in p.keys():
+            if 's1z' is not in p.keys():
                raise ValueError('spin1 parameters missing')
-            if 's2z' not is in p.keys():
+            if 's2z' is not in p.keys():
                raise ValueError('spin2 parameters missing')
             s1z = p['s1z']
             s2z = p['s2z']
