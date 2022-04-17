@@ -16,7 +16,15 @@ class ZeroWf:
                  waveform_params = {}):
         self.approximant = approximant
         self.waveform_params = waveform_params
-    def generate_waveform(self, waveform_params, deltaF, f_min, f_max):
+    def generate_waveform(self, p, deltaF, f_min, f_max):
+        # Note: in PyROQ p is built from a copy of waveform_params
+        #       but if empty there, waveform_params is initialized here
+        if 'm1' or 'm2' is not in p.keys():
+            print('masses must be always passed')
+            raise 
+        if 'iota' or 'phiRef' is not in p.keys():
+            print('sky location must be always passed')
+            raise
         freq = np.arange(f_min,f_max,deltaF)
         hp = np.zeros(len(freq))
         hc = np.zeros(len(freq))
@@ -58,13 +66,24 @@ try:
         def generate_waveform(self, p, deltaF, f_min, f_max):
 
             # Update baseline waveform_params with p
-            # incomplete, see
+            # This is redundant and incomplete, see
             # https://github.com/gwastro/pycbc/blob/master/pycbc/waveform/waveform.py#L77
-            if p['lambda1'] is not None:
-                lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(self.waveform_params, p['lambda1'])
-            if p['lambda2'] is not None:
-                lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(self.waveform_params, p['lambda2'])
-            
+            # but it should be Ok
+            if 'lambda1' is in p.keys():
+                if p['lambda1'] is not None:
+                    lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(self.waveform_params, p['lambda1'])
+            if 'lambda2' is in p.keys():
+                if p['lambda2'] is not None:
+                    lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(self.waveform_params, p['lambda2'])
+
+            if 'ecc' is not in p.keys():
+                p['ecc'] = 0.
+
+            # Make sure all the params are up-to-date
+            # PyROQ might have been initialized with an empty waveform_params
+            # relying on the default here.
+            self.waveform_params.updated(p)
+                
             [plus, cross] =
             lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
                                                       p['m2']*LAL_MSUN_SI,
@@ -73,9 +92,9 @@ try:
                                                       p['distance']*(LAL_PC_SI*1e6),
                                                       p['iota'],
                                                       p['phiRef'],
-                                                      0,  # float(p['long_asc_nodes'])
+                                                      0,  # 'long_asc_nodes'
                                                       p['ecc'],
-                                                      0,  # float(p['mean_per_ano'])
+                                                      0,  # 'mean_per_ano'
                                                       deltaF,
                                                       f_min,
                                                       f_max,
@@ -140,8 +159,9 @@ try:
             """
             Utility to set EOB parameters based on the selected mode
             Uses defaults for unset parameters
-            """            
-
+            """
+            
+            p = {}
             p['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
             p['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
             # print('CHECKME: why interp?')
@@ -166,17 +186,41 @@ try:
   
         def generate_waveform(self, p, deltaF, f_min, f_max):
 
-            # Eccentric binaries are not supported
-            if(abs(p['ecc') > 1e-12):
-               raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
-
             # Impose the correct convention on masses
             m1,m2 = p['m1'],p['m2']
             q = p['m1']/p['m2']
-            lambda1,lambda2 = p['lambda1'],p['lambda2']
-            s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
-            s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
 
+            s1x,s1y,s1z = 0,0,0
+            s2x,s2y,s2z = 0,0,0
+            if p['use_spins'] == TEOBResumS_spins['precessing']:
+                if 's1x' or 's1y' or 's1z' not is in p.keys():
+                    raise ValueError('spin1 parameters missing')
+                if 's2x' or 's2y' or 's2z' not is in p.keys():
+                    raise ValueError('spin2 parameters missing')
+
+                s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
+                s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
+                
+            elif p['use_spins'] == TEOBResumS_spins['aligned']:
+                if 's1z' not is in p.keys():
+                    raise ValueError('spin1 parameters missing')
+                if 's2z' not is in p.keys():
+                    raise ValueError('spin2 parameters missing')
+
+                s1z = p['s1z']
+                s2z = p['s2z']
+                           
+            lambda1,lambda2 = 0.,0.
+            if 'lambda1' is in p.keys():
+               lambda1 = p['lambda1']
+            if 'lambda2' is in p.keys():
+               lambda2 = p['lambda2']
+
+            if 'ecc' is not in p.keys():
+                p['ecc'] = 0.
+            if(abs(p['ecc') > 1e-12):
+               raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
+                
             if q < 1. :
                m1,m2       = m2,m1
                q           = 1./q
@@ -210,14 +254,16 @@ try:
             p['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
             p['df'                 ] = deltaF
 
-            # Update wave_params with p
-            self.wave_params.update(p)
+            # Make sure all the params are up-to-date
+            # PyROQ might have been initialized with an empty waveform_params
+            # relying on the default here.
+            self.waveform_params.updated(p)
                
             if p['domain'] == TEOBResumS_domain['TD']:
-                t, hp, hc = EOBRun_module.EOBRunPy(self.wave_params)
+                t, hp, hc = EOBRun_module.EOBRunPy(self.waveform_params)
                 Hptilde, Hctilde = JBJF(hp,hc,t[1]-t[0])
             else:
-                f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(self.wave_params)
+                f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(self.waveform_params)
 
             # Adapt len to PyROQ frequency axis conventions
             hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
@@ -254,35 +300,61 @@ try:
   
         def generate_waveform(self, p, deltaF, f_min, f_max):
             
-            # eccentric binaries are not supported
-            if(abs(p['ecc']) > 1e-12):
-                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
-
             # Impose the correct convention on masses
             m1,m2 = p['m1'],p['m2']
             q = p['m1']/p['m2']
-            lambda1,lambda2 = p['lambda1'],p['lambda2']
-            s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
-            s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
+
+            s1x,s1y,s1z = 0,0,0
+            s2x,s2y,s2z = 0,0,0
+            if 's1z' not is in p.keys():
+               raise ValueError('spin1 parameters missing')
+            if 's2z' not is in p.keys():
+               raise ValueError('spin2 parameters missing')
+            s1z = p['s1z']
+            s2z = p['s2z']
+
+            # Precessing spins are not supported
+            if 's1x' is in p.keys(): s1x = p['s1x']
+            if 's1y' is in p.keys(): s1y = p['s1y']
+            if 's2x' is in p.keys(): s2x = p['s2x']
+            if 's2y' is in p.keys(): s2y = p['s2y']
+            if((abs(s1x) > 1e-6) or (abs(s1y) > 1e-6)):
+                raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
+            if((abs(s2x) > 1e-6) or (abs(s2y) > 1e-6)):
+                raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
+               
+            lambda1,lambda2 = 0.,0.
+            if 'lambda1' is in p.keys():
+               lambda1 = p['lambda1']
+            if 'lambda2' is in p.keys():
+               lambda2 = p['lambda2']   
+            if((abs(lambda1) < 5.) or (abs(lambda2) < 5.)):
+                raise ValueError("lambdas>5 but ({},{}) were passed.".format(lambda1, lambda2))
+            if((abs(lambda1) > 5000.) or (abs(lambda2) > 5000.)):
+                raise ValueError("lambdas<5000 but ({},{}) were passed.".format(lambda1, lambda2))
+            
+            if 'ecc' is not in p.keys():
+                p['ecc'] = 0.
+            if(abs(p['ecc']) > 1e-12):
+                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
 
             if q < 1. :
                m1,m2       = m2,m1
                q           = 1./q
                s1z,s2z     = s2z,s1z
                lambda1,lambda2 = lambda2,lambda1
+
+            # Make sure all the params are up-to-date
+            # PyROQ might have been initialized with an empty waveform_params
+            # relying on the default here.
+            self.waveform_params.updated(p)
                
-            # Precessing spins are not supported
-            if((abs(s1x) > 1e-6) or (abs(s1y) > 1e-6)):
-                raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
-            if((abs(s2x) > 1e-6) or (abs(s2y) > 1e-6)):
-                raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
-            
             # Call it
             model       = Model.default() ##TODO here you can use self.approximant to call any MLGW-BNS Model
             frequencies = np.arange(f_min, f_max, step=deltaF)
             params      = ParametersWithExtrinsic(p['q'],
-                                                  p['lambda1'],
-                                                  p['lambda2'],
+                                                  lambda1,
+                                                  lambda2,
                                                   p['s1z'],
                                                   p['s2z'],
                                                   p['distance'],
