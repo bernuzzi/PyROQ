@@ -99,7 +99,7 @@ class PyROQ:
                  verbose           = True,
                  
                  # Dummy value, distance does not enter the interpolants construction
-                 distance          = 10 * LAL_PC_SI * 1.0e6,  # 10 Mpc is default
+                 distance          = 10,  # 10 Mpc is default
                  ):
 
         self.approximant       = approximant
