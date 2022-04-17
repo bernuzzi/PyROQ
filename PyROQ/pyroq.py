@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 
 from wvfwrappers import *
 
-
 # PyRQQ
 # =====
 
@@ -318,14 +317,13 @@ class PyROQ:
             modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term=term)) for paramspoint in paramspointslist]
             pool.close()
         else:
-            npts = len(paramspoints) # = self.npts #TODEL
+            npts = len(paramspoints) # = self.npts 
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
                 modula[i] = self._compute_modulus(paramspoint, known_bases, term=term)
 
         arg_newbasis = np.argmax(modula) 
-        paramspoint = paramspoints[arg_newbasis]
-        hp = self._paramspoint_to_wave(paramspoint)
+        hp = self._paramspoint_to_wave(paramspoints[arg_newbasis])
         if term == 'lin':
             pass
         elif term == 'quad':
@@ -380,9 +378,9 @@ class PyROQ:
             print('name | index | ( min , max ) | start')
 
         # Set bounds
-        for n,i in self.n2i.items():
-            self.params_low[i] = self.params_ranges[k][0]
-            self.params_hig[i] = self.params_ranges[k][1] 
+        for i,n in self.i2n.items():
+            self.params_low[i] = self.params_ranges[n][0]
+            self.params_hig[i] = self.params_ranges[n][1] 
             self.params_ini[i] = self.params_low[i] * 1.1 #CHECKME
         
             if self.verbose:
@@ -522,9 +520,9 @@ class PyROQ:
         return self._roqs(known_bases, term='quad')
 
     def run(self):
-        d            = {}
-        hp1          = self.hp1
-        hp1_quad     = (np.absolute(hp1))**2
+        d          = {}
+        hp1        = self.hp1
+        hp1_quad   = (np.absolute(hp1))**2
         params_ini = self.params_ini
         
         # Search for linear basis elements to build & save linear ROQ data in the local directory.
