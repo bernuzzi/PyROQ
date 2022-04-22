@@ -41,11 +41,11 @@ def eob_parameters():
     """
     waveFlags = {}
     waveFlags['use_mode_lm'        ] = modes_to_k([[2,2]])  # List of modes to use/output through EOBRunPy
-    waveFlags['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
-    waveFlags['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+    waveFlags['use_geometric_units'] = "no"      # Output quantities in geometric units. Default = 1
+    waveFlags['interp_uniform_grid'] = "yes"      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
     waveFlags['use_spins'          ] = TEOBResumS_spins['aligned'] # '0 = nonspinning (deprecated), 1 = spin-aligned, 2 =precessing spins',
-    waveFlags['output_hpc'         ] = 0
-    waveFlags['output_multipoles'  ] = 0
+    waveFlags['output_hpc'         ] = "no"
+    waveFlags['output_multipoles'  ] = "no"
     
     return waveFlags
 
@@ -103,8 +103,8 @@ def generate_a_waveform_EOB(m1, m2, spin1, spin2, ecc, lambda1, lambda2, iota, p
         # System parameters
         waveFlags['M'                  ] = m1+m2
         waveFlags['q'                  ] = q
-        waveFlags['Lambda1'            ] = lambda1
-        waveFlags['Lambda2'            ] = lambda2
+        waveFlags['LambdaAl2'            ] = lambda1
+        waveFlags['LambdaBl2'            ] = lambda2
         if waveFlags['use_spins'] == TEOBResumS_spins['precessing']:
             waveFlags['chi1x'          ] = spin1[0]
             waveFlags['chi1y'          ] = spin1[1]
