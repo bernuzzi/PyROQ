@@ -162,13 +162,14 @@ try:
             """
             
             p = {}
-            p['use_geometric_units'] = 0      # Output quantities in geometric units. Default = 1
-            p['interp_uniform_grid'] = 2      # Interpolate mode by mode on a uniform grid. Default = 0 (no interpolation)
+            p['use_geometric_units'] = "no"
+            p['interp_uniform_grid'] = "yes"
+            
             # print('CHECKME: why interp?')
             # print('CHECKME: finish review of all TEOB options')
 
-            p['output_hpc'         ] = 0
-            p['output_multipoles'  ] = 0
+            p['output_hpc'         ] = "no"
+            p['output_multipoles'  ] = "no"
 
             p['use_spins'] = TEOBResumS_spins['aligned'] 
             p['use_mode_lm'] = [1] # [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ]
