@@ -163,17 +163,14 @@ try:
             
             p = {}
             p['use_geometric_units'] = "no"
-            p['interp_uniform_grid'] = "yes"
-            
-            # print('CHECKME: why interp?')
-            # print('CHECKME: finish review of all TEOB options')
+            p['domain']              = TEOBResumS_domain['FD']
+            p['interp_uniform_grid'] = "yes" # ignored for FD, needed because of FFT for TD
+        
+            p['use_mode_lm'        ] = [1] # 22, CHECKME: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ] available modes?
+            p['use_spins'          ] = TEOBResumS_spins['aligned']
 
             p['output_hpc'         ] = "no"
             p['output_multipoles'  ] = "no"
-
-            p['use_spins'] = TEOBResumS_spins['aligned'] 
-            p['use_mode_lm'] = [1] # [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ]
-            p['domain'] = TEOBResumS_domain['FD']
 
             return p
 
@@ -189,7 +186,7 @@ try:
 
             # Impose the correct convention on masses
             m1,m2 = p['m1'],p['m2']
-            q = p['m1']/p['m2']
+            q     = p['m1']/p['m2']
 
             s1x,s1y,s1z = 0,0,0
             s2x,s2y,s2z = 0,0,0
@@ -223,11 +220,11 @@ try:
                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
                 
             if q < 1. :
-               m1,m2       = m2,m1
-               q           = 1./q
-               t1,t2,t3    = s1x,s1y,s1z 
-               s1x,s1y,s1z = s2x,s2y,s2z
-               s2x,s2y,s2z = t1,t2,t3
+               m1,m2           = m2,m1
+               q               = 1./q
+               t1,t2,t3        = s1x,s1y,s1z
+               s1x,s1y,s1z     = s2x,s2y,s2z
+               s2x,s2y,s2z     = t1,t2,t3
                lambda1,lambda2 = lambda2,lambda1
 
             # System parameters
@@ -250,16 +247,16 @@ try:
             p['coalescence_angle'  ] = p['phiRef']
 
             # Generator parameters
-            p['srate'              ] = f_max*2  # srate at which to interpolate. Default = 4096.
-            p['srate_interp'       ] = f_max*2  # srate at which to interpolate. Default = 4096.
-            p['initial_frequency'  ] = f_min  # in Hz if use_geometric_units = 0, else in geometric units
-            p['df'                 ] = deltaF
+            p['initial_frequency'  ] = f_min    # Hz
+            p['srate_interp'       ] = f_max*2  # If TD, sets dt at which to interpolate waveform and dynamics. If FD, sets f_max = srate_interp/2.
+            p['df'                 ] = deltaF   # Freq axis goes from initial_frequency to srate_interp/2. in units of df
 
-            # Make sure all the params are up-to-date
+            p['srate'              ] = f_max*2  # If TD, srate at which the ODE is solved. Possibly unused, CHECK.
+
             # PyROQ might have been initialized with an empty waveform_params
             # relying on the default here.
             self.waveform_params.updated(p)
-               
+            
             if p['domain'] == TEOBResumS_domain['TD']:
                 t, hp, hc = EOBRun_module.EOBRunPy(self.waveform_params)
                 Hptilde, Hctilde = JBJF(hp,hc,t[1]-t[0])
@@ -371,4 +368,3 @@ try:
         
 except ModuleNotFoundError:
     print('mlgw-bns module not found')
-

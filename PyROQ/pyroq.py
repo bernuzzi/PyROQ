@@ -111,9 +111,9 @@ class PyROQ:
         self.distance          = distance
 
         self.waveform_params['distance'] = self.distance
-        self.waveform_params['deltaF'] = self.deltaF
-        self.waveform_params['f_min'] = self.f_min
-        self.waveform_params['f_max'] = self.f_max
+        self.waveform_params['deltaF']   = self.deltaF
+        self.waveform_params['f_min']    = self.f_min
+        self.waveform_params['f_max']    = self.f_max
 
         self.nts               = nts
         self.npts              = npts
@@ -737,4 +737,3 @@ if __name__ == '__main__':
     emp_nodes_quad = np.searchsorted(freq, fnodes_quad)
 
     pyroq.testrep_quad(b_quad, emp_nodes_quad, parampoint)
-    
