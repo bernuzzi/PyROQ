@@ -1,4 +1,4 @@
-import numpy as np
+import numpy as np, warnings
 
 # Waveform approximants
 # =====================
@@ -82,7 +82,7 @@ try:
             # Make sure all the params are up-to-date
             # PyROQ might have been initialized with an empty waveform_params
             # relying on the default here.
-            self.waveform_params.updated(p)
+            self.waveform_params.update(p)
                 
             [plus, cross] =
             lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
@@ -105,6 +105,7 @@ try:
             hc = cross.data.data
             hp = hp[np.int(f_min/deltaF):np.int(f_max/deltaF)]
             hc = hc[np.int(f_min/deltaF):np.int(f_max/deltaF)]
+            
             return hp, hc
 
     
@@ -166,7 +167,7 @@ try:
             p['domain']              = TEOBResumS_domain['FD']
             p['interp_uniform_grid'] = "yes" # ignored for FD, needed because of FFT for TD
         
-            p['use_mode_lm'        ] = [1] # 22, CHECKME: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ] available modes?
+            p['use_mode_lm'        ] = modes_to_k([[2,2]]) # CHECKME: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ] available modes?
             p['use_spins'          ] = TEOBResumS_spins['aligned']
 
             p['output_hpc'         ] = "no"
@@ -188,8 +189,8 @@ try:
             m1,m2 = p['m1'],p['m2']
             q     = p['m1']/p['m2']
 
-            s1x,s1y,s1z = 0,0,0
-            s2x,s2y,s2z = 0,0,0
+            s1x,s1y,s1z = 0.,0.,0.
+            s2x,s2y,s2z = 0.,0.,0.
             if p['use_spins'] == TEOBResumS_spins['precessing']:
                 if 's1x' or 's1y' or 's1z' is not in p.keys():
                     raise ValueError('spin1 parameters missing')
@@ -255,18 +256,18 @@ try:
 
             # PyROQ might have been initialized with an empty waveform_params
             # relying on the default here.
-            self.waveform_params.updated(p)
+            self.waveform_params.update(p)
             
             if p['domain'] == TEOBResumS_domain['TD']:
-                t, hp, hc = EOBRun_module.EOBRunPy(self.waveform_params)
-                Hptilde, Hctilde = JBJF(hp,hc,t[1]-t[0])
+                t, hptd, hctd = EOBRun_module.EOBRunPy(self.waveform_params)
+                hp, hc = JBJF(hptd,hctd,t[1]-t[0])
+                warnings.warn("\n\nCheck waveform lenght\n\n")
             else:
                 f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(self.waveform_params)
-
-            # Adapt len to PyROQ frequency axis conventions
-            hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
+                # Adapt len to PyROQ frequency axis conventions
+                hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
+                
             return hp, hc
-
     
     # Add a wrapper for each approximant
     for a in approximants:
@@ -345,7 +346,7 @@ try:
             # Make sure all the params are up-to-date
             # PyROQ might have been initialized with an empty waveform_params
             # relying on the default here.
-            self.waveform_params.updated(p)
+            self.waveform_params.update(p)
                
             # Call it
             model       = Model.default() ##TODO here you can use self.approximant to call any MLGW-BNS Model
