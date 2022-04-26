@@ -11,20 +11,21 @@ from wvfwrappers import *
 defaults = {}
 
 # Parameter ranges
+
 # This is the training range of MLGW-BNS
 defaults['params_ranges'] = {
-    'mc'      : [0.9, 1.4]                          ,
-    'q'       : [1, 3]                              ,
-    's1s1'    : [0, 0.5],
-    's1s2'    : [0, np.pi],
-    's1s3'    : [0, 2.0*np.pi],
-    's2s1'    : [0, 0.5],
-    's2s2'    : [0, np.pi],
-    's2s3'    : [0, 2.0*np.pi],
-    'lambda1' : [5, 5000]                           ,
-    'lambda2' : [5, 5000]                           ,
-    'iota'    : [0, np.pi]                          ,
-    'phiref'  : [0, 2*np.pi]                        ,
+    'mc'      : [0.9, 1.4]     ,
+    'q'       : [1, 3]         ,
+    's1s1'    : [0, 0.5]       ,
+    's1s2'    : [0, np.pi]     ,
+    's1s3'    : [0, 2.0*np.pi] ,
+    's2s1'    : [0, 0.5]       ,
+    's2s2'    : [0, np.pi]     ,
+    's2s3'    : [0, 2.0*np.pi] ,
+    'lambda1' : [5, 5000]      ,
+    'lambda2' : [5, 5000]      ,
+    'iota'    : [0, np.pi]     ,
+    'phiref'  : [0, 2*np.pi]   ,
 }
 
 class PyROQ:
@@ -102,6 +103,7 @@ class PyROQ:
                  distance          = 10,  # 10 Mpc is default
                  ):
 
+        # Read input params
         self.approximant       = approximant
         self.waveform_params   = waveform_params
         self.params_ranges     = params_ranges
@@ -384,7 +386,7 @@ class PyROQ:
             self.params_ini[i] = self.params_low[i] * 1.1 #CHECKME
         
             if self.verbose:
-                print('{} | {} | ( {} - {} )| {}'.format(i,n,
+                print('{} | {} | ( {} - {} ) | {}'.format(i,n,
                                                      self.params_low[i],
                                                      self.params_hig[i],
                                                      self.params_ini[i]))
@@ -519,6 +521,8 @@ class PyROQ:
     def roqs_quad(self, known_bases):
         return self._roqs(known_bases, term='quad')
 
+    ## Main function starting the ROQ construction
+
     def run(self):
         d          = {}
         hp1        = self.hp1
@@ -555,6 +559,8 @@ class PyROQ:
         
         return d
     
+    ## Functions to test the performance of the ROQ
+    
     def _testrep(self, b, emp_nodes, paramspoint, term='lin', show=True):
         hp = self.generate_a_waveform_from_mcq(paramspoint) 
         if term == 'lin':
@@ -569,12 +575,29 @@ class PyROQ:
         rep_error = diff/np.sqrt(np.vdot(hp,hp))
         freq = self.freq
         if show:
+            
+            plt.figure(figsize=(15,9))
+            plt.plot(freq, np.real(hp), label='Real part of h+ (full)')
+            plt.plot(freq, np.real(hp_rep), label='Real part of h+ (ROQ)')
+            plt.xlabel('Frequency')
+            plt.ylabel('Waveform')
+            plt.title('Waveform comparison')
+            plt.legend(loc=0)
+          
+            plt.figure(figsize=(15,9))
+            plt.plot(freq, np.imag(hp), label='Imag part of h+ (full)')
+            plt.plot(freq, np.imag(hp_rep), label='Imag part of h+ (ROQ)')
+            plt.xlabel('Frequency')
+            plt.ylabel('Waveform')
+            plt.title('Waveform comparison')
+            plt.legend(loc=0)
+          
             plt.figure(figsize=(15,9))
             plt.plot(freq, np.real(rep_error), label='Real part of h+') 
             plt.plot(freq, np.imag(rep_error), label='Imaginary part of h+')
             plt.xlabel('Frequency')
             plt.ylabel('Fractional Representation Error')
-            plt.title('Rep Error with np.linalg.pinv()')
+            plt.title('Representation Error')
             plt.legend(loc=0)
             plt.show()
         return freq, rep_error
@@ -605,28 +628,62 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    
-    # Basic example
+    approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto-FD' #'mlgw-bns'
 
-    pyroq = PyROQ(approximant       = 'teobresums-giotto',
+    # Range on which to train the ROQ
+    params_ranges = {
+        'mc'      : [30, 31]       ,
+        'q'       : [1, 1.2]       ,
+        's1s1'    : [0, 0.2]       ,
+        's1s2'    : [0, np.pi]     ,
+        's1s3'    : [0, 2.0*np.pi] ,
+        's2s1'    : [0, 0.2]       ,
+        's2s2'    : [0, np.pi]     ,
+        's2s3'    : [0, 2.0*np.pi] ,
+        'lambda1' : [0, 0]         ,
+        'lambda2' : [0, 0]         ,
+        'iota'    : [0, np.pi]     ,
+        'phiref'  : [0, 2*np.pi]   ,
+    }
+
+    # Point of the parameter space on which a targeted check is required
+    test_values = {
+        'mc'      : 1.3 ,
+        'q'       : 2   ,
+        's1s1'    : 0.  ,
+        's1s2'    : 0.2 ,
+        's1s3'    : -0.1,
+        's2s1'    : 0.  ,
+        's2s2'    : 0.15,
+        's2s3'    : -0.1,
+        'lambda1' : 1000,
+        'lambda2' : 1000,
+        'iota'    : 1.9 ,
+        'phiref'  : 0.6 ,
+    }
+
+    print('CHECKME: spins in spherical or cartesian?')
+
+    # Initialise ROQ
+    pyroq = PyROQ(approximant       = approx,
                   params_ranges     = params_ranges,
                   
-                  f_min             = 20,
+                  f_min             = 50,
                   f_max             = 1024,
-                  deltaF            = 1./4.,
+                  deltaF            = 1./1.,
                   
                   nts               = 123,
                   npts              = 80,
                   
-                  nbases            = 80,
-                  ndimlow           = 40,
-                  ndimstepsize      = 10,
-                  tolerance         = 1e-8,
+                  nbases            = 30,
+                  ndimlow           = 20,
+                  ndimstepsize      = 1,
+                  tolerance         = 1e-4,
                   
-                  nbases_quad       = 80,
+                  nbases_quad       = 30,
                   ndimlow_quad      = 20,
-                  ndimstepsize_quad = 10,
-                  tolerance_quad    = 1e-10,
+                  ndimstepsize_quad = 1,
+                  tolerance_quad    = 1e-5,
                   
                   parallel          = False,
                   nprocesses        = 4,
@@ -638,102 +695,31 @@ if __name__ == '__main__':
     # Create the bases and save them
     data = pyroq.run()
 
-    # Test waveform
-    parampoint = []
-    parampoint[pyroq.n2i['mc']] = 1.3
-    parampoint[pyroq.n2i['q']] = 2
-    parampoint[pyroq.n2i['s1s1']],parampoint[pyroq.n2i['s1s2']],parampoint[pyroq.n2i['s1s3']]=0.,0.2,-0.#CHECKME sph or cart?
-    parampoint[pyroq.n2i['s2s1']],parampoint[pyroq.n2i['s2s2']],parampoint[pyroq.n2i['s2s3']]=0.,0.15,-0.1#CHECKME sph or cart?
-    parampoint[pyroq.n2i['lambda1']] = 1000
-    parampoint[pyroq.n2i['lambda2']] = 1000
-    parampoint[pyroq.n2i['iota']] = 1.9
-    parampoint[pyroq.n2i['phiref']] = 0.6
-
     freq = pyroq.freq
-    data['lin_emp_nodes'] = np.searchsorted(freq, data['lin_f'])
+    data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
     data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
-    
-    pyroq.testrep_lin(data['lin_B'], data['lin_emp_nodes'],parampoint)
+
+    # Test waveform
+
+    print('Linear basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
+
+    print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
+
+    parampoint = []
+    for name, val in test_values.items():
+        parampoint[pyroq.n2i[name]] = test_values[name]
+
+    pyroq.testrep_lin( data['lin_B'] , data['lin_emp_nodes'] , parampoint)
     pyroq.testrep_quad(data['quad_B'], data['quad_emp_nodes'], parampoint)
 
-    # Test nsamples random samples in parameter space to see their representation surrogate errors
     surros = pyroq.surros_of_test_samples(data['lin_B'], data['lin_emp_nodes'])
 
     plt.figure(figsize=(15,9))
     plt.semilogy(surros,'o',color='black')
     plt.xlabel("Number of Random Test Points")
     plt.ylabel("Surrogate Error")
-    plt.title("IMRPhenomPv2")
+    plt.title(approx)
     plt.savefig("SurrogateErrorsRandomTestPoints.png")
     plt.show()
 
-    # More tests
-    
-    plot_only = 0
-    check_mass_range = 0
-    
-    ###########################################################################
-    # Below this point, ideally no parameter should be changed from the user. #
-    ###########################################################################
-
-    print("mass-min, mass-max: ", pyroq.mass_range(params_ranges['mc'][0], params_ranges['mc'][1], params_ranges['q'][0], params_ranges['q'][1]))
-    if check_mass_range:
-        m1_00,m2_00 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][0],params_ranges['q'][0])
-        m1_01,m2_01 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][0],params_ranges['q'][1])
-        m1_10,m2_10 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][1],params_ranges['q'][0])
-        m1_11,m2_11 = pyroq.get_m1m2_from_mcq(params_ranges['mc'][1],params_ranges['q'][1])
-        
-        print(m1_00,m2_00, m1_00+m2_00)
-        print(m1_01,m2_01, m1_01+m2_01)
-        print(m1_10,m2_10, m1_10+m2_10)
-        print(m1_11,m2_11, m1_11+m2_11)
-        exit()
-
-    hp1 = pyroq.hp1
-    params_ini = pyroq.params_ini
-
-    # Search for linear basis elements to build and save linear ROQ data in the local directory.
-    known_bases_start = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
-    basis_waveforms_start = np.array([hp1])
-    residual_modula_start = np.array([0.0])
-    known_bases, params, residual_modula = pyroq.bases_searching_linear_results_unnormalized(known_bases_start, basis_waveforms_start, params_ini, residual_modula_start)
-    
-    print(known_bases.shape, residual_modula)
-
-    # Create ROQ (save to file).
-    b_linear, fnodes_linear  = pyroq.roqs_lin(known_bases)
-
-    # Check on test waveform
-    ndim = b_linear.shape[1]
-    freq = pyroq.freq 
-    emp_nodes = np.searchsorted(freq, fnodes_linear)
-
-    print(b_linear)
-    print("emp_nodes", emp_nodes)
-    
-    pyroq.testrep_lin(b_linear, emp_nodes, parampoint)
-
-    # Test nsamples random samples in parameter space to see their representation surrogate errors
-    surros = pyroq.surros_of_test_samples(b_linear, emp_nodes)
-
-    plt.figure(figsize=(15,9))
-    plt.semilogy(surros,'o',color='black')
-    plt.xlabel("Number of Random Test Points")
-    plt.ylabel("Surrogate Error")
-    plt.title("IMRPhenomPv2")
-    plt.savefig("SurrogateErrorsRandomTestPoints.png")
-    plt.show()
-
-    # Search for quadratic basis elements to build & save quadratic ROQ data.
-    hp1_quad = (np.absolute(hp1))**2
-    known_quad_bases_start = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
-    basis_waveforms_quad_start = np.array([hp1_quad])
-    residual_modula_start = np.array([0.0])
-    known_quad_bases,params_quad,residual_modula_quad = pyroq.bases_searching_quadratic_results_unnormalized(known_quad_bases_start, basis_waveforms_quad_start, params_ini, residual_modula_start)
-    b_quad, fnodes_quad = pyroq.roqs_quad(known_quad_bases)
-    
-    ndim_quad = b_quad.shape[1]
-    freq = pyroq.freq 
-    emp_nodes_quad = np.searchsorted(freq, fnodes_quad)
-
-    pyroq.testrep_quad(b_quad, emp_nodes_quad, parampoint)
+#    os.system('mv ./testrep.png ./testrepquad.png {}/.'.format(run_tag))

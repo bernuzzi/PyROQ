@@ -79,6 +79,8 @@ try:
             if 'ecc' is not in p.keys():
                 p['ecc'] = 0.
 
+            #CHECKME: do the same check as above for the spins?
+
             # Make sure all the params are up-to-date
             # PyROQ might have been initialized with an empty waveform_params
             # relying on the default here.
