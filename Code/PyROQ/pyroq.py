@@ -18,7 +18,7 @@ import EOBRun_module
 try: 
     from mlgw_bns import ParametersWithExtrinsic, Model
 except:
-    warning.warn('Skipping import of mlgw_bns')
+    warnings.warn('Skipping import of mlgw_bns')
 
 # EOB helpers ###
 TEOBResumS_version = [

@@ -21,27 +21,39 @@ plot_params = {'legend.fontsize': 'x-large',
                'ytick.labelsize':'x-large' }
 pylab.rcParams.update(plot_params)
 
-print('what about phiref handling and interp_freqs?')
-
 # Intrinsic parameter space on which the interpolants will be constructed
 intrinsic_params = {
-    'mc'      : [0.9, 1.4]                                , #training range of MLGW
-    'q'       : [1, 3]                                    ,
-    's1sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]], 
-    's2sphere': [[0, 0, 0], [0.5, numpy.pi, 2.0*numpy.pi]],
+    'mc'      : [30, 31]                                , #training range of MLGW
+    'q'       : [1, 1.2]                                    ,
+    's1sphere': [[0, 0, 0], [0.2, numpy.pi, 2.0*numpy.pi]],
+    's2sphere': [[0, 0, 0], [0.2, numpy.pi, 2.0*numpy.pi]],
     'ecc'     : [0.0, 0.0]                                ,
-    'lambda1' : [5, 5000]                                 ,
-    'lambda2' : [5, 5000]                                 ,
+    'lambda1' : [0, 0]                                 ,
+    'lambda2' : [0, 0]                                 ,
     'iota'    : [0, numpy.pi]                             ,
     'phiref'  : [0, 2*numpy.pi]                           ,
 }
 
+testing_nsamples = 100 # testing nsamples random samples in parameter space to see their representation surrogate errors
+
+test_mc      = 30.5
+test_q       = 1.1
+test_s1      = [0.1,0.2,0.1]
+test_s2      = [0.1,0.15,0.1]
+test_ecc     = 0
+test_lambda1 = 0
+test_lambda2 = 0
+test_iota    = 1.9
+test_phiref  = 0.6
+
 # Frequency axis on which the interpolant will be constructed
 f_min, f_max, deltaF = 50, 1024, 1/1.
-approximant = 'teobresums-giotto-FD' #'mlgw-bns'
+# waveFlags = pyroq.eob_parameters()
+# approximant = 'teobresums-giotto-FD' #'mlgw-bns'
+waveFlags = lal.CreateDict()
+approximant = lalsimulation.IMRPhenomPv2
 
 run_tag = 'test_freqs'
-if not os.path.exists(run_tag): os.makedirs(run_tag)
 # Computing parameters
 parallel = 0 # The parallel=1 will turn on multiprocesses to search for a new basis. To turn it off, set it to be 0.
              # Do not turn it on if the waveform generation is not slow compared to data reading and writing to files.
@@ -78,10 +90,11 @@ check_mass_range = 0
 # Below this point, ideally no parameter should be changed. #
 #############################################################
 
+if not os.path.exists(run_tag): os.makedirs(run_tag)
+
 # Dummy value, distance does not enter the interolants construction
 distance = 10 * LAL_PC_SI * 1.0e6  # 10 Mpc is default 
 
-waveFlags = pyroq.eob_parameters()
 print("mass-min, mass-max: ", pyroq.massrange(intrinsic_params['mc'][0], intrinsic_params['mc'][1], intrinsic_params['q'][0], intrinsic_params['q'][1]))
 
 if check_mass_range:
@@ -131,26 +144,15 @@ print('Linear interpolant dimensions:', b_linear.shape)
 print('Indices of new linear frequency nodes: ', emp_nodes_linear)
 print('Linear basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(fnodes_linear), len(freq)/len(fnodes_linear)))
 
-test_mc      = 45.5
-test_q       = 1.1
-test_s1      = [0.1,0.2,-0.]
-test_s2      = [0.1,0.15,-0.1]
-test_ecc     = 0
-test_lambda1 = 200
-test_lambda2 = 200
-test_iota    = 1.9
-test_phiref  = 0.6
-
 pyroq.testrep(b_linear, emp_nodes_linear, test_mc, test_q, test_s1, test_s2, test_ecc, test_lambda1, test_lambda2, test_iota, test_phiref, distance, deltaF, f_min, f_max, waveFlags, approximant)
 
-nsamples = 100 # testing nsamples random samples in parameter space to see their representation surrogate errors
-surros = pyroq.surros_of_test_samples(nsamples, nparams, params_low, params_high, tolerance, b_linear, emp_nodes_linear, distance, deltaF, f_min, f_max, waveFlags, approximant)
+surros = pyroq.surros_of_test_samples(testing_nsamples, nparams, params_low, params_high, tolerance, b_linear, emp_nodes_linear, distance, deltaF, f_min, f_max, waveFlags, approximant)
 
 plt.figure(figsize=(15,9))
 plt.semilogy(surros,'o',color='black')
 plt.xlabel("Number of Random Test Points")
 plt.ylabel("Surrogate Error")
-plt.title("TEOB_FD")
+plt.title(approximant)
 plt.savefig(os.path.join(run_tag,"SurrogateErrorsRandomTestPoints.png"))
 
 # Quadratic basis
