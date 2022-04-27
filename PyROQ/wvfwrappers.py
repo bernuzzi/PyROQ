@@ -19,10 +19,10 @@ class ZeroWf:
     def generate_waveform(self, p, deltaF, f_min, f_max):
         # Note: in PyROQ p is built from a copy of waveform_params
         #       but if empty there, waveform_params is initialized here
-        if 'm1' or 'm2' is not in p.keys():
+        if (('m1' not in p.keys()) or ('m2' not in p.keys())):
             print('masses must be always passed')
-            raise 
-        if 'iota' or 'phiRef' is not in p.keys():
+            raise
+        if (('iota' not in p.keys()) or ('phiRef' not in p.keys())):
             print('iota and phiRef must be always passed')
             raise
         freq = np.arange(f_min,f_max,deltaF)
@@ -69,14 +69,14 @@ try:
             # This is redundant and incomplete, see
             # https://github.com/gwastro/pycbc/blob/master/pycbc/waveform/waveform.py#L77
             # but it should be Ok
-            if 'lambda1' is in p.keys():
+            if 'lambda1' in p.keys():
                 if p['lambda1'] is not None:
                     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(self.waveform_params, p['lambda1'])
-            if 'lambda2' is in p.keys():
+            if 'lambda2' in p.keys():
                 if p['lambda2'] is not None:
                     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(self.waveform_params, p['lambda2'])
 
-            if 'ecc' is not in p.keys():
+            if 'ecc' not in p.keys():
                 p['ecc'] = 0.
 
             #CHECKME: do the same check as above for the spins?
@@ -194,30 +194,30 @@ try:
             s1x,s1y,s1z = 0.,0.,0.
             s2x,s2y,s2z = 0.,0.,0.
             if p['use_spins'] == TEOBResumS_spins['precessing']:
-                if 's1x' or 's1y' or 's1z' is not in p.keys():
+                if (('s1x' not in p.keys()) or ('s1y' not in p.keys()) or ('s1z' not in p.keys())):
                     raise ValueError('spin1 parameters missing')
-                if 's2x' or 's2y' or 's2z' is not in p.keys():
+                if (('s2x' not in p.keys()) or ('s2y' not in p.keys()) or ('s2z' not in p.keys())):
                     raise ValueError('spin2 parameters missing')
 
                 s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
                 s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
                 
             elif p['use_spins'] == TEOBResumS_spins['aligned']:
-                if 's1z' is not in p.keys():
+                if 's1z' not in p.keys():
                     raise ValueError('spin1 parameters missing')
-                if 's2z' is not in p.keys():
+                if 's2z' not in p.keys():
                     raise ValueError('spin2 parameters missing')
 
                 s1z = p['s1z']
                 s2z = p['s2z']
                            
             lambda1,lambda2 = 0.,0.
-            if 'lambda1' is in p.keys():
+            if 'lambda1' in p.keys():
                lambda1 = p['lambda1']
-            if 'lambda2' is in p.keys():
+            if 'lambda2' in p.keys():
                lambda2 = p['lambda2']
 
-            if 'ecc' is not in p.keys():
+            if 'ecc' not in p.keys():
                 p['ecc'] = 0.
             if(abs(p['ecc') > 1e-12):
                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
@@ -307,34 +307,34 @@ try:
 
             s1x,s1y,s1z = 0,0,0
             s2x,s2y,s2z = 0,0,0
-            if 's1z' is not in p.keys():
+            if 's1z' not in p.keys():
                raise ValueError('spin1 parameters missing')
-            if 's2z' is not in p.keys():
+            if 's2z' not in p.keys():
                raise ValueError('spin2 parameters missing')
             s1z = p['s1z']
             s2z = p['s2z']
 
             # Precessing spins are not supported
-            if 's1x' is in p.keys(): s1x = p['s1x']
-            if 's1y' is in p.keys(): s1y = p['s1y']
-            if 's2x' is in p.keys(): s2x = p['s2x']
-            if 's2y' is in p.keys(): s2y = p['s2y']
+            if 's1x' in p.keys(): s1x = p['s1x']
+            if 's1y' in p.keys(): s1y = p['s1y']
+            if 's2x' in p.keys(): s2x = p['s2x']
+            if 's2y' in p.keys(): s2y = p['s2y']
             if((abs(s1x) > 1e-6) or (abs(s1y) > 1e-6)):
                 raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
             if((abs(s2x) > 1e-6) or (abs(s2y) > 1e-6)):
                 raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
                
             lambda1,lambda2 = 0.,0.
-            if 'lambda1' is in p.keys():
+            if 'lambda1' in p.keys():
                lambda1 = p['lambda1']
-            if 'lambda2' is in p.keys():
+            if 'lambda2' in p.keys():
                lambda2 = p['lambda2']   
             if((abs(lambda1) < 5.) or (abs(lambda2) < 5.)):
                 raise ValueError("lambdas>5 but ({},{}) were passed.".format(lambda1, lambda2))
             if((abs(lambda1) > 5000.) or (abs(lambda2) > 5000.)):
                 raise ValueError("lambdas<5000 but ({},{}) were passed.".format(lambda1, lambda2))
             
-            if 'ecc' is not in p.keys():
+            if 'ecc' not in p.keys():
                 p['ecc'] = 0.
             if(abs(p['ecc']) > 1e-12):
                 raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
