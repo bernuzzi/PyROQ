@@ -301,10 +301,10 @@ class PyROQ:
         return np.sqrt(np.vdot(residual, residual))
     
     def compute_modulus_lin(self, paramspoint, known_bases):
-        return self._compute_modulus(paramspoint, known_bases, term='lin'):
+        return self._compute_modulus(paramspoint, known_bases, term='lin')
 
     def compute_modulus_quad(self,paramspoint, known_bases):
-        return self._compute_modulus(paramspoint, known_bases, term='quad'):
+        return self._compute_modulus(paramspoint, known_bases, term='quad')
 
     def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term='lin'):
         """
@@ -316,7 +316,7 @@ class PyROQ:
         if self.parallel:
             paramspointslist = paramspoints.tolist()
             pool = mp.Pool(processes=nprocesses)
-            modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term=term)) for paramspoint in paramspointslist]
+            modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
             npts = len(paramspoints) # = self.npts 
@@ -333,7 +333,8 @@ class PyROQ:
         else:
             raise ValueError("unknown term")
         basis_new = self.gram_schmidt(known_bases, hp)
-       return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
+       
+        return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
 
     def least_match_linear_waveform_unnormalized(self, paramspoints, known_bases):
         return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='lin')
@@ -567,7 +568,7 @@ class PyROQ:
             pass
         elif term == 'quad':
             hp = (np.absolute(hp))**2
-        elif:
+        else:
             raise ValueError("unknown term") 
         hp_emp = hp[emp_nodes]
         hp_rep = np.dot(b,hp_emp)
