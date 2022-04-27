@@ -59,7 +59,7 @@ class PyROQ:
     def __init__(self,
                  approximant       = 'teobresums-giotto',
                  # Dictionary with any parameter needed for the waveform approximant
-                 waveform_params   = {},
+                 additional_waveform_params = {},
                  # Intrinsic parameter space on which the interpolants will be constructed
                  params_ranges     = defaults['params_ranges'],
                  # Frequency axis on which the interpolant will be constructed
@@ -105,7 +105,7 @@ class PyROQ:
 
         # Read input params
         self.approximant       = approximant
-        self.waveform_params   = waveform_params
+        self.additional_waveform_params = additional_waveform_params
         self.params_ranges     = params_ranges
         self.f_min             = f_min
         self.f_max             = f_max
@@ -139,8 +139,7 @@ class PyROQ:
     
         # Choose waveform
         if self.approximant in WfWrapper.keys():
-            self.wvf = WfWrapper[self.approximant](self.approximant,
-                                                   self.waveform_params)
+            self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
         else:
             raise ValueError('unknown approximant')
 
@@ -216,7 +215,7 @@ class PyROQ:
         Update the waveform parameters (dictionary) with those in
         paramspoint (np array)
         """
-        p = self.waveform_params.copy()
+        p = {}
         for i,k in self.i2n.items():
             p[k] = paramspoint[i]
 
@@ -229,7 +228,6 @@ class PyROQ:
             p['s1xyz'] = p['s1x'],p['s1y'],p['s1z']
         if(('s2x' in self.n2i.keys()) and ('s2y' in self.n2i.keys()) and ('s2z' in self.n2i.keys())):
             p['s2xyz'] = p['s2x'],p['s2y'],p['s2z']
-
         return p
          
     def generate_params_points(self,npts=0,round_to_digits=6):

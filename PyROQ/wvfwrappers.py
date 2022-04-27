@@ -52,11 +52,11 @@ try:
     class LALWf:
         def __init__(self,
                      approximant,
-                     waveform_params = {}):
+                     additional_waveform_params = {}):
 
             self.approximant = approximant
 
-            #FIXME: for LAL waveforms, waveform_params passed in input are currently ignored
+            #FIXME: for LAL waveforms, additional_waveform_params is currently ignored
             self.waveform_params = lal.CreateDict()
                 
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
@@ -65,7 +65,6 @@ try:
             # This is redundant and incomplete, see
             # https://github.com/gwastro/pycbc/blob/master/pycbc/waveform/waveform.py#L77
             # but it should be Ok
-            print(self.waveform_params, type(self.waveform_params))
         
             if 'lambda1' in p.keys():
                 if p['lambda1'] is not None:
@@ -76,15 +75,8 @@ try:
 
             if 'ecc' not in p.keys():
                 p['ecc'] = 0.
-            print(dir(self.waveform_params), type(self.waveform_params), self.waveform_params.this)
             
-            print('\n\nCHECK!!! Is this adding a new number at each iteration? Same for TEOB with .update\n\n')
-
             #CHECKME: do the same check as above for the spins?
-
-            # Make sure all the params are up-to-date
-            # PyROQ might have been initialized with an empty waveform_params
-            # relying on the default here.
 
             [plus, cross] = lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
                                                                       p['m2']*LAL_MSUN_SI,
@@ -93,9 +85,9 @@ try:
                                                                       distance*(LAL_PC_SI*1e6),
                                                                       p['iota'],
                                                                       p['phiref'],
-                                                                      0,  # 'long_asc_nodes'
+                                                                      0, # 'long_asc_nodes'
                                                                       p['ecc'],
-                                                                      0,  # 'mean_per_ano'
+                                                                      0, # 'mean_per_ano'
                                                                       deltaF,
                                                                       f_min,
                                                                       f_max,
@@ -141,14 +133,13 @@ try:
     class WfTEOBResumS:
         def __init__(self,
                      approximant,
-                     waveform_params = {}):
+                     additional_waveform_params = {}):
             
             self.approximant = approximant
 
-            if waveform_params:
-                self.waveform_params = waveform_params
-            else:
-                self.waveform_params = self.set_parameters()
+            # Start with the defaults, and update according to user request
+            self.waveform_params = self.set_parameters()
+            self.waveform_params.update(additional_waveform_params)
 
         def modes_to_k(self,modes):
             """
@@ -254,8 +245,6 @@ try:
 
             p['srate'              ] = f_max*2  # If TD, srate at which the ODE is solved. Possibly unused, CHECK.
 
-            # PyROQ might have been initialized with an empty waveform_params
-            # relying on the default here.
             self.waveform_params.update(p)
             
             if p['domain'] == TEOBResumS_domain['TD']:
@@ -292,10 +281,11 @@ try:
     class WfMLGW:
         def __init__(self,
                      approximant,
-                     waveform_params = {}):
-               
+                     additional_waveform_params = {}):
+            
+            # Currently unused, for this waveform
             self.approximant = approximant
-            self.waveform_params = waveform_params
+            self.waveform_params = additional_waveform_params
   
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
             
@@ -342,11 +332,6 @@ try:
                q           = 1./q
                s1z,s2z     = s2z,s1z
                lambda1,lambda2 = lambda2,lambda1
-
-            # Make sure all the params are up-to-date
-            # PyROQ might have been initialized with an empty waveform_params
-            # relying on the default here.
-            self.waveform_params.update(p)
                
             # Call it
             model       = Model.default() ##TODO here you can use self.approximant to call any MLGW-BNS Model
