@@ -86,8 +86,7 @@ try:
             # relying on the default here.
             self.waveform_params.update(p)
                 
-            [plus, cross] =
-            lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
+            [plus, cross] = lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
                                                       p['m2']*LAL_MSUN_SI,
                                                       p['s1x'], p['s1y'], p['s1z'],
                                                       p['s2x'], p['s2y'], p['s2z'],
@@ -219,7 +218,7 @@ try:
 
             if 'ecc' not in p.keys():
                 p['ecc'] = 0.
-            if(abs(p['ecc') > 1e-12):
+            if(abs(p['ecc']) > 1e-12):
                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
                 
             if q < 1. :

@@ -1,4 +1,4 @@
-import matplotlib, multiprocessing as mp, numpy as np, random, warnings
+import matplotlib, multiprocessing as mp, numpy as np, os, random, warnings
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
@@ -226,13 +226,13 @@ class PyROQ:
             p[k] = paramspoint[i]
 
         # additionally store spin vectors
-        if 's1s1' and 's1s2' and 's1s3' in self.n2i.keys():       
+        if(('s1s1' in self.n2i.keys()) and ('s1s2' in self.n2i.keys()) and ('s1s3' in self.n2i.keys())):
             p['s1sphere'] = p['s1s1'],p['s1s2'],p['s1s3']
-        if 's2s1' and 's2s2' and 's2s3' in self.n2i.keys():       
+        if(('s2s1' in self.n2i.keys()) and ('s2s2' in self.n2i.keys()) and ('s2s3' in self.n2i.keys())):
             p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
-        if 's1x' and 's1y' and 's1z' in self.n2i.keys():       
+        if(('s1x' in self.n2i.keys()) and ('s1y' in self.n2i.keys()) and ('s1z' in self.n2i.keys())):
             p['s1xyz'] = p['s1x'],p['s1y'],p['s1z']
-        if 's2x' and 's2y' and 's2z' in self.n2i.keys():       
+        if(('s2x' in self.n2i.keys()) and ('s2y' in self.n2i.keys()) and ('s2z' in self.n2i.keys())):
             p['s2xyz'] = p['s2x'],p['s2y'],p['s2z']
 
         return p
@@ -260,12 +260,12 @@ class PyROQ:
             p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
 
         if update_sxyz:
-            if 's1s1' and 's1s2' and 's1s3' in self.n2i.keys():
+            if(('s1s1' in self.n2i.keys()) and ('s1s2' in self.n2i.keys()) and ('s1s3' in self.n2i.keys())):
                 p['s1sphere'] = p['s1s1'],p['s1s2'],p['s1s3']
                 p['s1xyz'] = self.spherical_to_cartesian(p['s1sphere']) 
                 p['s1x'],p['s1y'],p['s1z'] = p['s1xyz']
                 
-            if 's2s1' and 's2s2' and 's2s3' in self.n2i.keys():
+            if(('s2s1' in self.n2i.keys()) and ('s2s2' in self.n2i.keys()) and ('s2s3' in self.n2i.keys())):
                 p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
                 p['s2xyz'] = self.spherical_to_cartesian(p['s2sphere'])
                 p['s2x'],p['s2y'],p['s2z'] = p['s2xyz']
@@ -689,7 +689,7 @@ if __name__ == '__main__':
                   parallel          = False,
                   nprocesses        = 4,
                   
-                  outpudir          ='./test',
+                  outputdir         ='./test',
                   verbose           = True,
                   )
 
