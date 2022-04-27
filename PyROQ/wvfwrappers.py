@@ -5,7 +5,6 @@ import numpy as np, warnings
 
 WfWrapper = {} # collect all the wvf wrappers
 
-
 # Example of waveform wrapper for PyROQ
 # A wrapper must be a class with these attributes/methods
 # -------------------------------------------------------
@@ -29,7 +28,6 @@ class ZeroWf:
         hp = np.zeros(len(freq))
         hc = np.zeros(len(freq))
         return hp, hc
-
 
 # LAL
 # ---
@@ -58,17 +56,17 @@ try:
 
             self.approximant = approximant
 
-            if waveform_params:
-                self.waveform_params = waveform_params
-            else:
-                self.waveform_params = lal.CreateDict()                
+            #FIXME: for LAL waveforms, waveform_params passed in input are currently ignored
+            self.waveform_params = lal.CreateDict()
                 
-        def generate_waveform(self, p, deltaF, f_min, f_max):
+        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
 
             # Update baseline waveform_params with p
             # This is redundant and incomplete, see
             # https://github.com/gwastro/pycbc/blob/master/pycbc/waveform/waveform.py#L77
             # but it should be Ok
+            print(self.waveform_params, type(self.waveform_params))
+        
             if 'lambda1' in p.keys():
                 if p['lambda1'] is not None:
                     lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(self.waveform_params, p['lambda1'])
@@ -78,30 +76,32 @@ try:
 
             if 'ecc' not in p.keys():
                 p['ecc'] = 0.
+            print(dir(self.waveform_params), type(self.waveform_params), self.waveform_params.this)
+            
+            print('\n\nCHECK!!! Is this adding a new number at each iteration? Same for TEOB with .update\n\n')
 
             #CHECKME: do the same check as above for the spins?
 
             # Make sure all the params are up-to-date
             # PyROQ might have been initialized with an empty waveform_params
             # relying on the default here.
-            self.waveform_params.update(p)
-                
+
             [plus, cross] = lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
-                                                      p['m2']*LAL_MSUN_SI,
-                                                      p['s1x'], p['s1y'], p['s1z'],
-                                                      p['s2x'], p['s2y'], p['s2z'],
-                                                      p['distance']*(LAL_PC_SI*1e6),
-                                                      p['iota'],
-                                                      p['phiRef'],
-                                                      0,  # 'long_asc_nodes'
-                                                      p['ecc'],
-                                                      0,  # 'mean_per_ano'
-                                                      deltaF,
-                                                      f_min,
-                                                      f_max,
-                                                      0,
-                                                      self.waveform_params,
-                                                      self.approximant)
+                                                                      p['m2']*LAL_MSUN_SI,
+                                                                      p['s1x'], p['s1y'], p['s1z'],
+                                                                      p['s2x'], p['s2y'], p['s2z'],
+                                                                      distance*(LAL_PC_SI*1e6),
+                                                                      p['iota'],
+                                                                      p['phiref'],
+                                                                      0,  # 'long_asc_nodes'
+                                                                      p['ecc'],
+                                                                      0,  # 'mean_per_ano'
+                                                                      deltaF,
+                                                                      f_min,
+                                                                      f_max,
+                                                                      0,
+                                                                      self.waveform_params,
+                                                                      self.approximant)
             hp = plus.data.data
             hc = cross.data.data
             hp = hp[np.int(f_min/deltaF):np.int(f_max/deltaF)]
@@ -109,7 +109,6 @@ try:
             
             return hp, hc
 
-    
     # Add a wrapper for each approximant
     for a in approximants:
         WfWrapper[a] = LALWf
@@ -184,7 +183,7 @@ try:
             hctilde = np.fft.rfft(-hc) * dt 
             return hptilde, hctilde
   
-        def generate_waveform(self, p, deltaF, f_min, f_max):
+        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
 
             # Impose the correct convention on masses
             m1,m2 = p['m1'],p['m2']
@@ -244,9 +243,9 @@ try:
             else:
                 p['chi1'           ] = s1z
                 p['chi2'           ] = s2z
-            p['distance'           ] = p['distance'] # Mpc
+            p['distance'           ] = distance # Mpc
             p['inclination'        ] = p['iota']
-            p['coalescence_angle'  ] = p['phiRef']
+            p['coalescence_angle'  ] = p['phiref']
 
             # Generator parameters
             p['initial_frequency'  ] = f_min    # Hz
@@ -298,7 +297,7 @@ try:
             self.approximant = approximant
             self.waveform_params = waveform_params
   
-        def generate_waveform(self, p, deltaF, f_min, f_max):
+        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
             
             # Impose the correct convention on masses
             m1,m2 = p['m1'],p['m2']
@@ -357,7 +356,7 @@ try:
                                                   lambda2,
                                                   p['s1z'],
                                                   p['s2z'],
-                                                  p['distance'],
+                                                  distance,
                                                   p['iota'],
                                                   p['m1']+p['m2'],
                                                   reference_phase=p['phiRef'])

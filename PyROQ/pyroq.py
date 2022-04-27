@@ -112,11 +112,6 @@ class PyROQ:
         self.deltaF            = deltaF
         self.distance          = distance
 
-        self.waveform_params['distance'] = self.distance
-        self.waveform_params['deltaF']   = self.deltaF
-        self.waveform_params['f_min']    = self.f_min
-        self.waveform_params['f_max']    = self.f_max
-
         self.nts               = nts
         self.npts              = npts
 
@@ -178,7 +173,7 @@ class PyROQ:
         Calculating the normalized residual (= a new basis) of a vector vec from known bases
         """
         for i in np.arange(0,len(bases)):
-            vec = vec - proj(bases[i], vec)
+            vec = vec - self.proj(bases[i], vec)
         return vec/np.sqrt(np.vdot(vec,vec)) # normalized new basis
     
     def overlap_of_two_waveforms(self, wf1, wf2):
@@ -269,8 +264,8 @@ class PyROQ:
                 p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
                 p['s2xyz'] = self.spherical_to_cartesian(p['s2sphere'])
                 p['s2x'],p['s2y'],p['s2z'] = p['s2xyz']
-            
-        hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max)
+        
+        hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp
     
     def generate_a_waveform_from_mcq(self, paramspoint): 
@@ -378,19 +373,21 @@ class PyROQ:
         """
         if self.verbose:
             print('nparams = {}'.format(self.nparams))
-            print('name | index | ( min , max ) | start')
+            print('index | name | ( min - max ) | start')
 
+        self.params_low, self.params_hig, self.params_ini = [], [], []
         # Set bounds
         for i,n in self.i2n.items():
-            self.params_low[i] = self.params_ranges[n][0]
-            self.params_hig[i] = self.params_ranges[n][1] 
-            self.params_ini[i] = self.params_low[i] * 1.1 #CHECKME
+            self.params_low.append(self.params_ranges[n][0])
+            self.params_hig.append(self.params_ranges[n][1])
+            self.params_ini.append(self.params_low[i] * 1.1) #CHECKME: this should not be hardcoded
         
             if self.verbose:
-                print('{} | {} | ( {} - {} ) | {}'.format(i,n,
-                                                     self.params_low[i],
-                                                     self.params_hig[i],
-                                                     self.params_ini[i]))
+                print('{} | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
+                                                                      n.ljust(len('lambda1')),
+                                                                      self.params_low[i],
+                                                                      self.params_hig[i],
+                                                                      self.params_ini[i]))
         # First waveform
         self.hp1 = self.generate_a_waveform_from_mcq(self.params_ini)
         return 
@@ -535,7 +532,7 @@ class PyROQ:
         basis_waveforms_start = np.array([hp1])
         residual_modula_start = np.array([0.0])
         
-        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_ini, residual_modula, term='lin')
+        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms_start, params_ini, residual_modula_start, term='lin')
         B, f = self._roqs(bases, term='lin')
 
         d['lin_B']      = B
@@ -549,7 +546,7 @@ class PyROQ:
         basis_waveforms_start = np.array([hp1_quad])
         residual_modula_start = np.array([0.0])
         
-        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms, params_ini, residual_modula, term='quad')
+        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms_start, params_ini, residual_modula_start, term='quad')
         B, f = self._roqs(bases, term='quad')
         
         d['quad_B']      = B
