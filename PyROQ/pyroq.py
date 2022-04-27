@@ -351,8 +351,9 @@ class PyROQ:
             paramspoints = self.generate_params_points()
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
             if self.verbose:
-                print("Iter: ", k+1, "and new basis waveform", params_new)
+                print("Iter ({}): ".format(term), k+1, "and new basis waveform", params_new)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
+            print('\n\n', params, type(params), len(params),  '\n', params_new, type(params_new), len(params_new), '\n\n')
             params = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
         np.save(fbase,known_bases)
@@ -373,19 +374,20 @@ class PyROQ:
             print('nparams = {}'.format(self.nparams))
             print('index | name | ( min - max ) | start')
 
-        self.params_low, self.params_hig, self.params_ini = [], [], []
+        self.params_low, self.params_hig, params_ini_list = [], [], []
         # Set bounds
         for i,n in self.i2n.items():
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
-            self.params_ini.append(self.params_low[i] * 1.1) #CHECKME: this should not be hardcoded
+            params_ini_list.append((self.params_low[i] + (self.params_hig[i] - self.params_low[i]) * 0.1)) #CHECKME: this should not be hardcoded
         
             if self.verbose:
                 print('{} | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
                                                                       n.ljust(len('lambda1')),
                                                                       self.params_low[i],
                                                                       self.params_hig[i],
-                                                                      self.params_ini[i]))
+                                                                      params_ini_list[i]))
+        self.params_ini = np.array([params_ini_list])
         # First waveform
         self.hp1 = self.generate_a_waveform_from_mcq(self.params_ini)
         return 
