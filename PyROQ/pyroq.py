@@ -304,23 +304,24 @@ class PyROQ:
     
     def _compute_modulus(self, paramspoint, known_bases, term='lin'):
         
+        print(paramspoint)
+        exit()
         hp = self._paramspoint_to_wave(paramspoint)
         
         if   term == 'lin' : residual = hp
         elif term == 'quad': residual = (np.absolute(hp))**2
         else               : raise ValueError("unknown term")
         
+        if(term=='quad'):
+            print(hp, type(hp))
         for k in np.arange(0,len(known_bases)):
+            if(term=='quad'):
+                print(known_bases[k], type(known_bases[k]))
+                exit()
             residual -= self.proj(known_bases[k],hp)
         
         return np.sqrt(np.vdot(residual, residual))
-    
-    def compute_modulus_lin(self, paramspoint, known_bases):
-        return self._compute_modulus(paramspoint, known_bases, term='lin')
-
-    def compute_modulus_quad(self,paramspoint, known_bases):
-        return self._compute_modulus(paramspoint, known_bases, term='quad')
-
+        
     def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term='lin'):
         """
         Now generating N=npts waveforms at points that are 
