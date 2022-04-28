@@ -401,7 +401,7 @@ class PyROQ:
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
 #            params_ini_list.append((self.params_low[i] + (self.params_hig[i] - self.params_low[i]) * 0.1)) #CHECKME: this should not be hardcoded
-            params_ini_list.append(self.params_low[i]) #CHECKME: this should not be hardcoded
+            params_ini_list.append(self.params_low[i])
 
             if self.verbose:
                 print('{}    | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
@@ -448,21 +448,22 @@ class PyROQ:
         return np.array([ndim, inverse_V, emp_nodes])
 
     def empnodes_quad(self, ndim, known_bases):
-        return empnodes(self, ndim, known_bases) #CHECKME: this routine appears identical to the above (duplicated in original code?)
+        print('\n\nCHECKME: this routine appears identical to the above (duplicated in original code?)\n\n')
+        return empnodes(self, ndim, known_bases)
 
     def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin'):
-        hp = self.generate_a_waveform_from_mcq(paramspoint) 
-        if term == 'lin':
-            pass
-        elif term == 'quad':
-            hp = (np.absolute(hp))**2
-        else:
-            raise ValueError("unknown term")
         
-        Ci = np.dot(inverse_V, hp[emp_nodes])
+        hp = self.generate_a_waveform_from_mcq(paramspoint)
+        
+        if   term == 'lin' : pass
+        elif term == 'quad': hp = (np.absolute(hp))**2
+        else               : raise ValueError("unknown term")
+        
+        Ci           = np.dot(inverse_V, hp[emp_nodes])
         interpolantA = np.zeros(len(hp))+np.zeros(len(hp))*1j
+        
         for j in np.arange(0, ndim):
-            tmp = np.multiply(Ci[j], known_bases[j])
+            tmp           = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
 
         return (1-self.overlap_of_two_waveforms(hp, interpolantA))*self.deltaF
