@@ -305,22 +305,16 @@ class PyROQ:
     
     def _compute_modulus(self, paramspoint, known_bases, term='lin'):
 
-#        if(term=='quad'):
-#            print('\nparampoint inside quad compute modulus:')
-#            print(paramspoint, '\n\n')
         hp = self._paramspoint_to_wave(paramspoint)
-#        if(term=='quad'):
-#            print(hp, type(hp))
 
         if   term == 'lin' : residual = hp
         elif term == 'quad': residual = (np.absolute(hp))**2
         else               : raise ValueError("unknown term")
 
+        h_to_proj = residual
+
         for k in np.arange(0,len(known_bases)):
-#            if(term=='quad'):
-#                print(known_bases[k], type(known_bases[k]))
-#                exit()
-            residual -= self.proj(known_bases[k],hp)
+            residual -= self.proj(known_bases[k],h_to_proj)
         
         return np.sqrt(np.vdot(residual, residual))
         
