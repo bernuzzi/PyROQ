@@ -159,7 +159,13 @@ class PyROQ:
         self.outputdir         = outputdir
         self.verbose           = verbose
         
-        if not os.path.exists(self.outputdir): os.makedirs(self.outputdir)
+        if not os.path.exists(self.outputdir):
+            os.makedirs(self.outputdir)
+            os.makedirs(os.path.join(self.outputdir, 'Plots'))
+            os.makedirs(os.path.join(self.outputdir, 'ROQ_data'))
+            os.makedirs(os.path.join(self.outputdir, 'ROQ_data/Linear'))
+            os.makedirs(os.path.join(self.outputdir, 'ROQ_data/Quadratic'))
+
     
         # Choose waveform
         if self.approximant in WfWrapper.keys():
@@ -349,12 +355,12 @@ class PyROQ:
     def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term):
         if term == 'lin':
             nbases = self.nbases
-            fbase = self.outputdir+'/linearbases.npy'
-            fparams = self.outputdir+'/linearbasiswaveformparams.npy'
+            fbase = self.outputdir+'/ROQ_data/Linear/linearbases.npy'
+            fparams = self.outputdir+'/ROQ_data/Linear/linearbasiswaveformparams.npy'
         elif term=='quad':
             nbases = self.nbases_quad
-            fbase = self.outputdir+'/quadraticbases.npy'
-            fparams = self.outputdir+'/quadraticbasiswaveformparams.npy'
+            fbase = self.outputdir+'/ROQ_data/Quadratic/quadraticbases.npy'
+            fparams = self.outputdir+'/ROQ_data/Quadratic/quadraticbasiswaveformparams.npy'
         else:
             raise TermError
     
@@ -485,14 +491,14 @@ class PyROQ:
             ndimlow      = self.ndimlow
             ndimhigh     = self.ndimhigh
             ndimstepsize = self.ndimstepsize
-            froq         = self.outputdir+'/B_linear.npy'
-            fnodes       = self.outputdir+'/fnodes_linear.npy'
+            froq         = self.outputdir+'/ROQ_data/Linear/B_linear.npy'
+            fnodes       = self.outputdir+'/ROQ_data/Linear/fnodes_linear.npy'
         elif term == 'quad':
             ndimlow      = self.ndimlow_quad
             ndimhigh     = self.ndimhigh_quad
             ndimstepsize = self.ndimstepsize_quad
-            froq         = self.outputdir+'/B_quadratic.npy'
-            fnodes       = self.outputdir+'/fnodes_quadratic.npy'
+            froq         = self.outputdir+'/ROQ_data/Quadratic/B_quadratic.npy'
+            fnodes       = self.outputdir+'/ROQ_data/Quadratic/fnodes_quadratic.npy'
         else:
               raise TermError
 
@@ -579,7 +585,7 @@ class PyROQ:
         plt.xlabel('Frequency')
         plt.ylabel('Waveform')
         plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,'Waveform_comparison_real_{}.png'.format(term)))
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_real_{}.png'.format(term)))
         plt.legend(loc=0)
       
         plt.figure(figsize=(8,5))
@@ -588,7 +594,7 @@ class PyROQ:
         plt.xlabel('Frequency')
         plt.ylabel('Waveform')
         plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,'Waveform_comparison_imag_{}.png'.format(term)))
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_imag_{}.png'.format(term)))
         plt.legend(loc=0)
         
         plt.figure(figsize=(8,5))
@@ -597,7 +603,7 @@ class PyROQ:
         plt.xlabel('Frequency')
         plt.ylabel('Fractional Representation Error')
         plt.title('Representation Error ({})'.format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,'Representation_error_{}.png'.format(term)))
+        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_{}.png'.format(term)))
         plt.legend(loc=0)
         
         return freq, rep_error
@@ -634,7 +640,7 @@ class PyROQ:
         plt.semilogy(surros,'o',color='black')
         plt.xlabel("Number of Random Test Points")
         plt.ylabel("Surrogate Error ({})".format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,"Surrogate_errors_random_test_points_{}.png".format(term)))
+        plt.savefig(os.path.join(self.outputdir,"Plots/Surrogate_errors_random_test_points_{}.png".format(term)))
     
         return surros
 
