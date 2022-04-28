@@ -353,7 +353,7 @@ class PyROQ:
             if self.verbose:
                 print("Iter ({}): ".format(term), k+1, "and new basis waveform", params_new)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
-            print('\n\n', params, type(params), len(params),  '\n', params_new, type(params_new), len(params_new), '\n\n')
+#            print('\n\n', params, type(params), len(params),  '\n', params_new, type(params_new), len(params_new), '\n\n')
             params = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
         np.save(fbase,known_bases)
@@ -379,8 +379,9 @@ class PyROQ:
         for i,n in self.i2n.items():
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
-            params_ini_list.append((self.params_low[i] + (self.params_hig[i] - self.params_low[i]) * 0.1)) #CHECKME: this should not be hardcoded
-        
+#            params_ini_list.append((self.params_low[i] + (self.params_hig[i] - self.params_low[i]) * 0.1)) #CHECKME: this should not be hardcoded
+            params_ini_list.append(self.params_low[i]) #CHECKME: this should not be hardcoded
+
             if self.verbose:
                 print('{} | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
                                                                       n.ljust(len('lambda1')),
@@ -389,7 +390,7 @@ class PyROQ:
                                                                       params_ini_list[i]))
         self.params_ini = np.array([params_ini_list])
         # First waveform
-        self.hp1 = self.generate_a_waveform_from_mcq(self.params_ini)
+        self.hp1 = self.generate_a_waveform_from_mcq(self.params_low)
         return 
 
     def empnodes(self, ndim, known_bases, fact=100000000):
@@ -452,18 +453,18 @@ class PyROQ:
         return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'quad')
     
     def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term='lin'):
-        if term == 'lin':
-            tol = self.tolerance
-        elif term == 'quad':
-            tol = self.tolerance_quad
-        else:
-              raise ValueError("unknown term")
+        if   term == 'lin':  tol = self.tolerance
+        elif term == 'quad': tol = self.tolerance_quad
+        else:                raise ValueError("Unknown basis term requested.")
         
         paramspoints = self.generate_params_points()
-        surros = np.zeros(self.pnts)
+        surros = np.zeros(self.nts)
         count = 0
         for i, paramspoint in enumerate(paramspoints):
-            surros[i] = self._surroerror(ndim, inverse_V, emp_nodes, known_bases[0:ndim],
+            surros[i] = self._surroerror(ndim,
+                                         inverse_V,
+                                         emp_nodes,
+                                         known_bases[0:ndim],
                                          paramspoint, 
                                          term = term)
             if (surros[i] > tol):
