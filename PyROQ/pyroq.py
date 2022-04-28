@@ -299,17 +299,17 @@ class PyROQ:
         return self._paramspoint_to_wave(paramspoint, update_m1m2=False, update_sxyz=True)
     
     def _compute_modulus(self, paramspoint, known_bases, term='lin'):
+        
         hp = self._paramspoint_to_wave(paramspoint)
-        if term == 'lin':
-            residual = hp
-        elif  term == 'quad':
-            hp = (np.absolute(hp))**2
-            residual = hp
-        else:
-            raise ValueError("unknown term")
+        
+        if   term == 'lin' : residual = hp
+        elif term == 'quad': residual = (np.absolute(hp))**2
+        else               : raise ValueError("unknown term")
+        
         for k in np.arange(0,len(known_bases)):
             residual -= self.proj(known_bases[k],hp)
-        return np.sqrt(np.vdot(residual, residual))
+        
+        return np.real(np.sqrt(np.vdot(residual, residual)))
     
     def compute_modulus_lin(self, paramspoint, known_bases):
         return self._compute_modulus(paramspoint, known_bases, term='lin')
@@ -389,8 +389,9 @@ class PyROQ:
         Initialize parameter ranges and basis
         """
         if self.verbose:
-            print('nparams = {}'.format(self.nparams))
-            print('index | name | ( min - max ) | start')
+            print('\n\n######################\n# Initialising basis #\n######################\n')
+            print('nparams = {}\n'.format(self.nparams))
+            print('index | name    | ( min - max )           | start')
 
         self.params_low, self.params_hig, params_ini_list = [], [], []
         # Set bounds
@@ -401,7 +402,7 @@ class PyROQ:
             params_ini_list.append(self.params_low[i]) #CHECKME: this should not be hardcoded
 
             if self.verbose:
-                print('{} | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
+                print('{}    | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
                                                                       n.ljust(len('lambda1')),
                                                                       self.params_low[i],
                                                                       self.params_hig[i],

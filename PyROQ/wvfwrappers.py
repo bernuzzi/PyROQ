@@ -263,7 +263,7 @@ try:
         WfWrapper[a] = WfTEOBResumS
 
 except ModuleNotFoundError:
-    print('TEOBResumS module not found')
+    print('\nWarning: TEOBResumS module not found.\n')
 
 
 # MLGW-BNS
