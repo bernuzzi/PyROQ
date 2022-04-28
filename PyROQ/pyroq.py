@@ -28,6 +28,24 @@ defaults['params_ranges'] = {
     'phiref'  : [0, 2*np.pi]   ,
 }
 
+# Point of the parameter space on which a targeted check is required
+default_test_values = {
+        'mc'      : 1.3 ,
+        'q'       : 2   ,
+        's1s1'    : 0.  ,
+        's1s2'    : 0.2 ,
+        's1s3'    : -0.1,
+        's2s1'    : 0.  ,
+        's2s2'    : 0.15,
+        's2s3'    : -0.1,
+        'lambda1' : 1000,
+        'lambda2' : 1000,
+        'iota'    : 1.9 ,
+        'phiref'  : 0.6 ,
+}
+# Initialise test_values
+test_values = {}
+
 class PyROQ:
     """
     PyROQ Class
@@ -346,14 +364,14 @@ class PyROQ:
             fparams = self.outputdir+'/quadraticbasiswaveformparams.npy'
         else:
             raise ValueError("unknown term")
-        
+    
+        print('\n\n###########################\n# Starting {} iteration #\n###########################\n'.format(term.ljust(4)))
         for k in np.arange(0,nbases-1):
             paramspoints = self.generate_params_points()
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
             if self.verbose:
                 print("Iter ({}): ".format(term), k+1, "and new basis waveform", params_new)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
-#            print('\n\n', params, type(params), len(params),  '\n', params_new, type(params_new), len(params_new), '\n\n')
             params = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
         np.save(fbase,known_bases)
@@ -607,7 +625,12 @@ class PyROQ:
     def testrep_quad(self, b, emp_nodes, paramspoint, show=True):
         return self._testrep(b, emp_nodes, paramspoint, term='quad', show=show)
     
-    def surros_of_test_samples(self, b_linear, emp_nodes, nsamples=0):
+    def surros_of_test_samples(self, b_linear, emp_nodes, nsamples=0, term='lin'):
+        
+        if   term == 'lin':  tol = self.tolerance
+        elif term == 'quad': tol = self.tolerance_quad
+        else:                raise ValueError("Unknown basis term requested.")
+        
         if nsamples <= 0: nsamples = self.ntests
         ndim = len(emp_nodes)
         paramspoints = self.generate_params_points(npts=nsamples)
@@ -618,7 +641,7 @@ class PyROQ:
             hp_rep = np.dot(b_linear,hp_emp) 
             surros[i] = (1-self.overlap_of_two_waveforms(hp, hp_rep))*self.deltaF
             if self.verbose:
-                if (surros[i] > tolerance):
+                if (surros[i] > tol):
                     print("iter", i, surros[i], points[i])
                 if i%100==0:
                     print("iter", i, surros[i])
@@ -647,16 +670,16 @@ if __name__ == '__main__':
 
     # Point of the parameter space on which a targeted check is required
     test_values = {
-        'mc'      : 1.3 ,
-        'q'       : 2   ,
-        's1s1'    : 0.  ,
+        'mc'      : 30.5 ,
+        'q'       : 1.1 ,
+        's1s1'    : 0.1 ,
         's1s2'    : 0.2 ,
-        's1s3'    : -0.1,
-        's2s1'    : 0.  ,
+        's1s3'    : 0.1,
+        's2s1'    : 0.05 ,
         's2s2'    : 0.15,
-        's2s3'    : -0.1,
-        'lambda1' : 1000,
-        'lambda2' : 1000,
+        's2s3'    : 0.1,
+        'lambda1' : 0,
+        'lambda2' : 0,
         'iota'    : 1.9 ,
         'phiref'  : 0.6 ,
     }
@@ -704,14 +727,18 @@ if __name__ == '__main__':
 
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
 
+
+    if not(test_values): test_values = default_test_values
     parampoint = []
     for name, val in test_values.items():
-        parampoint[pyroq.n2i[name]] = test_values[name]
+        print(name, val, pyroq.n2i[name])
+        parampoint.append(val)
 
+    parampoint = np.array(parampoint)
     pyroq.testrep_lin( data['lin_B'] , data['lin_emp_nodes'] , parampoint)
     pyroq.testrep_quad(data['quad_B'], data['quad_emp_nodes'], parampoint)
 
-    surros = pyroq.surros_of_test_samples(data['lin_B'], data['lin_emp_nodes'])
+    surros = pyroq.surros_of_test_samples(data['lin_B'], data['lin_emp_nodes'], term='lin')
 
     plt.figure(figsize=(15,9))
     plt.semilogy(surros,'o',color='black')
