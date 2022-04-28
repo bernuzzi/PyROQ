@@ -70,7 +70,7 @@ class PyROQ:
                  # Interpolants construction parameters
                  
                  # Number of random test waveforms. For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
-                 nts               = 1000,
+                 ntests            = 1000,
                  # Number of points for each search for a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elments.
                  # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
                  npts              = 80,
@@ -112,7 +112,7 @@ class PyROQ:
         self.deltaF            = deltaF
         self.distance          = distance
 
-        self.nts               = nts
+        self.ntests            = ntests
         self.npts              = npts
 
         # linear basis
@@ -457,8 +457,8 @@ class PyROQ:
         elif term == 'quad': tol = self.tolerance_quad
         else:                raise ValueError("Unknown basis term requested.")
         
-        paramspoints = self.generate_params_points()
-        surros = np.zeros(self.nts)
+        paramspoints = self.generate_params_points(npts=self.ntests)
+        surros = np.zeros(self.ntests)
         count = 0
         for i, paramspoint in enumerate(paramspoints):
             surros[i] = self._surroerror(ndim,
@@ -608,10 +608,10 @@ class PyROQ:
         return self._testrep(b, emp_nodes, paramspoint, term='quad', show=show)
     
     def surros_of_test_samples(self, b_linear, emp_nodes, nsamples=0):
-        if nsamples <= 0: nsamples = self.nts
+        if nsamples <= 0: nsamples = self.ntests
         ndim = len(emp_nodes)
         paramspoints = self.generate_params_points(npts=nsamples)
-        surros = np.zeros(self.nts)
+        surros = np.zeros(self.ntests)
         for i,paramspoint in enumerate(paramspoints):
             hp = self.generate_a_waveform_from_mcq(paramspoint)
             hp_emp = hp[emp_nodes]
@@ -671,7 +671,7 @@ if __name__ == '__main__':
                   f_max             = 1024,
                   deltaF            = 1./1.,
                   
-                  nts               = 123,
+                  ntests            = 123,
                   npts              = 80,
                   
                   nbases            = 30,
