@@ -1,7 +1,5 @@
 # General python imports
-import matplotlib, multiprocessing as mp, numpy as np, os, random, warnings
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
+import matplotlib, matplotlib.pyplot as plt, multiprocessing as mp, numpy as np, os, random, warnings
 
 # Package internal import
 from wvfwrappers import *
@@ -363,7 +361,7 @@ class PyROQ:
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term)
             if self.verbose:
                 np.set_printoptions(suppress=True)
-                print("Iter ({}): ".format(term), k+1, " and new basis waveform", params_new)
+                print("Iter: ".format(term), k+1, " and new basis waveform", params_new)
                 np.set_printoptions(suppress=False)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
             params = np.append(params, np.array([params_new]), axis = 0)
@@ -505,7 +503,7 @@ class PyROQ:
                 np.save(froq,np.transpose(b))
                 np.save(fnodes,f)
                 if self.verbose:
-                    print("Number of linear basis elements is", ndim, "and the ROQ data are saved in",froq)
+                    print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
                 break
 
         return b,f
@@ -558,42 +556,47 @@ class PyROQ:
     
     ## Functions to test the performance of the ROQ
     
-    def testrep(self, b, emp_nodes, paramspoint, term, show=True):
-        hp = self.generate_a_waveform_from_mcq(paramspoint) 
+    def testrep(self, b, emp_nodes, paramspoint, term):
+        
+        hp = self.generate_a_waveform_from_mcq(paramspoint)
+        
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
         else               : raise TermError
-        hp_emp = hp[emp_nodes]
-        hp_rep = np.dot(b,hp_emp)
-        diff = hp_rep - hp
+        
+        hp_emp    = hp[emp_nodes]
+        hp_rep    = np.dot(b,hp_emp)
+        diff      = hp_rep - hp
         rep_error = diff/np.sqrt(np.vdot(hp,hp))
-        freq = self.freq
-        if show:
+        freq      = self.freq
             
-            plt.figure(figsize=(15,9))
-            plt.plot(freq, np.real(hp), label='Real part of h+ (full)')
-            plt.plot(freq, np.real(hp_rep), label='Real part of h+ (ROQ)')
-            plt.xlabel('Frequency')
-            plt.ylabel('Waveform')
-            plt.title('Waveform comparison')
-            plt.legend(loc=0)
-          
-            plt.figure(figsize=(15,9))
-            plt.plot(freq, np.imag(hp), label='Imag part of h+ (full)')
-            plt.plot(freq, np.imag(hp_rep), label='Imag part of h+ (ROQ)')
-            plt.xlabel('Frequency')
-            plt.ylabel('Waveform')
-            plt.title('Waveform comparison')
-            plt.legend(loc=0)
-          
-            plt.figure(figsize=(15,9))
-            plt.plot(freq, np.real(rep_error), label='Real part of h+') 
-            plt.plot(freq, np.imag(rep_error), label='Imaginary part of h+')
-            plt.xlabel('Frequency')
-            plt.ylabel('Fractional Representation Error')
-            plt.title('Representation Error')
-            plt.legend(loc=0)
-            plt.show()
+        plt.figure(figsize=(8,5))
+        plt.plot(freq, np.real(hp),     label='Real part of h+ (full)')
+        plt.plot(freq, np.real(hp_rep), label='Real part of h+ (ROQ)')
+        plt.xlabel('Frequency')
+        plt.ylabel('Waveform')
+        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
+        plt.savefig(os.path.join(self.outputdir,'Waveform_comparison_real_{}.png'.format(term)))
+        plt.legend(loc=0)
+      
+        plt.figure(figsize=(8,5))
+        plt.plot(freq, np.imag(hp),     label='Imag part of h+ (full)')
+        plt.plot(freq, np.imag(hp_rep), label='Imag part of h+ (ROQ)')
+        plt.xlabel('Frequency')
+        plt.ylabel('Waveform')
+        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
+        plt.savefig(os.path.join(self.outputdir,'Waveform_comparison_imag_{}.png'.format(term)))
+        plt.legend(loc=0)
+        
+        plt.figure(figsize=(8,5))
+        plt.plot(freq, np.real(rep_error), label='Real      part of h+')
+        plt.plot(freq, np.imag(rep_error), label='Imaginary part of h+')
+        plt.xlabel('Frequency')
+        plt.ylabel('Fractional Representation Error')
+        plt.title('Representation Error ({})'.format(term.ljust(4)))
+        plt.savefig(os.path.join(self.outputdir,'Representation_error_{}.png'.format(term)))
+        plt.legend(loc=0)
+        
         return freq, rep_error
     
     def surros_of_test_samples(self, b_linear, emp_nodes, term, nsamples=0):
@@ -603,25 +606,40 @@ class PyROQ:
         else:                raise ValueError("Unknown basis term requested.")
         
         if nsamples <= 0: nsamples = self.ntests
-        ndim = len(emp_nodes)
+        ndim         = len(emp_nodes)
+        surros       = np.zeros(self.ntests)
+
         paramspoints = self.generate_params_points(npts=nsamples)
-        surros = np.zeros(self.ntests)
+        
+        print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term.ljust(4)))
         for i,paramspoint in enumerate(paramspoints):
-            hp = self.generate_a_waveform_from_mcq(paramspoint)
-            hp_emp = hp[emp_nodes]
-            hp_rep = np.dot(b_linear,hp_emp) 
+            
+            hp        = self.generate_a_waveform_from_mcq(paramspoint)
+            hp_emp    = hp[emp_nodes]
+            hp_rep    = np.dot(b_linear,hp_emp)
             surros[i] = (1-self.overlap_of_two_waveforms(hp, hp_rep))*self.deltaF
+            
+            np.set_printoptions(suppress=True)
             if self.verbose:
                 if (surros[i] > tol):
-                    print("Above tolerance: Iter", i, surros[i], paramspoints[i])
+                    print("Above tolerance (tol={}): Iter: ".format(tol), i, "Surrogate value: ", surros[i], "Parameters: ", paramspoints[i])
                 if i%100==0:
-                    print("Rolling check: Iter", i, surros[i])
+                    print("Rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros[i])
+            np.set_printoptions(suppress=False)
+    
+        plt.figure(figsize=(8,5))
+        plt.semilogy(surros,'o',color='black')
+        plt.xlabel("Number of Random Test Points")
+        plt.ylabel("Surrogate Error ({})".format(term.ljust(4)))
+        plt.savefig(os.path.join(self.outputdir,"Surrogate_errors_random_test_points_{}.png".format(term)))
+    
         return surros
 
 
 if __name__ == '__main__':
 
     approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto-FD' #'mlgw-bns'
+    show   = True
 
     # Range on which to train the ROQ
     params_ranges = {
@@ -665,7 +683,7 @@ if __name__ == '__main__':
                   f_max             = 1024,
                   deltaF            = 1./1.,
                   
-                  ntests            = 123,
+                  ntests            = 6,
                   npts              = 80,
                   
                   nbases            = 30,
@@ -692,32 +710,27 @@ if __name__ == '__main__':
     data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
     data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
 
-    # Test waveform
-
-    print('Linear basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
-
+    print('\n###########\n# Results #\n###########\n')
+    print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
 
+    # Test waveform
 
+    print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
     if not(test_values): test_values = default_test_values
     parampoint = []
+    print('name    | value | index')
     for name, val in test_values.items():
-        print(name, val, pyroq.n2i[name])
+        print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
         parampoint.append(val)
 
     parampoint = np.array(parampoint)
     pyroq.testrep( data['lin_B'] , data['lin_emp_nodes'], parampoint, 'lin')
     pyroq.testrep(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
+    # Surrogate tests
+
     surros = pyroq.surros_of_test_samples(data['lin_B'],  data['lin_emp_nodes'],  'lin')
     surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
 
-    plt.figure(figsize=(15,9))
-    plt.semilogy(surros,'o',color='black')
-    plt.xlabel("Number of Random Test Points")
-    plt.ylabel("Surrogate Error")
-    plt.title(approx)
-    plt.savefig("SurrogateErrorsRandomTestPoints.png")
-    plt.show()
-
-#    os.system('mv ./testrep.png ./testrepquad.png {}/.'.format(run_tag))
+    if(show): plt.show()
