@@ -40,10 +40,10 @@ default_test_values = {
         'q'       : 2   ,
         's1s1'    : 0.  ,
         's1s2'    : 0.2 ,
-        's1s3'    : -0.1,
+        's1s3'    : 0.1,
         's2s1'    : 0.  ,
         's2s2'    : 0.15,
-        's2s3'    : -0.1,
+        's2s3'    : 0.1,
         'lambda1' : 1000,
         'lambda2' : 1000,
         'iota'    : 1.9 ,
@@ -93,7 +93,8 @@ class PyROQ:
                  
                  # Interpolants construction parameters
                  
-                 # Number of random test waveforms. For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
+                 # Number of random test waveforms. This is the number of cases that are checked to be below tolerance before stopping the ROQ construction.
+                 # For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
                  ntests            = 1000,
                  # Number of points for each search for a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elments.
                  # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
@@ -673,7 +674,7 @@ if __name__ == '__main__':
         's1s1'    : 0.1 ,
         's1s2'    : 0.2 ,
         's1s3'    : 0.1,
-        's2s1'    : 0.05 ,
+        's2s1'    : 0.1 ,
         's2s2'    : 0.15,
         's2s3'    : 0.1,
         'lambda1' : 0,
@@ -719,6 +720,8 @@ if __name__ == '__main__':
     data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
     data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
 
+    print('Implement plot-only option here.')
+
     print('\n###########\n# Results #\n###########\n')
     print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
@@ -738,6 +741,8 @@ if __name__ == '__main__':
     pyroq.testrep(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
     # Surrogate tests
+
+    print('CHECKME: probably here we want to pass a different number of tests waveforms than the default one (used to build the ROQ).')
 
     surros = pyroq.surros_of_test_samples(data['lin_B'],  data['lin_emp_nodes'],  'lin')
     surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
