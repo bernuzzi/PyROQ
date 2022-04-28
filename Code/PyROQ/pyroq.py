@@ -20,6 +20,8 @@ try:
 except:
     warnings.warn('Skipping import of mlgw_bns')
 
+np.random.seed(150914)
+
 # EOB helpers ###
 TEOBResumS_version = [
     'teobresums-giotto-TD',
