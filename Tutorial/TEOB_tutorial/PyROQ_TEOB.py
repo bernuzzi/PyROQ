@@ -34,7 +34,7 @@ intrinsic_params = {
     'phiref'  : [0, 2*numpy.pi]                           ,
 }
 
-testing_nsamples = 100 # testing nsamples random samples in parameter space to see their representation surrogate errors
+testing_nsamples = 6 # testing nsamples random samples in parameter space to see their representation surrogate errors
 
 test_mc      = 30.5
 test_q       = 1.1
@@ -61,7 +61,7 @@ parallel = 0 # The parallel=1 will turn on multiprocesses to search for a new ba
 nprocesses = 4 # Set the number of parallel processes when searching for a new basis.  nprocesses=mp.cpu_count()
 
 # Interpolants construction parameters
-nts = 123 # Number of random test waveforms
+nts = 6 # Number of random test waveforms
           # For diagnostics, 1000 is fine.
           # For real ROQs calculation, set it to be 1000000.
 
