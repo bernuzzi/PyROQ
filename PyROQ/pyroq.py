@@ -1,8 +1,12 @@
+# General python imports
 import matplotlib, multiprocessing as mp, numpy as np, os, random, warnings
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
+# Package internal import
 from wvfwrappers import *
+
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 
 # PyRQQ
 # =====
@@ -309,7 +313,7 @@ class PyROQ:
         for k in np.arange(0,len(known_bases)):
             residual -= self.proj(known_bases[k],hp)
         
-        return np.real(np.sqrt(np.vdot(residual, residual)))
+        return np.sqrt(np.vdot(residual, residual))
     
     def compute_modulus_lin(self, paramspoint, known_bases):
         return self._compute_modulus(paramspoint, known_bases, term='lin')
@@ -330,10 +334,10 @@ class PyROQ:
             modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
-            npts = len(paramspoints) # = self.npts 
+            npts   = len(paramspoints) # = self.npts
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = self._compute_modulus(paramspoint, known_bases, term=term)
+                modula[i] = np.real(self._compute_modulus(paramspoint, known_bases, term=term))
 
         arg_newbasis = np.argmax(modula) 
         hp = self._paramspoint_to_wave(paramspoints[arg_newbasis])
@@ -370,7 +374,10 @@ class PyROQ:
             paramspoints = self.generate_params_points()
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
             if self.verbose:
-                print("Iter ({}): ".format(term), k+1, "and new basis waveform", params_new)
+                np.set_printoptions(linewidth=np.inf)
+                np.set_printoptions(precision=6)
+                np.set_printoptions(suppress=True)
+                print("Iter ({}): ".format(term), k+1, " and new basis waveform", params_new)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
             params = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
@@ -489,7 +496,7 @@ class PyROQ:
             if (surros[i] > tol):
                 count = count+1
         if self.verbose:
-            print(ndim, "basis elements gave", count, "bad points of surrogate error > ", self.tolerance)
+            print('\n{}'.format(ndim), "basis elements gave", count, "bad points of surrogate error >", self.tolerance, '\n')
         if count == 0:
             return 0
         else:
@@ -528,7 +535,7 @@ class PyROQ:
                 np.save(froq,np.transpose(b))
                 np.save(fnodes,f)
                 if self.verbose:
-                    print("Number of linear basis elements is ", ndim, "and the ROQ data are saved in ",froq)
+                    print("Number of linear basis elements is", ndim, "and the ROQ data are saved in",froq)
                 break
 
         return b,f
