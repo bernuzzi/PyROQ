@@ -351,13 +351,7 @@ class PyROQ:
         basis_new = self.gram_schmidt(known_bases, hp)
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
-
-    def least_match_linear_waveform_unnormalized(self, paramspoints, known_bases):
-        return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='lin')
-
-    def least_match_quadratic_waveform_unnormalized(self, paramspoints, known_bases):
-        return self._least_match_waveform_unnormalized(paramspoints, known_bases, term='quad')
-
+            
     def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term='lin'):
         if term == 'lin':
             nbases = self.nbases
