@@ -498,6 +498,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, lambda1_low, lambda2_low, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant) 
     except AttributeError: 
         raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
+
     return numpy.array([nparams, params_low, params_high, params_start, hp1])
 
 def empnodes(ndim, known_bases): # Here known_bases is the full copy known_bases_copy. Its length is equal to or longer than ndim.

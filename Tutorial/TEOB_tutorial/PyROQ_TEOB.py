@@ -119,7 +119,7 @@ nparams, params_low, params_high, params_start, hp1 = pyroq.initial_basis(intrin
                                                                           intrinsic_params['lambda1'][0],  intrinsic_params['lambda1'][1],
                                                                           intrinsic_params['lambda2'][0],  intrinsic_params['lambda2'][1],
                                                                           intrinsic_params['iota'][0],     intrinsic_params['iota'][1],
-                                                                          intrinsic_params['phiref'][0],   intrinsic_params['iota'][1],
+                                                                          intrinsic_params['phiref'][0],   intrinsic_params['phiref'][1],
                                                                           distance, 
                                                                           deltaF, f_min, f_max, 
                                                                           waveFlags, approximant)
