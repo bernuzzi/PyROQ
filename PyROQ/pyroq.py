@@ -135,7 +135,7 @@ class PyROQ:
         self.outputdir         = outputdir
         self.verbose           = verbose
         
-        if not os.path.exists(outputdir): os.makedirs(outputdir)
+        if not os.path.exists(self.outputdir): os.makedirs(self.outputdir)
     
         # Choose waveform
         if self.approximant in WfWrapper.keys():
@@ -147,7 +147,7 @@ class PyROQ:
         self.map_params_indexs() # self.i2n, self.n2i, self.nparams
         
         # Initial basis
-        self.freq = np.arange(f_min, f_max, deltaF)
+        self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
         self.initial_basis() # self.nparams, self.params_low, self.params_hig, self.params_ini, self.hp1
         
     def howmany_within_range(self, row, minimum, maximum):
@@ -444,7 +444,7 @@ class PyROQ:
             tmp = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
 
-        return (1-overlap_of_two_waveforms(hp, interpolantA))*deltaF 
+        return (1-self.overlap_of_two_waveforms(hp, interpolantA))*self.deltaF
     
     def surroerror_lin(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint):
         return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin')
@@ -616,7 +616,7 @@ class PyROQ:
             hp = self.generate_a_waveform_from_mcq(paramspoint)
             hp_emp = hp[emp_nodes]
             hp_rep = np.dot(b_linear,hp_emp) 
-            surros[i] = (1-overlap_of_two_waveforms(hp, hp_rep))*deltaF
+            surros[i] = (1-self.overlap_of_two_waveforms(hp, hp_rep))*self.deltaF
             if self.verbose:
                 if (surros[i] > tolerance):
                     print("iter", i, surros[i], points[i])
