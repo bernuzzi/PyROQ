@@ -7,6 +7,9 @@ from wvfwrappers import *
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
 TermError = ValueError("Unknown basis term requested.")
+
+np.random.seed(150914)
+
 # PyRQQ
 # =====
 
@@ -639,7 +642,7 @@ class PyROQ:
 if __name__ == '__main__':
 
     approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto-FD' #'mlgw-bns'
-    show   = True
+    show   = False
 
     # Range on which to train the ROQ
     params_ranges = {
