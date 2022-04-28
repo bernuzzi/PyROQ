@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from wvfwrappers import *
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+np.set_printoptions(linewidth=np.inf)
 
 # PyRQQ
 # =====
@@ -303,21 +304,22 @@ class PyROQ:
         return self._paramspoint_to_wave(paramspoint, update_m1m2=False, update_sxyz=True)
     
     def _compute_modulus(self, paramspoint, known_bases, term='lin'):
-        
-        print(paramspoint)
-        exit()
+
+#        if(term=='quad'):
+#            print('\nparampoint inside quad compute modulus:')
+#            print(paramspoint, '\n\n')
         hp = self._paramspoint_to_wave(paramspoint)
-        
+#        if(term=='quad'):
+#            print(hp, type(hp))
+
         if   term == 'lin' : residual = hp
         elif term == 'quad': residual = (np.absolute(hp))**2
         else               : raise ValueError("unknown term")
-        
-        if(term=='quad'):
-            print(hp, type(hp))
+
         for k in np.arange(0,len(known_bases)):
-            if(term=='quad'):
-                print(known_bases[k], type(known_bases[k]))
-                exit()
+#            if(term=='quad'):
+#                print(known_bases[k], type(known_bases[k]))
+#                exit()
             residual -= self.proj(known_bases[k],hp)
         
         return np.sqrt(np.vdot(residual, residual))
@@ -369,10 +371,9 @@ class PyROQ:
             paramspoints = self.generate_params_points()
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
             if self.verbose:
-                np.set_printoptions(linewidth=np.inf)
-                np.set_printoptions(precision=6)
                 np.set_printoptions(suppress=True)
                 print("Iter ({}): ".format(term), k+1, " and new basis waveform", params_new)
+                np.set_printoptions(suppress=False)
             known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
             params = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
