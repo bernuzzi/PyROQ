@@ -8,7 +8,7 @@ from wvfwrappers import *
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
-
+TermError = ValueError("Unknown basis term requested.")
 # PyRQQ
 # =====
 
@@ -303,13 +303,13 @@ class PyROQ:
         """
         return self._paramspoint_to_wave(paramspoint, update_m1m2=False, update_sxyz=True)
     
-    def _compute_modulus(self, paramspoint, known_bases, term='lin'):
+    def _compute_modulus(self, paramspoint, known_bases, term):
 
         hp = self._paramspoint_to_wave(paramspoint)
 
         if   term == 'lin' : residual = hp
         elif term == 'quad': residual = (np.absolute(hp))**2
-        else               : raise ValueError("unknown term")
+        else               : raise TermError
 
         h_to_proj = residual
 
@@ -318,7 +318,7 @@ class PyROQ:
         
         return np.sqrt(np.vdot(residual, residual))
         
-    def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term='lin'):
+    def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term):
         """
         Now generating N=npts waveforms at points that are 
         randomly uniformly distributed in parameter space
@@ -334,21 +334,18 @@ class PyROQ:
             npts   = len(paramspoints) # = self.npts
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = np.real(self._compute_modulus(paramspoint, known_bases, term=term))
+                modula[i] = np.real(self._compute_modulus(paramspoint, known_bases, term))
 
         arg_newbasis = np.argmax(modula) 
         hp = self._paramspoint_to_wave(paramspoints[arg_newbasis])
-        if term == 'lin':
-            pass
-        elif term == 'quad':
-            hp = (np.absolute(hp))**2
-        else:
-            raise ValueError("unknown term")
+        if   term == 'lin' : pass
+        elif term == 'quad': hp = (np.absolute(hp))**2
+        else               : raise TermError
         basis_new = self.gram_schmidt(known_bases, hp)
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
             
-    def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term='lin'):
+    def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term):
         if term == 'lin':
             nbases = self.nbases
             fbase = self.outputdir+'/linearbases.npy'
@@ -358,12 +355,12 @@ class PyROQ:
             fbase = self.outputdir+'/quadraticbases.npy'
             fparams = self.outputdir+'/quadraticbasiswaveformparams.npy'
         else:
-            raise ValueError("unknown term")
+            raise TermError
     
         print('\n\n###########################\n# Starting {} iteration #\n###########################\n'.format(term.ljust(4)))
         for k in np.arange(0,nbases-1):
             paramspoints = self.generate_params_points()
-            basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term=term)
+            basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term)
             if self.verbose:
                 np.set_printoptions(suppress=True)
                 print("Iter ({}): ".format(term), k+1, " and new basis waveform", params_new)
@@ -374,12 +371,6 @@ class PyROQ:
         np.save(fbase,known_bases)
         np.save(fparams,params)
         return known_bases, params, residual_modula
-    
-    def bases_searching_linear_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula):
-        return self._bases_searching_results_unnormalized(known_bases, basis_waveforms, params, residual_modula, term='lin')
-
-    def bases_searching_quadratic_results_unnormalized(self,known_bases, basis_waveforms, params, residual_modula):
-        return self._bases_searching_results_unnormalized(known_bases, basis_waveforms, params, residual_modula, term='quad')
     
     def initial_basis(self):
         """
@@ -446,13 +437,13 @@ class PyROQ:
         print('\n\nCHECKME: this routine appears identical to the above (duplicated in original code?)\n\n')
         return empnodes(self, ndim, known_bases)
 
-    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin'):
+    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
         hp = self.generate_a_waveform_from_mcq(paramspoint)
         
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
-        else               : raise ValueError("unknown term")
+        else               : raise TermError
         
         Ci           = np.dot(inverse_V, hp[emp_nodes])
         interpolantA = np.zeros(len(hp))+np.zeros(len(hp))*1j
@@ -463,13 +454,7 @@ class PyROQ:
 
         return (1-self.overlap_of_two_waveforms(hp, interpolantA))*self.deltaF
     
-    def surroerror_lin(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint):
-        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'lin')
-
-    def surroerror_quad(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint):
-        return self._surroerror(ndim, inverse_V, emp_nodes, known_bases, paramspoint, term = 'quad')
-    
-    def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term='lin'):
+    def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term):
         if   term == 'lin':  tol = self.tolerance
         elif term == 'quad': tol = self.tolerance_quad
         else:                raise ValueError("Unknown basis term requested.")
@@ -483,7 +468,7 @@ class PyROQ:
                                          emp_nodes,
                                          known_bases[0:ndim],
                                          paramspoint, 
-                                         term = term)
+                                         term)
             if (surros[i] > tol):
                 count = count+1
         if self.verbose:
@@ -493,13 +478,7 @@ class PyROQ:
         else:
             return 1
     
-    def surros_lin(self, ndim, inverse_V, emp_nodes, known_bases):
-        return self._surros(ndim, inverse_V, emp_nodes, known_bases, term='lin')
-
-    def surros_quad(self, ndim, inverse_V, emp_nodes, known_bases):
-        return self._surros(ndim, inverse_V, emp_nodes, known_bases, term='quad')
-    
-    def _roqs(self, known_bases, term='lin'):
+    def _roqs(self, known_bases, term):
         
         if term == 'lin':
             ndimlow      = self.ndimlow
@@ -514,13 +493,13 @@ class PyROQ:
             froq         = self.outputdir+'/B_quadratic.npy'
             fnodes       = self.outputdir+'/fnodes_quadratic.npy'
         else:
-              raise ValueError("unknown term")
+              raise TermError
 
         for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
             
             ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases)
             
-            if self._surros(ndim, inverse_V, emp_nodes, known_bases, term=term) == 0:
+            if self._surros(ndim, inverse_V, emp_nodes, known_bases, term) == 0:
                 b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
                 f = self.freq[emp_nodes]
                 np.save(froq,np.transpose(b))
@@ -530,12 +509,6 @@ class PyROQ:
                 break
 
         return b,f
-
-    def roqs_lin(self, known_bases):
-        return self._roqs(known_bases, term='lin')
-
-    def roqs_quad(self, known_bases):
-        return self._roqs(known_bases, term='quad')
 
     ## Main function starting the ROQ construction
 
@@ -550,8 +523,12 @@ class PyROQ:
         basis_waveforms_start = np.array([hp1])
         residual_modula_start = np.array([0.0])
         
-        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms_start, params_ini, residual_modula_start, term='lin')
-        B, f = self._roqs(bases, term='lin')
+        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start,
+                                                                                    basis_waveforms_start,
+                                                                                    params_ini,
+                                                                                    residual_modula_start,
+                                                                                    'lin')
+        B, f = self._roqs(bases, 'lin')
 
         d['lin_B']      = B
         d['lin_f']      = f
@@ -564,8 +541,12 @@ class PyROQ:
         basis_waveforms_start = np.array([hp1_quad])
         residual_modula_start = np.array([0.0])
         
-        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start, basis_waveforms_start, params_ini, residual_modula_start, term='quad')
-        B, f = self._roqs(bases, term='quad')
+        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start,
+                                                                                    basis_waveforms_start,
+                                                                                    params_ini,
+                                                                                    residual_modula_start,
+                                                                                    'quad')
+        B, f = self._roqs(bases, 'quad')
         
         d['quad_B']      = B
         d['quad_f']      = f
@@ -577,14 +558,11 @@ class PyROQ:
     
     ## Functions to test the performance of the ROQ
     
-    def _testrep(self, b, emp_nodes, paramspoint, term='lin', show=True):
+    def testrep(self, b, emp_nodes, paramspoint, term, show=True):
         hp = self.generate_a_waveform_from_mcq(paramspoint) 
-        if term == 'lin':
-            pass
-        elif term == 'quad':
-            hp = (np.absolute(hp))**2
-        else:
-            raise ValueError("unknown term") 
+        if   term == 'lin' : pass
+        elif term == 'quad': hp = (np.absolute(hp))**2
+        else               : raise TermError
         hp_emp = hp[emp_nodes]
         hp_rep = np.dot(b,hp_emp)
         diff = hp_rep - hp
@@ -618,13 +596,7 @@ class PyROQ:
             plt.show()
         return freq, rep_error
     
-    def testrep_lin(self, b, emp_nodes, paramspoint, show=True):
-        return self._testrep(b, emp_nodes, paramspoint, term='lin', show=show)
-
-    def testrep_quad(self, b, emp_nodes, paramspoint, show=True):
-        return self._testrep(b, emp_nodes, paramspoint, term='quad', show=show)
-    
-    def surros_of_test_samples(self, b_linear, emp_nodes, nsamples=0, term='lin'):
+    def surros_of_test_samples(self, b_linear, emp_nodes, term, nsamples=0):
         
         if   term == 'lin':  tol = self.tolerance
         elif term == 'quad': tol = self.tolerance_quad
@@ -641,9 +613,9 @@ class PyROQ:
             surros[i] = (1-self.overlap_of_two_waveforms(hp, hp_rep))*self.deltaF
             if self.verbose:
                 if (surros[i] > tol):
-                    print("iter", i, surros[i], points[i])
+                    print("Above tolerance: Iter", i, surros[i], paramspoints[i])
                 if i%100==0:
-                    print("iter", i, surros[i])
+                    print("Rolling check: Iter", i, surros[i])
         return surros
 
 
@@ -734,10 +706,11 @@ if __name__ == '__main__':
         parampoint.append(val)
 
     parampoint = np.array(parampoint)
-    pyroq.testrep_lin( data['lin_B'] , data['lin_emp_nodes'] , parampoint)
-    pyroq.testrep_quad(data['quad_B'], data['quad_emp_nodes'], parampoint)
+    pyroq.testrep( data['lin_B'] , data['lin_emp_nodes'], parampoint, 'lin')
+    pyroq.testrep(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
-    surros = pyroq.surros_of_test_samples(data['lin_B'], data['lin_emp_nodes'], term='lin')
+    surros = pyroq.surros_of_test_samples(data['lin_B'],  data['lin_emp_nodes'],  'lin')
+    surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
 
     plt.figure(figsize=(15,9))
     plt.semilogy(surros,'o',color='black')
