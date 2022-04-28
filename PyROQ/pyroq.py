@@ -34,8 +34,23 @@ defaults['params_ranges'] = {
     'phiref'  : [0, 2*np.pi]   ,
 }
 
+defaults['start_values'] = {
+    'mc'      : defaults['params_ranges']['mc'][0]     ,
+    'q'       : defaults['params_ranges']['q'][0]      ,
+    's1s1'    : defaults['params_ranges']['s1s1'][0]   ,
+    's1s2'    : defaults['params_ranges']['s1s2'][0]   ,
+    's1s3'    : defaults['params_ranges']['s1s3'][0]   ,
+    's2s1'    : defaults['params_ranges']['s2s1'][0]   ,
+    's2s2'    : defaults['params_ranges']['s2s2'][0]   ,
+    's2s3'    : defaults['params_ranges']['s2s3'][0]   ,
+    'lambda1' : defaults['params_ranges']['lambda1'][0],
+    'lambda2' : defaults['params_ranges']['lambda2'][0],
+    'iota'    : defaults['params_ranges']['iota'][0]   ,
+    'phiref'  : defaults['params_ranges']['phiref'][0] ,
+    }
+
 # Point of the parameter space on which a targeted check is required
-default_test_values = {
+defaults['test_values'] = {
         'mc'      : 1.3 ,
         'q'       : 2   ,
         's1s1'    : 0.  ,
@@ -86,6 +101,8 @@ class PyROQ:
                  additional_waveform_params = {},
                  # Intrinsic parameter space on which the interpolants will be constructed
                  params_ranges     = defaults['params_ranges'],
+                 start_values      = defaults['start_values'],
+
                  # Frequency axis on which the interpolant will be constructed
                  f_min             = 20,
                  f_max             = 1024,
@@ -129,9 +146,11 @@ class PyROQ:
                  ):
 
         # Read input params
-        self.approximant       = approximant
+        self.approximant                = approximant
+        self.params_ranges              = params_ranges
+        self.start_values               = start_values
         self.additional_waveform_params = additional_waveform_params
-        self.params_ranges     = params_ranges
+
         self.f_min             = f_min
         self.f_max             = f_max
         self.deltaF            = deltaF
@@ -166,7 +185,6 @@ class PyROQ:
             os.makedirs(os.path.join(self.outputdir, 'ROQ_data'))
             os.makedirs(os.path.join(self.outputdir, 'ROQ_data/Linear'))
             os.makedirs(os.path.join(self.outputdir, 'ROQ_data/Quadratic'))
-
     
         # Choose waveform
         if self.approximant in WfWrapper.keys():
@@ -394,8 +412,7 @@ class PyROQ:
         for i,n in self.i2n.items():
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
-#            params_ini_list.append((self.params_low[i] + (self.params_hig[i] - self.params_low[i]) * 0.1)) #CHECKME: this should not be hardcoded
-            params_ini_list.append(self.params_low[i])
+            params_ini_list.append(self.start_values[n])
 
             if self.verbose:
                 print('{}    | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
@@ -405,7 +422,8 @@ class PyROQ:
                                                                       params_ini_list[i]))
         self.params_ini = np.array([params_ini_list])
         # First waveform
-        self.hp1 = self.generate_a_waveform_from_mcq(self.params_low)
+        self.hp1 = self.generate_a_waveform_from_mcq(params_ini_list)
+        
         return 
 
     def empnodes(self, ndim, known_bases, fact=100000000):
@@ -667,6 +685,23 @@ if __name__ == '__main__':
         'phiref'  : [0, 2*np.pi]   ,
     }
 
+    # Point(s) of the parameter space on which to initialise the basis
+    print('Currently unused. Could be an array, which sets the initial basis points.')
+    start_values = {
+        'mc'      : params_ranges['mc'][0]     ,
+        'q'       : params_ranges['q'][0]      ,
+        's1s1'    : params_ranges['s1s1'][0]   ,
+        's1s2'    : params_ranges['s1s2'][0]   ,
+        's1s3'    : params_ranges['s1s3'][0]   ,
+        's2s1'    : params_ranges['s2s1'][0]   ,
+        's2s2'    : params_ranges['s2s2'][0]   ,
+        's2s3'    : params_ranges['s2s3'][0]   ,
+        'lambda1' : params_ranges['lambda1'][0],
+        'lambda2' : params_ranges['lambda2'][0],
+        'iota'    : params_ranges['iota'][0]   ,
+        'phiref'  : params_ranges['phiref'][0] ,
+        }
+
     # Point of the parameter space on which a targeted check is required
     test_values = {
         'mc'      : 30.5 ,
@@ -688,6 +723,7 @@ if __name__ == '__main__':
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
                   params_ranges     = params_ranges,
+                  start_values      = start_values,
                   
                   f_min             = 50,
                   f_max             = 1024,
@@ -713,6 +749,12 @@ if __name__ == '__main__':
                   verbose           = True,
                   )
 
+
+
+    ##############################################
+    # No parameter should be changed below here. #
+    ##############################################
+
     # Create the bases and save them
     data = pyroq.run()
 
@@ -729,7 +771,7 @@ if __name__ == '__main__':
     # Test waveform
 
     print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
-    if not(test_values): test_values = default_test_values
+    if not(test_values): test_values = defaults['test_values']
     parampoint = []
     print('name    | value | index')
     for name, val in test_values.items():
