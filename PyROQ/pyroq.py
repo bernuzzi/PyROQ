@@ -55,9 +55,9 @@ defaults['test_values'] = {
         'q'       : 2   ,
         's1s1'    : 0.  ,
         's1s2'    : 0.2 ,
-        's1s3'    : 0.1,
+        's1s3'    : 0,
         's2s1'    : 0.  ,
-        's2s2'    : 0.15,
+        's2s2'    : 0,
         's2s3'    : 0.1,
         'lambda1' : 1000,
         'lambda2' : 1000,
@@ -521,6 +521,7 @@ class PyROQ:
         else:
               raise TermError
 
+        flag = 0
         for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
             
             ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases)
@@ -532,7 +533,10 @@ class PyROQ:
                 np.save(fnodes,f)
                 if self.verbose:
                     print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
+                flag = 1
                 break
+
+        if not(flag): raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
 
         return b,f
 
@@ -666,8 +670,30 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto-FD' #'mlgw-bns'
+    # Things left to check
+    print('CHECKME: spins in spherical or cartesian?')
+    print('Current spin handling (using directly spherical) is incompatible with non-precessing models (e.g. mlgw-bns), since they dont allow to switch continuously from spins up to spins down.')
+    
+    print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that might explain difference with pyROQ!!!!Check if true. If true, implement check for which if lower=upper raise error and the param should be removed. Otherwise leave it as is.\n\n\n')
+
     show   = False
+    approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto-FD' #'mlgw-bns'
+
+#approx = 'mlgw-bns'
+#    params_ranges = {
+#        'mc'      : [0.9, 0.92]     ,
+#        'q'       : [1, 1.02]         ,
+#        's1s1'    : [0, 0.5]       ,
+#        's1s2'    : [0, 0]     ,
+#        's1s3'    : [0, 2.0*np.pi] ,
+#        's2s1'    : [0, 0]       ,
+#        's2s2'    : [0, np.pi]     ,
+#        's2s3'    : [0, 2.0*np.pi] ,
+#        'lambda1' : [5, 50]      ,
+#        'lambda2' : [5, 50]      ,
+#        'iota'    : [0, np.pi]     ,
+#        'phiref'  : [0, 2*np.pi]   ,
+#    }
 
     # Range on which to train the ROQ
     params_ranges = {
@@ -685,8 +711,6 @@ if __name__ == '__main__':
         'phiref'  : [0, 2*np.pi]   ,
     }
 
-    # Point(s) of the parameter space on which to initialise the basis
-    print('Currently unused. Could be an array, which sets the initial basis points.')
     start_values = {
         'mc'      : params_ranges['mc'][0]     ,
         'q'       : params_ranges['q'][0]      ,
@@ -701,6 +725,7 @@ if __name__ == '__main__':
         'iota'    : params_ranges['iota'][0]   ,
         'phiref'  : params_ranges['phiref'][0] ,
         }
+
 
     # Point of the parameter space on which a targeted check is required
     test_values = {
@@ -718,7 +743,11 @@ if __name__ == '__main__':
         'phiref'  : 0.6 ,
     }
 
-    print('CHECKME: spins in spherical or cartesian?')
+    # Point(s) of the parameter space on which to initialise the basis
+    if not('params_ranges' in locals() or 'params_ranges' in globals()): params_ranges = defaults['params_ranges']
+    if not('start_values'  in locals() or 'start_values' in globals()):  start_values  = defaults['start_values']
+
+    print('ADDME: start_values could be an array, which sets the initial basis points.')
 
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
@@ -732,13 +761,13 @@ if __name__ == '__main__':
                   ntests            = 6,
                   npts              = 80,
                   
-                  nbases            = 30,
-                  ndimlow           = 20,
+                  nbases            = 20,
+                  ndimlow           = 10,
                   ndimstepsize      = 1,
                   tolerance         = 1e-4,
                   
-                  nbases_quad       = 30,
-                  ndimlow_quad      = 20,
+                  nbases_quad       = 20,
+                  ndimlow_quad      = 10,
                   ndimstepsize_quad = 1,
                   tolerance_quad    = 1e-5,
                   
@@ -748,7 +777,6 @@ if __name__ == '__main__':
                   outputdir         ='./test',
                   verbose           = True,
                   )
-
 
 
     ##############################################
@@ -771,7 +799,7 @@ if __name__ == '__main__':
     # Test waveform
 
     print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
-    if not(test_values): test_values = defaults['test_values']
+    if not('test_values' in locals() or 'test_values' in globals()): test_values = defaults['test_values']
     parampoint = []
     print('name    | value | index')
     for name, val in test_values.items():

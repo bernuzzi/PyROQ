@@ -265,13 +265,11 @@ try:
 except ModuleNotFoundError:
     print('\nWarning: TEOBResumS module not found.\n')
 
-
 # MLGW-BNS
 # --------
-    
 try:
     # MLGW imports
-    ##TODO!!!
+    from mlgw_bns import ParametersWithExtrinsic, Model
 
     # Add the approximants that can be called
     approximants = []
@@ -283,15 +281,15 @@ try:
                      approximant,
                      additional_waveform_params = {}):
             
-            # Currently unused, for this waveform
-            self.approximant = approximant
+            # Currently unused for this waveform
+            self.approximant     = approximant
             self.waveform_params = additional_waveform_params
   
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
             
             # Impose the correct convention on masses
             m1,m2 = p['m1'],p['m2']
-            q = p['m1']/p['m2']
+            q     = p['m1']/p['m2']
 
             s1x,s1y,s1z = 0,0,0
             s2x,s2y,s2z = 0,0,0
@@ -328,9 +326,9 @@ try:
                 raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
 
             if q < 1. :
-               m1,m2       = m2,m1
-               q           = 1./q
-               s1z,s2z     = s2z,s1z
+               m1,m2           = m2,m1
+               q               = 1./q
+               s1z,s2z         = s2z,s1z
                lambda1,lambda2 = lambda2,lambda1
                
             # Call it
@@ -344,13 +342,13 @@ try:
                                                   distance,
                                                   p['iota'],
                                                   p['m1']+p['m2'],
-                                                  reference_phase=p['phiRef'])
+                                                  reference_phase=p['phiref'])
             hp, hc      = model.predict(frequencies, params)
             return hp, hc
 
     # Add a wrapper for each approximant
     for a in approximants:
         WfWrapper[a] = WfMLGW
-        
+
 except ModuleNotFoundError:
     print('mlgw-bns module not found')
