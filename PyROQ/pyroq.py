@@ -197,7 +197,7 @@ class PyROQ:
         
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
-        self.initial_basis() # self.nparams, self.params_low, self.params_hig, self.params_ini, self.hp1
+        self.initial_basis() # self.params_low, self.params_hig, self.params_ini, self.hp1
         
     def howmany_within_range(self, row, minimum, maximum):
         """
@@ -283,7 +283,7 @@ class PyROQ:
         """
         Uniformly sample the parameter arrays
         """
-        if npts <= 0: npts = self.npts 
+        if npts <= 0: npts = self.npts
         paramspoints = np.random.uniform(self.params_low,
                                          self.params_hig,
                                          size=(npts,self.nparams))
@@ -671,10 +671,10 @@ class PyROQ:
 if __name__ == '__main__':
 
     # Things left to check
-    print('CHECKME: spins in spherical or cartesian?')
-    print('Current spin handling (using directly spherical) is incompatible with non-precessing models (e.g. mlgw-bns), since they dont allow to switch continuously from spins up to spins down.')
+    #    print('CHECKME: spins in spherical or cartesian?')
+    #CHECKME:print('Current spin handling (using directly spherical) is incompatible with non-precessing models (e.g. mlgw-bns), since they dont allow to switch continuously from spins up to spins down.')
     
-    print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that might explain difference with pyROQ!!!!Check if true. If true, implement check for which if lower=upper raise error and the param should be removed. Otherwise leave it as is.\n\n\n')
+    #CHECKME: print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that explains the difference with pyROQ master. Decide how to handle this (force params removal if low=hig?)')
 
     show   = False
     approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
@@ -763,7 +763,7 @@ if __name__ == '__main__':
     if not('params_ranges' in locals() or 'params_ranges' in globals()): params_ranges = defaults['params_ranges']
     if not('start_values'  in locals() or 'start_values' in globals()):  start_values  = defaults['start_values']
 
-    print('ADDME: start_values could be an array, which sets the initial basis points.')
+    #CHECKME: print('ADDME: start_values could be an array, which sets the initial basis points.')
 
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
@@ -806,7 +806,7 @@ if __name__ == '__main__':
     data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
     data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
 
-    print('Implement plot-only option here.')
+    #CHECKME: print('Implement plot-only option here.')
 
     print('\n###########\n# Results #\n###########\n')
     print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
@@ -828,7 +828,7 @@ if __name__ == '__main__':
 
     # Surrogate tests
 
-    print('CHECKME: probably here we want to pass a different number of tests waveforms than the default one (used to build the ROQ).')
+    #CHECKME:print('CHECKME: probably here we want to pass a different number of tests waveforms than the default one (used to build the ROQ).')
 
     surros = pyroq.surros_of_test_samples(data['lin_B'],  data['lin_emp_nodes'],  'lin')
     surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
