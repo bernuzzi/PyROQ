@@ -656,15 +656,6 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    # Things left to check and improve (if they cannot be solved quickly, open an issue)
-    
-    #CHECKME [Improvement]: add configuration files or command line options to pass user parameters.
-    #CHECKME [Improvement]: currently, if a parameters is passed in the params_range dict, it is counted as one of the dimensions, even if it's not used. Should this be changed?
-    #CHECKME [Improvement]: start_values could be an array setting the initial basis points, and not just a single point.
-    #CHECKME [Improvement]: implement test_and_plot_only option.
-    #CHECKME [Improvement]: probably in pyroq.surros_of_test_samples() we want to pass a different number of tests waveforms than the default one (used to build the ROQ).
-    #CHECKME [Improvement]: uniform spin treatment across waveform. Implement an option running on [no-spin, aligned, precessing] and require input parameters to be consistent with this option.
-
     show               = False
     test_and_plot_only = False
     mc_q_par           = True  # If true, mass ranges have to be passed through mc and q
