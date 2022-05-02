@@ -154,16 +154,6 @@ class PyROQ:
         self.start_values               = start_values
         self.additional_waveform_params = additional_waveform_params
 
-        if(self.mc_q_par and (('m1' in self.params_ranges) or ('m2' in self.params_ranges))):
-            raise ValueError("Cannot pass 'm1' or 'm2' in params_ranges with the 'mc_q_par' option activated.")
-        elif(not(self.mc_q_par) and (not('m1' in self.params_ranges) or not('m2' in self.params_ranges))):
-            raise ValueError("Need to pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option de-activated.")
-
-        if(self.spin_sph and (('s1x' in self.params_ranges) or ('s1y' in self.params_ranges) or ('s1z' in self.params_ranges) or ('s2x' in self.params_ranges) or ('s2y' in self.params_ranges) or ('s2z' in self.params_ranges))):
-            raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
-        elif(not(self.spin_sph) and (not('s1x' in self.params_ranges) or not('s1y' in self.params_ranges) or not('s1z' in self.params_ranges) or not('s2x' in self.params_ranges) or not('s2y' in self.params_ranges) or not('s2z' in self.params_ranges))):
-            raise ValueError("Need to pass 's1[x,y,z]' and 's2[x,y,z]' in params_ranges with the 'spin_sph' option de-activated.")
-
         self.f_min             = f_min
         self.f_max             = f_max
         self.deltaF            = deltaF
@@ -191,6 +181,19 @@ class PyROQ:
         
         self.outputdir         = outputdir
         self.verbose           = verbose
+        
+        # Sanity checks
+        if(self.mc_q_par and (('m1' in self.params_ranges) or ('m2' in self.params_ranges))):
+            raise ValueError("Cannot pass 'm1' or 'm2' in params_ranges with the 'mc_q_par' option activated.")
+        elif(not(self.mc_q_par) and (not('m1' in self.params_ranges) or not('m2' in self.params_ranges))):
+            raise ValueError("Need to pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option de-activated.")
+
+        if(self.spin_sph and (('s1x' in self.params_ranges) or ('s1y' in self.params_ranges) or ('s1z' in self.params_ranges) or ('s2x' in self.params_ranges) or ('s2y' in self.params_ranges) or ('s2z' in self.params_ranges))):
+            raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
+        elif(not(self.spin_sph) and (not('s1x' in self.params_ranges) or not('s1y' in self.params_ranges) or not('s1z' in self.params_ranges) or not('s2x' in self.params_ranges) or not('s2y' in self.params_ranges) or not('s2z' in self.params_ranges))):
+            raise ValueError("Need to pass 's1[x,y,z]' and 's2[x,y,z]' in params_ranges with the 'spin_sph' option de-activated.")
+
+        if(not(self.ndimlow>1) or not(self.ndimlow_quad>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
         
         if not os.path.exists(self.outputdir):
             os.makedirs(self.outputdir)
@@ -444,10 +447,6 @@ class PyROQ:
         inverse_V = np.linalg.pinv(V)
         return np.array([ndim, inverse_V, emp_nodes])
 
-    def empnodes_quad(self, ndim, known_bases):
-        print('\n\nCHECKME: this routine appears identical to the above (duplicated in original code?)\n\n')
-        return empnodes(self, ndim, known_bases)
-
     def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
         hp = self.generate_a_waveform(paramspoint)
@@ -545,12 +544,13 @@ class PyROQ:
                                                                                     'lin')
         B, f = self._roqs(bases, 'lin')
 
-        d['lin_B']      = B
-        d['lin_f']      = f
-        d['lin_bases']  = bases
-        d['lin_params'] = params
-        d['lin_res']    = residual_modula
-        
+        d['lin_B']          = B
+        d['lin_f']          = f
+        d['lin_bases']      = bases
+        d['lin_params']     = params
+        d['lin_res']        = residual_modula
+        d['lin_emp_nodes']  = np.searchsorted(self.freq, d['lin_f'])
+
         # Search for quadratic basis elements to build & save quadratic ROQ data.
         known_bases_start     = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
         basis_waveforms_start = np.array([hp1_quad])
@@ -563,11 +563,12 @@ class PyROQ:
                                                                                     'quad')
         B, f = self._roqs(bases, 'quad')
         
-        d['quad_B']      = B
-        d['quad_f']      = f
-        d['quad_bases']  = bases
-        d['quad_params'] = params
-        d['quad_res']    = residual_modula
+        d['quad_B']         = B
+        d['quad_f']         = f
+        d['quad_bases']     = bases
+        d['quad_params']    = params
+        d['quad_res']       = residual_modula
+        d['quad_emp_nodes'] = np.searchsorted(self.freq, d['quad_f'])
         
         return d
     
@@ -655,14 +656,20 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    # Things left to check
+    # Things left to check and improve (if they cannot be solved quickly, open an issue)
     
-    #CHECKME: print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that explains the difference with pyROQ master. Decide how to handle this (force params removal if low=hig?)')
+    #CHECKME [Improvement]: add configuration files or command line options to pass user parameters.
+    #CHECKME [Improvement]: currently, if a parameters is passed in the params_range dict, it is counted as one of the dimensions, even if it's not used. Should this be changed?
+    #CHECKME [Improvement]: start_values could be an array setting the initial basis points, and not just a single point.
+    #CHECKME [Improvement]: implement test_and_plot_only option.
+    #CHECKME [Improvement]: probably in pyroq.surros_of_test_samples() we want to pass a different number of tests waveforms than the default one (used to build the ROQ).
+    #CHECKME [Improvement]: uniform spin treatment across waveform. Implement an option running on [no-spin, aligned, precessing] and require input parameters to be consistent with this option.
 
-    show     = False
-    mc_q_par = True  # If true, mass ranges have to be passed through mc and q
-    spin_sph = False # If true, spin ranges have to be passed in spherical coordinates (see PyROQ class description for the names)
-    approx   = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
+    show               = False
+    test_and_plot_only = False
+    mc_q_par           = True  # If true, mass ranges have to be passed through mc and q
+    spin_sph           = False # If true, spin ranges have to be passed in spherical coordinates (see PyROQ class description for the names)
+    approx             = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
 
     # approx = 'teobresums-giotto'
     # params_ranges = {
@@ -727,7 +734,6 @@ if __name__ == '__main__':
         'phiref'  : params_ranges['phiref'][0] ,
         }
 
-
     # Point of the parameter space on which a targeted check is required
     test_values = {
         'mc'      : 30.5,
@@ -747,8 +753,6 @@ if __name__ == '__main__':
     # Point(s) of the parameter space on which to initialise the basis
     if not('params_ranges' in locals() or 'params_ranges' in globals()): params_ranges = defaults['params_ranges']
     if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = defaults['start_values']
-
-    #CHECKME: print('ADDME: start_values could be an array, which sets the initial basis points.')
 
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
@@ -786,21 +790,19 @@ if __name__ == '__main__':
     # No parameter should be changed below here. #
     ##############################################
 
-    # Create the bases and save them
-    data = pyroq.run()
-
     freq = pyroq.freq
-    data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
-    data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
 
-    #CHECKME: print('Implement plot-only option here.')
+    if not(test_and_plot_only):
+        # Create the bases and save them
+        data                   = pyroq.run()
+    else:
+        raise Exception("test-and-plot-only not yet implemented")
 
     print('\n###########\n# Results #\n###########\n')
     print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
 
     # Test waveform
-
     print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
     if not('test_values' in locals() or 'test_values' in globals()): test_values = defaults['test_values']
     parampoint = []
@@ -814,9 +816,6 @@ if __name__ == '__main__':
     pyroq.testrep(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
     # Surrogate tests
-
-    #CHECKME:print('CHECKME: probably here we want to pass a different number of tests waveforms than the default one (used to build the ROQ).')
-
     surros = pyroq.surros_of_test_samples(data['lin_B'],  data['lin_emp_nodes'],  'lin')
     surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
 

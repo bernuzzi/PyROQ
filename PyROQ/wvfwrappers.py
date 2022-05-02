@@ -75,8 +75,10 @@ try:
 
             if 'ecc' not in p.keys():
                 p['ecc'] = 0.
-            
-            #CHECKME: do the same check as above for the spins?
+
+            spin_names = ['s1x', 's1y', 's1z', 's2x', 's2y', 's2z']
+            for spin_name in spin_names:
+                if not(spin_name in p.keys()): p[spin_name] = 0.0
 
             [plus, cross] = lalsimulation.SimInspiralChooseFDWaveform(p['m1']*LAL_MSUN_SI,
                                                                       p['m2']*LAL_MSUN_SI,
@@ -158,7 +160,7 @@ try:
             p['domain']              = TEOBResumS_domain['FD']
             p['interp_uniform_grid'] = "yes" # ignored for FD, needed because of FFT for TD
         
-            p['use_mode_lm'        ] = self.modes_to_k([[2,2]]) # CHECKME: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ] available modes?
+            p['use_mode_lm'        ] = self.modes_to_k([[2,2]])
             p['use_spins'          ] = TEOBResumS_spins['aligned']
 
             p['output_hpc'         ] = "no"
@@ -184,10 +186,9 @@ try:
             s2x,s2y,s2z = 0.,0.,0.
             if self.waveform_params['use_spins'] == TEOBResumS_spins['precessing']:
                 if (('s1x' not in p.keys()) or ('s1y' not in p.keys()) or ('s1z' not in p.keys())):
-                    raise ValueError('spin1 parameters missing')
+                    raise ValueError("Spin1 parameters missing, while the 'precessing' spin option for TEOB was selected.")
                 if (('s2x' not in p.keys()) or ('s2y' not in p.keys()) or ('s2z' not in p.keys())):
-                    raise ValueError('spin2 parameters missing')
-
+                    raise ValueError("Spin2 parameters missing, while the 'precessing' spin option for TEOB was selected.")
                 s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
                 s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
                 
@@ -196,7 +197,6 @@ try:
                     raise ValueError('spin1 parameters missing')
                 if 's2z' not in p.keys():
                     raise ValueError('spin2 parameters missing')
-
                 s1z = p['s1z']
                 s2z = p['s2z']
                            
@@ -332,7 +332,7 @@ try:
                lambda1,lambda2 = lambda2,lambda1
                
             # Call it
-            model       = Model.default() ##TODO here you can use self.approximant to call any MLGW-BNS Model
+            model       = Model.default() # FIXME: here you can use self.approximant to call any MLGW-BNS Model
             frequencies = np.arange(f_min, f_max, step=deltaF)
             params      = ParametersWithExtrinsic(p['q'],
                                                   lambda1,
