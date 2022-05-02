@@ -20,29 +20,29 @@ defaults = {}
 
 # This is the training range of MLGW-BNS
 defaults['params_ranges'] = {
-    'mc'      : [0.9, 1.4]     ,
-    'q'       : [1, 3]         ,
-    's1s1'    : [0, 0.5]       ,
-    's1s2'    : [0, np.pi]     ,
-    's1s3'    : [0, 2.0*np.pi] ,
-    's2s1'    : [0, 0.5]       ,
-    's2s2'    : [0, np.pi]     ,
-    's2s3'    : [0, 2.0*np.pi] ,
-    'lambda1' : [5, 5000]      ,
-    'lambda2' : [5, 5000]      ,
-    'iota'    : [0, np.pi]     ,
-    'phiref'  : [0, 2*np.pi]   ,
+    'mc'      : [0.9, 1.4]   ,
+    'q'       : [1, 3]       ,
+    's1x'     : [0, 0]       ,
+    's1y'     : [0, 0]       ,
+    's1z'     : [-0.5, 0.5]  ,
+    's2x'     : [0, 0]       ,
+    's2y'     : [0, 0]       ,
+    's2z'     : [-0.5, 0.5]  ,
+    'lambda1' : [5, 5000]    ,
+    'lambda2' : [5, 5000]    ,
+    'iota'    : [0, np.pi]   ,
+    'phiref'  : [0, 2*np.pi] ,
 }
 
 defaults['start_values'] = {
     'mc'      : defaults['params_ranges']['mc'][0]     ,
     'q'       : defaults['params_ranges']['q'][0]      ,
-    's1s1'    : defaults['params_ranges']['s1s1'][0]   ,
-    's1s2'    : defaults['params_ranges']['s1s2'][0]   ,
-    's1s3'    : defaults['params_ranges']['s1s3'][0]   ,
-    's2s1'    : defaults['params_ranges']['s2s1'][0]   ,
-    's2s2'    : defaults['params_ranges']['s2s2'][0]   ,
-    's2s3'    : defaults['params_ranges']['s2s3'][0]   ,
+    's1x'     : defaults['params_ranges']['s1x'][0]    ,
+    's1y'     : defaults['params_ranges']['s1y'][0]    ,
+    's1z'     : defaults['params_ranges']['s1z'][0]    ,
+    's2x'     : defaults['params_ranges']['s2x'][0]    ,
+    's2y'     : defaults['params_ranges']['s2y'][0]    ,
+    's2z'     : defaults['params_ranges']['s2z'][0]    ,
     'lambda1' : defaults['params_ranges']['lambda1'][0],
     'lambda2' : defaults['params_ranges']['lambda2'][0],
     'iota'    : defaults['params_ranges']['iota'][0]   ,
@@ -53,19 +53,17 @@ defaults['start_values'] = {
 defaults['test_values'] = {
         'mc'      : 1.3 ,
         'q'       : 2   ,
-        's1s1'    : 0.  ,
-        's1s2'    : 0.2 ,
-        's1s3'    : 0,
-        's2s1'    : 0.  ,
-        's2s2'    : 0,
-        's2s3'    : 0.1,
+        's1x'     : 0.  ,
+        's1y'     : 0   ,
+        's1z'     : 0.2 ,
+        's2x'     : 0   ,
+        's2y'     : 0   ,
+        's2z'     : 0.1 ,
         'lambda1' : 1000,
         'lambda2' : 1000,
         'iota'    : 1.9 ,
         'phiref'  : 0.6 ,
 }
-# Initialise test_values
-test_values = {}
 
 class PyROQ:
     """
@@ -98,6 +96,8 @@ class PyROQ:
     def __init__(self,
                  approximant       = 'teobresums-giotto',
                  mc_q_par          = True,
+                 spin_sph          = False,
+
                  # Dictionary with any parameter needed for the waveform approximant
                  additional_waveform_params = {},
                  # Intrinsic parameter space on which the interpolants will be constructed
@@ -149,14 +149,20 @@ class PyROQ:
         # Read input params
         self.approximant                = approximant
         self.mc_q_par                   = mc_q_par
+        self.spin_sph                   = spin_sph
         self.params_ranges              = params_ranges
         self.start_values               = start_values
         self.additional_waveform_params = additional_waveform_params
 
-        if(self.mc_q_par and ('m1' in self.params_ranges) or ('m2' in self.params_ranges)):
-            raise ValueError("Cannot pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option activated.")
+        if(self.mc_q_par and (('m1' in self.params_ranges) or ('m2' in self.params_ranges))):
+            raise ValueError("Cannot pass 'm1' or 'm2' in params_ranges with the 'mc_q_par' option activated.")
         elif(not(self.mc_q_par) and (not('m1' in self.params_ranges) or not('m2' in self.params_ranges))):
             raise ValueError("Need to pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option de-activated.")
+
+        if(self.spin_sph and (('s1x' in self.params_ranges) or ('s1y' in self.params_ranges) or ('s1z' in self.params_ranges) or ('s2x' in self.params_ranges) or ('s2y' in self.params_ranges) or ('s2z' in self.params_ranges))):
+            raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
+        elif(not(self.spin_sph) and (not('s1x' in self.params_ranges) or not('s1y' in self.params_ranges) or not('s1z' in self.params_ranges) or not('s2x' in self.params_ranges) or not('s2y' in self.params_ranges) or not('s2z' in self.params_ranges))):
+            raise ValueError("Need to pass 's1[x,y,z]' and 's2[x,y,z]' in params_ranges with the 'spin_sph' option de-activated.")
 
         self.f_min             = f_min
         self.f_max             = f_max
@@ -275,15 +281,6 @@ class PyROQ:
         for i,k in self.i2n.items():
             p[k] = paramspoint[i]
 
-        # additionally store spin vectors
-        if(('s1s1' in self.n2i.keys()) and ('s1s2' in self.n2i.keys()) and ('s1s3' in self.n2i.keys())):
-            p['s1sphere'] = p['s1s1'],p['s1s2'],p['s1s3']
-        if(('s2s1' in self.n2i.keys()) and ('s2s2' in self.n2i.keys()) and ('s2s3' in self.n2i.keys())):
-            p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
-        if(('s1x' in self.n2i.keys()) and ('s1y' in self.n2i.keys()) and ('s1z' in self.n2i.keys())):
-            p['s1xyz'] = p['s1x'],p['s1y'],p['s1z']
-        if(('s2x' in self.n2i.keys()) and ('s2y' in self.n2i.keys()) and ('s2z' in self.n2i.keys())):
-            p['s2xyz'] = p['s2x'],p['s2y'],p['s2z']
         return p
          
     def generate_params_points(self,npts=0,round_to_digits=6):
@@ -296,7 +293,7 @@ class PyROQ:
                                          size=(npts,self.nparams))
         return paramspoints.round(decimals=round_to_digits)
     
-    def _paramspoint_to_wave(self, paramspoint, update_sxyz=True):
+    def _paramspoint_to_wave(self, paramspoint):
         """
         Generate a waveform given a paramspoint
         By default, if paramspoint contains the spherical spin, then updates the cartesian accordingly.
@@ -305,17 +302,12 @@ class PyROQ:
 
         if self.mc_q_par: p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
 
-        if update_sxyz:
-            if(('s1s1' in self.n2i.keys()) and ('s1s2' in self.n2i.keys()) and ('s1s3' in self.n2i.keys())):
-                p['s1sphere']              = p['s1s1'],p['s1s2'],p['s1s3']
-                p['s1xyz']                 = self.spherical_to_cartesian(p['s1sphere'])
-                p['s1x'],p['s1y'],p['s1z'] = p['s1xyz']
-                
-            if(('s2s1' in self.n2i.keys()) and ('s2s2' in self.n2i.keys()) and ('s2s3' in self.n2i.keys())):
-                p['s2sphere']              = p['s2s1'],p['s2s2'],p['s2s3']
-                p['s2xyz']                 = self.spherical_to_cartesian(p['s2sphere'])
-                p['s2x'],p['s2y'],p['s2z'] = p['s2xyz']
-        
+        if self.spin_sph:
+            s1sphere_tmp               = p['s1s1'],p['s1s2'],p['s1s3']
+            p['s1x'],p['s1y'],p['s1z'] = self.spherical_to_cartesian(s1sphere_tmp)
+            s2sphere_tmp               = p['s2s1'],p['s2s2'],p['s2s3']
+            p['s2x'],p['s2y'],p['s2z'] = self.spherical_to_cartesian(s2sphere_tmp)
+    
         hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp
 
@@ -664,72 +656,71 @@ class PyROQ:
 if __name__ == '__main__':
 
     # Things left to check
-    #    print('CHECKME: spins in spherical or cartesian?')
-    #CHECKME:print('Current spin handling (using directly spherical) is incompatible with non-precessing models (e.g. mlgw-bns), since they dont allow to switch continuously from spins up to spins down.')
     
     #CHECKME: print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that explains the difference with pyROQ master. Decide how to handle this (force params removal if low=hig?)')
 
     show     = False
-    mc_q_par = True # If true, masss ranges have to be passed through mc and q
+    mc_q_par = True  # If true, mass ranges have to be passed through mc and q
+    spin_sph = False # If true, spin ranges have to be passed in spherical coordinates (see PyROQ class description for the names)
     approx   = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
 
     # approx = 'teobresums-giotto'
     # params_ranges = {
-    #     'mc'      : [30, 31]       ,
-    #     'q'       : [1, 1.2]       ,
-    #     's1s1'    : [0, 0]         ,
-    #     's1s2'    : [0, np.pi]     ,
-    #     's1s3'    : [0, 2.0*np.pi] ,
-    #     's2s1'    : [0, 0]         ,
-    #     's2s2'    : [0, np.pi]     ,
-    #     's2s3'    : [0, 2.0*np.pi] ,
-    #     'lambda1' : [0, 1000]      ,
-    #     'lambda2' : [0, 1000]      ,
-    #     'iota'    : [0, np.pi]     ,
-    #     'phiref'  : [0, 2*np.pi]   ,
+    #     'mc'      : [30, 31]    ,
+    #     'q'       : [1, 1.2]    ,
+    #     's1x'     : [0, 0]      ,
+    #     's1y'     : [0, 0]      ,
+    #     's1z'     : [-0.5, 0.5] ,
+    #     's2x'     : [0, 0]      ,
+    #     's2y'     : [0, 0]      ,
+    #     's2z'     : [-0.5, 0.5] ,
+    #     'lambda1' : [0, 1000]   ,
+    #     'lambda2' : [0, 1000]   ,
+    #     'iota'    : [0, np.pi]  ,
+    #     'phiref'  : [0, 2*np.pi],
     # }
 
     #approx = 'mlgw-bns'
     #    params_ranges = {
-    #        'mc'      : [0.9, 0.92]    ,
-    #        'q'       : [1, 1.02]      ,
-    #        's1s1'    : [0, 0.5]       ,
-    #        's1s2'    : [0, 0]         ,
-    #        's1s3'    : [0, 2.0*np.pi] ,
-    #        's2s1'    : [0, 0]         ,
-    #        's2s2'    : [0, np.pi]     ,
-    #        's2s3'    : [0, 2.0*np.pi] ,
-    #        'lambda1' : [5, 50]        ,
-    #        'lambda2' : [5, 50]        ,
-    #        'iota'    : [0, np.pi]     ,
-    #        'phiref'  : [0, 2*np.pi]   ,
+    #        'mc'      : [0.9, 0.92] ,
+    #        'q'       : [1, 1.02]   ,
+    #        's1x'     : [0, 0]      ,
+    #        's1y'     : [0, 0]      ,
+    #        's1z'     : [-0.5, 0.5] ,
+    #        's2x'     : [0, 0]      ,
+    #        's2y'     : [0, 0]      ,
+    #        's2z'     : [-0.5, 0.5] ,
+    #        'lambda1' : [5, 50]     ,
+    #        'lambda2' : [5, 50]     ,
+    #        'iota'    : [0, np.pi]  ,
+    #        'phiref'  : [0, 2*np.pi],
     #    }
 
     # Range on which to train the ROQ
     params_ranges = {
-        'mc'      : [30, 31]       ,
-        'q'       : [1, 1.2]       ,
-        's1s1'    : [0, 0.2]       ,
-        's1s2'    : [0, np.pi]     ,
-        's1s3'    : [0, 2.0*np.pi] ,
-        's2s1'    : [0, 0.2]       ,
-        's2s2'    : [0, np.pi]     ,
-        's2s3'    : [0, 2.0*np.pi] ,
-        'lambda1' : [0, 0]         ,
-        'lambda2' : [0, 0]         ,
-        'iota'    : [0, np.pi]     ,
-        'phiref'  : [0, 2*np.pi]   ,
+        'mc'      : [30, 31]    ,
+        'q'       : [1, 1.2]    ,
+        's1x'     : [0, 0]      ,
+        's1y'     : [0, 0]      ,
+        's1z'     : [0.0, 0.2] ,
+        's2x'     : [0, 0]      ,
+        's2y'     : [0, 0]      ,
+        's2z'     : [0.0, 0.2] ,
+        'lambda1' : [0, 0]      ,
+        'lambda2' : [0, 0]      ,
+        'iota'    : [0, np.pi]  ,
+        'phiref'  : [0, 2*np.pi],
     }
 
     start_values = {
         'mc'      : params_ranges['mc'][0]     ,
         'q'       : params_ranges['q'][0]      ,
-        's1s1'    : params_ranges['s1s1'][0]   ,
-        's1s2'    : params_ranges['s1s2'][0]   ,
-        's1s3'    : params_ranges['s1s3'][0]   ,
-        's2s1'    : params_ranges['s2s1'][0]   ,
-        's2s2'    : params_ranges['s2s2'][0]   ,
-        's2s3'    : params_ranges['s2s3'][0]   ,
+        's1x'     : params_ranges['s1x'][0]    ,
+        's1y'     : params_ranges['s1y'][0]    ,
+        's1z'     : params_ranges['s1z'][0]    ,
+        's2x'     : params_ranges['s2x'][0]    ,
+        's2y'     : params_ranges['s2y'][0]    ,
+        's2z'     : params_ranges['s2z'][0]    ,
         'lambda1' : params_ranges['lambda1'][0],
         'lambda2' : params_ranges['lambda2'][0],
         'iota'    : params_ranges['iota'][0]   ,
@@ -739,16 +730,16 @@ if __name__ == '__main__':
 
     # Point of the parameter space on which a targeted check is required
     test_values = {
-        'mc'      : 30.5 ,
+        'mc'      : 30.5,
         'q'       : 1.1 ,
-        's1s1'    : 0.1 ,
-        's1s2'    : 0.2 ,
-        's1s3'    : 0.1,
-        's2s1'    : 0.1 ,
-        's2s2'    : 0.15,
-        's2s3'    : 0.1,
-        'lambda1' : 0,
-        'lambda2' : 0,
+        's1x'     : 0.  ,
+        's1y'     : 0   ,
+        's1z'     : 0.2 ,
+        's2x'     : 0   ,
+        's2y'     : 0   ,
+        's2z'     : 0.1 ,
+        'lambda1' : 0   ,
+        'lambda2' : 0   ,
         'iota'    : 1.9 ,
         'phiref'  : 0.6 ,
     }
@@ -762,6 +753,7 @@ if __name__ == '__main__':
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
                   mc_q_par          = mc_q_par,
+                  spin_sph          = spin_sph,
                   params_ranges     = params_ranges,
                   start_values      = start_values,
                   
