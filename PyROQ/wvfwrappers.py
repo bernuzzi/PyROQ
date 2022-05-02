@@ -158,7 +158,7 @@ try:
             p['domain']              = TEOBResumS_domain['FD']
             p['interp_uniform_grid'] = "yes" # ignored for FD, needed because of FFT for TD
         
-            p['use_mode_lm'        ] = modes_to_k([[2,2]]) # CHECKME: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ] available modes?
+            p['use_mode_lm'        ] = self.modes_to_k([[2,2]]) # CHECKME: [ 0, 1, 2, 3, 4, 5, 6, 7, 8, 13 ] available modes?
             p['use_spins'          ] = TEOBResumS_spins['aligned']
 
             p['output_hpc'         ] = "no"
@@ -182,7 +182,7 @@ try:
 
             s1x,s1y,s1z = 0.,0.,0.
             s2x,s2y,s2z = 0.,0.,0.
-            if p['use_spins'] == TEOBResumS_spins['precessing']:
+            if self.waveform_params['use_spins'] == TEOBResumS_spins['precessing']:
                 if (('s1x' not in p.keys()) or ('s1y' not in p.keys()) or ('s1z' not in p.keys())):
                     raise ValueError('spin1 parameters missing')
                 if (('s2x' not in p.keys()) or ('s2y' not in p.keys()) or ('s2z' not in p.keys())):
@@ -191,7 +191,7 @@ try:
                 s1x,s1y,s1z = p['s1x'], p['s1y'], p['s1z']
                 s2x,s2y,s2z = p['s2x'], p['s2y'], p['s2z']
                 
-            elif p['use_spins'] == TEOBResumS_spins['aligned']:
+            elif self.waveform_params['use_spins'] == TEOBResumS_spins['aligned']:
                 if 's1z' not in p.keys():
                     raise ValueError('spin1 parameters missing')
                 if 's2z' not in p.keys():
@@ -224,7 +224,7 @@ try:
             p['q'                  ] = q
             p['LambdaAl2'          ] = lambda1
             p['LambdaBl2'          ] = lambda2
-            if p['use_spins'] == TEOBResumS_spins['precessing']:
+            if self.waveform_params['use_spins'] == TEOBResumS_spins['precessing']:
                 p['chi1x'          ] = s1x
                 p['chi1y'          ] = s1y
                 p['chi1z'          ] = s1z
@@ -247,7 +247,7 @@ try:
 
             self.waveform_params.update(p)
             
-            if p['domain'] == TEOBResumS_domain['TD']:
+            if self.waveform_params['domain'] == TEOBResumS_domain['TD']:
                 t, hptd, hctd = EOBRun_module.EOBRunPy(self.waveform_params)
                 hp, hc = JBJF(hptd,hctd,t[1]-t[0])
                 warnings.warn("\n\nCheck waveform lenght\n\n")

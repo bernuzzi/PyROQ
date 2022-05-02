@@ -677,20 +677,36 @@ if __name__ == '__main__':
     print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that might explain difference with pyROQ!!!!Check if true. If true, implement check for which if lower=upper raise error and the param should be removed. Otherwise leave it as is.\n\n\n')
 
     show   = False
-    approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto-FD' #'mlgw-bns'
+    approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
+
+    # approx = 'teobresums-giotto'
+    # params_ranges = {
+    #     'mc'      : [30, 31]       ,
+    #     'q'       : [1, 1.2]       ,
+    #     's1s1'    : [0, 0]         ,
+    #     's1s2'    : [0, np.pi]     ,
+    #     's1s3'    : [0, 2.0*np.pi] ,
+    #     's2s1'    : [0, 0]         ,
+    #     's2s2'    : [0, np.pi]     ,
+    #     's2s3'    : [0, 2.0*np.pi] ,
+    #     'lambda1' : [0, 1000]      ,
+    #     'lambda2' : [0, 1000]      ,
+    #     'iota'    : [0, np.pi]     ,
+    #     'phiref'  : [0, 2*np.pi]   ,
+    # }
 
 #approx = 'mlgw-bns'
 #    params_ranges = {
-#        'mc'      : [0.9, 0.92]     ,
-#        'q'       : [1, 1.02]         ,
+#        'mc'      : [0.9, 0.92]    ,
+#        'q'       : [1, 1.02]      ,
 #        's1s1'    : [0, 0.5]       ,
-#        's1s2'    : [0, 0]     ,
+#        's1s2'    : [0, 0]         ,
 #        's1s3'    : [0, 2.0*np.pi] ,
-#        's2s1'    : [0, 0]       ,
+#        's2s1'    : [0, 0]         ,
 #        's2s2'    : [0, np.pi]     ,
 #        's2s3'    : [0, 2.0*np.pi] ,
-#        'lambda1' : [5, 50]      ,
-#        'lambda2' : [5, 50]      ,
+#        'lambda1' : [5, 50]        ,
+#        'lambda2' : [5, 50]        ,
 #        'iota'    : [0, np.pi]     ,
 #        'phiref'  : [0, 2*np.pi]   ,
 #    }
