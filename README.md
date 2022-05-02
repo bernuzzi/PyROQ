@@ -3,7 +3,7 @@ This is the repository for the PyROQ code that builds ROQ data for the long dura
 
 Please cite [our paper](https://arxiv.org/abs/2009.13812) if you use our code in your research. 
 
-SB (sebastiano.bernuzzi@unin-jena.de) 03/2022:
+SB (sebastiano.bernuzzi@uni-jena.de) 03/2022:
    * Forked PyRQO version 0.1.26 repo
    * Added support for [TEOBResumS GIOTTO](https://bitbucket.org/eob_ihes/teobresums/src/master/) and MLW-BNS
    * Refactored code
@@ -11,3 +11,6 @@ SB (sebastiano.bernuzzi@unin-jena.de) 03/2022:
      - Simplified code/reduced duplication
      - Added waveform wrapper classes
      - Changed parameter management
+
+GC (gregorio.carullo@uni-jena.de) 05/2022:
+  * Debugged and simplified `refactored` branch.
