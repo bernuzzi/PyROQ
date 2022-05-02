@@ -97,6 +97,7 @@ class PyROQ:
     """
     def __init__(self,
                  approximant       = 'teobresums-giotto',
+                 mc_q_par          = True,
                  # Dictionary with any parameter needed for the waveform approximant
                  additional_waveform_params = {},
                  # Intrinsic parameter space on which the interpolants will be constructed
@@ -147,9 +148,15 @@ class PyROQ:
 
         # Read input params
         self.approximant                = approximant
+        self.mc_q_par                   = mc_q_par
         self.params_ranges              = params_ranges
         self.start_values               = start_values
         self.additional_waveform_params = additional_waveform_params
+
+        if(self.mc_q_par and ('m1' in self.params_ranges) or ('m2' in self.params_ranges)):
+            raise ValueError("Cannot pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option activated.")
+        elif(not(self.mc_q_par) and (not('m1' in self.params_ranges) or not('m2' in self.params_ranges))):
+            raise ValueError("Need to pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option de-activated.")
 
         self.f_min             = f_min
         self.f_max             = f_max
@@ -289,45 +296,31 @@ class PyROQ:
                                          size=(npts,self.nparams))
         return paramspoints.round(decimals=round_to_digits)
     
-    def _paramspoint_to_wave(self, paramspoint, update_m1m2=True, update_sxyz=True):
+    def _paramspoint_to_wave(self, paramspoint, update_sxyz=True):
         """
         Generate a waveform given a paramspoint
-        By default, 
-         - it assumes that paramspoint contains (mc,q) and updates (m1,m2) accordingly   
-         - if paramspoint contains the spherical spin, then updates the cartesian accordingly
+        By default, if paramspoint contains the spherical spin, then updates the cartesian accordingly.
         """
         p = self.update_waveform_params(paramspoint)
 
-        if update_m1m2:
-            p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
+        if self.mc_q_par: p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
 
         if update_sxyz:
             if(('s1s1' in self.n2i.keys()) and ('s1s2' in self.n2i.keys()) and ('s1s3' in self.n2i.keys())):
-                p['s1sphere'] = p['s1s1'],p['s1s2'],p['s1s3']
-                p['s1xyz'] = self.spherical_to_cartesian(p['s1sphere']) 
+                p['s1sphere']              = p['s1s1'],p['s1s2'],p['s1s3']
+                p['s1xyz']                 = self.spherical_to_cartesian(p['s1sphere'])
                 p['s1x'],p['s1y'],p['s1z'] = p['s1xyz']
                 
             if(('s2s1' in self.n2i.keys()) and ('s2s2' in self.n2i.keys()) and ('s2s3' in self.n2i.keys())):
-                p['s2sphere'] = p['s2s1'],p['s2s2'],p['s2s3']
-                p['s2xyz'] = self.spherical_to_cartesian(p['s2sphere'])
+                p['s2sphere']              = p['s2s1'],p['s2s2'],p['s2s3']
+                p['s2xyz']                 = self.spherical_to_cartesian(p['s2sphere'])
                 p['s2x'],p['s2y'],p['s2z'] = p['s2xyz']
         
         hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp
-    
-    def generate_a_waveform_from_mcq(self, paramspoint): 
-        """
-        This assumes paramspoint contains values for mc,q
-        and updates m1,m2 in the waveform parameters before generating
-        the waveform
-        """
-        return self._paramspoint_to_wave(paramspoint)
 
-    def generate_a_waveform(self, paramspoint): 
-        """
-        This does not assume data for (mc,q)
-        """
-        return self._paramspoint_to_wave(paramspoint, update_m1m2=False, update_sxyz=True)
+    def generate_a_waveform(self, paramspoint):
+        return self._paramspoint_to_wave(paramspoint)
     
     def _compute_modulus(self, paramspoint, known_bases, term):
 
@@ -422,7 +415,7 @@ class PyROQ:
                                                                       params_ini_list[i]))
         self.params_ini = np.array([params_ini_list])
         # First waveform
-        self.hp1 = self.generate_a_waveform_from_mcq(params_ini_list)
+        self.hp1 = self.generate_a_waveform(params_ini_list)
         
         return 
 
@@ -465,7 +458,7 @@ class PyROQ:
 
     def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
-        hp = self.generate_a_waveform_from_mcq(paramspoint)
+        hp = self.generate_a_waveform(paramspoint)
         
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
@@ -590,7 +583,7 @@ class PyROQ:
     
     def testrep(self, b, emp_nodes, paramspoint, term):
         
-        hp = self.generate_a_waveform_from_mcq(paramspoint)
+        hp = self.generate_a_waveform(paramspoint)
         
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
@@ -646,7 +639,7 @@ class PyROQ:
         print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term.ljust(4)))
         for i,paramspoint in enumerate(paramspoints):
             
-            hp        = self.generate_a_waveform_from_mcq(paramspoint)
+            hp        = self.generate_a_waveform(paramspoint)
             hp_emp    = hp[emp_nodes]
             hp_rep    = np.dot(b_linear,hp_emp)
             surros[i] = (1-self.overlap_of_two_waveforms(hp, hp_rep))*self.deltaF
@@ -676,8 +669,9 @@ if __name__ == '__main__':
     
     #CHECKME: print('\n\n\nNUMBER OF PARAMETERS IS DIFFERENT, YOU ARE KEEPING LAMBDA, that explains the difference with pyROQ master. Decide how to handle this (force params removal if low=hig?)')
 
-    show   = False
-    approx = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
+    show     = False
+    mc_q_par = True # If true, masss ranges have to be passed through mc and q
+    approx   = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
 
     # approx = 'teobresums-giotto'
     # params_ranges = {
@@ -695,21 +689,21 @@ if __name__ == '__main__':
     #     'phiref'  : [0, 2*np.pi]   ,
     # }
 
-#approx = 'mlgw-bns'
-#    params_ranges = {
-#        'mc'      : [0.9, 0.92]    ,
-#        'q'       : [1, 1.02]      ,
-#        's1s1'    : [0, 0.5]       ,
-#        's1s2'    : [0, 0]         ,
-#        's1s3'    : [0, 2.0*np.pi] ,
-#        's2s1'    : [0, 0]         ,
-#        's2s2'    : [0, np.pi]     ,
-#        's2s3'    : [0, 2.0*np.pi] ,
-#        'lambda1' : [5, 50]        ,
-#        'lambda2' : [5, 50]        ,
-#        'iota'    : [0, np.pi]     ,
-#        'phiref'  : [0, 2*np.pi]   ,
-#    }
+    #approx = 'mlgw-bns'
+    #    params_ranges = {
+    #        'mc'      : [0.9, 0.92]    ,
+    #        'q'       : [1, 1.02]      ,
+    #        's1s1'    : [0, 0.5]       ,
+    #        's1s2'    : [0, 0]         ,
+    #        's1s3'    : [0, 2.0*np.pi] ,
+    #        's2s1'    : [0, 0]         ,
+    #        's2s2'    : [0, np.pi]     ,
+    #        's2s3'    : [0, 2.0*np.pi] ,
+    #        'lambda1' : [5, 50]        ,
+    #        'lambda2' : [5, 50]        ,
+    #        'iota'    : [0, np.pi]     ,
+    #        'phiref'  : [0, 2*np.pi]   ,
+    #    }
 
     # Range on which to train the ROQ
     params_ranges = {
@@ -761,12 +755,13 @@ if __name__ == '__main__':
 
     # Point(s) of the parameter space on which to initialise the basis
     if not('params_ranges' in locals() or 'params_ranges' in globals()): params_ranges = defaults['params_ranges']
-    if not('start_values'  in locals() or 'start_values' in globals()):  start_values  = defaults['start_values']
+    if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = defaults['start_values']
 
     #CHECKME: print('ADDME: start_values could be an array, which sets the initial basis points.')
 
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
+                  mc_q_par          = mc_q_par,
                   params_ranges     = params_ranges,
                   start_values      = start_values,
                   
