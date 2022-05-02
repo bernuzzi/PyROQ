@@ -408,9 +408,9 @@ def bases_searching_results_unnormalized(parallel, nprocesses, npts, nparams, nb
 
 def bases_searching_quadratic_results_unnormalized(parallel, nprocesses, npts, nparams, nbases_quad, known_quad_bases, basis_waveforms, params_quad, residual_modula, params_low, params_high, distance, deltaF, f_min, f_max, waveFlags, approximant):
     for k in numpy.arange(0,nbases_quad-1):
-        print("Quadratic Iter: ", k+1)
         paramspoints = generate_params_points(npts, nparams, params_low, params_high)
         basis_new, params_new, rm_new= least_match_quadratic_waveform_unnormalized(parallel, nprocesses, paramspoints, known_quad_bases, distance, deltaF, f_min, f_max, waveFlags, approximant)
+        print("Quadratic Iter: ", k+1, params_new)
         known_quad_bases= numpy.append(known_quad_bases, numpy.array([basis_new]), axis=0)
         params_quad = numpy.append(params_quad, numpy.array([params_new]), axis = 0)
         residual_modula = numpy.append(residual_modula, rm_new)
@@ -431,6 +431,7 @@ def initial_basis(mc_low, mc_high, q_low, q_high, s1sphere_low, s1sphere_high, s
             params_low = [               mc_low, q_low, s1sphere_low[0], s1sphere_low[1], s1sphere_low[2], s2sphere_low[0], s2sphere_low[1], s2sphere_low[2], iota_low, phiref_low] 
             params_high = [mc_high, q_high, s1sphere_high[0], s1sphere_high[1], s1sphere_high[2], s2sphere_high[0], s2sphere_high[1], s2sphere_high[2], iota_high, phiref_high]
             hp1 = generate_a_waveform_from_mcq(mc_low, q_low, spherical_to_cartesian(s1sphere_low), spherical_to_cartesian(s2sphere_low), 0, 0, 0, iota_low, phiref_low, distance, deltaF, f_min, f_max, waveFlags, approximant)
+
     except AttributeError: 
         raise Exception("Waveform call failed with error: {}.".format(traceback.print_exc()))
     try:
