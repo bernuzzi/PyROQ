@@ -247,16 +247,23 @@ class PyROQ:
             Calculating overlap (FIXME: change to a more representative name) of two waveforms
         """
         
+        # From the forked master version of the public PyROQ: https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L40
         if(self.error_version=='v1'):
             wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1))
             wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2))
             measure = (1-np.real(np.vdot(wf1norm, wf2norm)))*self.deltaF
+        # From the PyROQ paper: https://arxiv.org/abs/2009.13812
         elif(self.error_version=='v2'):
             diff    = wf1 - wf2
-            measure = np.real(np.vdot(diff, diff))
+            measure = np.real(np.vdot(diff, diff))*self.deltaF
+        # From the forked master version of the public PyROQ (commented): https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L39
         elif(self.error_version=='v3'):
             diff    = wf1 - wf2
-            measure = 1 - 0.5*np.real(np.vdot(diff, diff))        
+            measure = 1 - 0.5*np.real(np.vdot(diff, diff))
+        # Same as 'v3', but without the (1-0.5*) factor
+        elif(self.error_version=='v4'):
+            diff    = wf1 - wf2
+            measure = np.real(np.vdot(diff, diff))
         else:
             raise VersionError
         
