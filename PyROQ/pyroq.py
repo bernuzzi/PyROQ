@@ -6,8 +6,8 @@ from wvfwrappers import *
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
-TermError = ValueError("Unknown basis term requested.")
-
+TermError    = ValueError("Unknown basis term requested.")
+VersionError = ValueError("Unknown version requested.")
 np.random.seed(150914)
 
 # PyRQQ
@@ -117,6 +117,7 @@ class PyROQ:
                  # Number of points for each search of a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elements.
                  # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
                  npts              = 80,
+                 error_version     = 'v1',
                  
                  # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
                  nbases            = 80,
@@ -161,6 +162,7 @@ class PyROQ:
 
         self.ntests            = ntests
         self.npts              = npts
+        self.error_version     = error_version
 
         # linear basis
         self.nbases            = nbases
@@ -242,11 +244,20 @@ class PyROQ:
     
     def overlap_of_two_waveforms(self, wf1, wf2):
         """
-        Calculating overlap of two waveforms
+            Calculating overlap (FIXME: change to a more representative name) of two waveforms
         """
-        wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1)) 
-        wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2)) 
-        return np.real(np.vdot(wf1norm, wf2norm)) 
+        
+        if(self.error_version=='v1'):
+            wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1))
+            wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2))
+            measure = (1-np.real(np.vdot(wf1norm, wf2norm)))*self.deltaF
+        elif(self.error_version=='v2'):
+            diff    = wf1 - wf2
+            measure = np.real(np.vdot(diff, diff))
+        else:
+            raise VersionError
+        
+        return measure
 
     def spherical_to_cartesian(self, sph):
         x = sph[0]*np.sin(sph[1])*np.cos(sph[2])
@@ -430,35 +441,41 @@ class PyROQ:
         
         """
         Generate the empirical interpolation nodes from a given basis.
-        Follows the algorithm detailed in Ref. MISSING.
+        Follows the algorithm detailed in Ref. Phys. Rev. X 4, 031006, according to PRD 104, 063031 (2021).
         """
         
-        emp_nodes = np.arange(0,ndim) * fact
+        emp_nodes    = np.arange(0,ndim) * fact
         emp_nodes[0] = np.argmax(np.absolute(known_bases[0]))
-        c1 = known_bases[1,emp_nodes[0]]/known_bases[0,1]
-        interp1 = np.multiply(c1,known_bases[0])
-        diff1 = interp1 - known_bases[1]
-        r1 = np.absolute(diff1)
+        
+        c1           = known_bases[1,emp_nodes[0]]/known_bases[0,1]
+        interp1      = np.multiply(c1,known_bases[0])
+        diff1        = interp1 - known_bases[1]
+        r1           = np.absolute(diff1)
         emp_nodes[1] = np.argmax(r1)
+        
         for k in np.arange(2,ndim):
-            emp_tmp = emp_nodes[0:k]
-            Vtmp = np.transpose(known_bases[0:k,emp_tmp])
+            
+            emp_tmp      = emp_nodes[0:k]
+            Vtmp         = np.transpose(known_bases[0:k,emp_tmp])
             inverse_Vtmp = np.linalg.pinv(Vtmp)
-            e_to_interp = known_bases[k]
-            Ci = np.dot(inverse_Vtmp, e_to_interp[emp_tmp])
+            e_to_interp  = known_bases[k]
+            Ci           = np.dot(inverse_Vtmp, e_to_interp[emp_tmp])
             interpolantA = np.zeros(len(known_bases[k]))+np.zeros(len(known_bases[k]))*1j
+            
             for j in np.arange(0, k):
-                tmp = np.multiply(Ci[j], known_bases[j])
+                tmp           = np.multiply(Ci[j], known_bases[j])
                 interpolantA += tmp
-            diff = interpolantA - known_bases[k]
-            r = np.absolute(diff)
+            
+            diff         = interpolantA - known_bases[k]
+            r            = np.absolute(diff)
             emp_nodes[k] = np.argmax(r)
-            emp_nodes = sorted(emp_nodes)
-        u, c = np.unique(emp_nodes, return_counts=True)
-        dup = u[c > 1]
+            emp_nodes    = sorted(emp_nodes)
+    
+        u, c      = np.unique(emp_nodes, return_counts=True)
+        dup       = u[c > 1]
         emp_nodes = np.unique(emp_nodes)
-        ndim = len(emp_nodes)
-        V = np.transpose(known_bases[0:ndim, emp_nodes])
+        ndim      = len(emp_nodes)
+        V         = np.transpose(known_bases[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
         
         return np.array([ndim, inverse_V, emp_nodes])
@@ -481,9 +498,9 @@ class PyROQ:
         for j in np.arange(0, ndim):
             tmp           = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
-
-        # Return the mismatch of the interpolated waveform and the original waveform
-        return (1-self.overlap_of_two_waveforms(hp, interpolantA))*self.deltaF
+        
+        # Return the goodness-of-interpolation measure
+        return self.overlap_of_two_waveforms(hp, interpolantA)
     
     def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term):
         
@@ -670,8 +687,6 @@ class PyROQ:
     
     def surros_of_test_samples(self, b_linear, emp_nodes, term, nsamples=0):
         
-        # FIXME: check for repetitions in this function.
-        
         if   term == 'lin':  tol = self.tolerance
         elif term == 'quad': tol = self.tolerance_quad
         else:                raise TermError
@@ -687,8 +702,9 @@ class PyROQ:
             hp        = self.generate_a_waveform(paramspoint)
             hp_emp    = hp[emp_nodes]
             hp_rep    = np.dot(b_linear,hp_emp)
-            surros[i] = (1-self.overlap_of_two_waveforms(hp, hp_rep))*self.deltaF
             
+            surros[i] = self.overlap_of_two_waveforms(hp, hp_rep)
+
             np.set_printoptions(suppress=True)
             if self.verbose:
                 if (surros[i] > tol):
@@ -713,6 +729,7 @@ if __name__ == '__main__':
     mc_q_par           = True  # If true, mass ranges have to be passed through mc and q
     spin_sph           = False # If true, spin ranges have to be passed in spherical coordinates (see PyROQ class description for the names)
     approx             = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
+    error_version      = 'v1'
     output             = './test'
     
     # approx = 'teobresums-giotto'
@@ -848,7 +865,8 @@ if __name__ == '__main__':
         data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
         data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
 
-        print('check np.traspose')
+        print('check np.traspose in storing B output.')
+        raise Exception("Not yet completed.")
 
     print('\n###########\n# Results #\n###########\n')
     print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']),  len(freq)/len(data['lin_f'])))
