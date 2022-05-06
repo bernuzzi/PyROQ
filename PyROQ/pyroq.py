@@ -254,6 +254,9 @@ class PyROQ:
         elif(self.error_version=='v2'):
             diff    = wf1 - wf2
             measure = np.real(np.vdot(diff, diff))
+        elif(self.error_version=='v3'):
+            diff    = wf1 - wf2
+            measure = 1 - 0.5*np.real(np.vdot(diff, diff))        
         else:
             raise VersionError
         
