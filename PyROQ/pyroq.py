@@ -114,7 +114,7 @@ class PyROQ:
                  # Number of random test waveforms. This is the number of cases that are checked to be below tolerance before stopping the ROQ construction.
                  # For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
                  ntests            = 1000,
-                 # Number of points for each search for a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elments.
+                 # Number of points for each search of a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elements.
                  # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
                  npts              = 80,
                  
@@ -206,7 +206,7 @@ class PyROQ:
         if self.approximant in WfWrapper.keys():
             self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
         else:
-            raise ValueError('unknown approximant')
+            raise ValueError('Unknown approximant requested.')
 
         # Build the map between params names and indexes
         self.map_params_indexs() # self.i2n, self.n2i, self.nparams
@@ -234,7 +234,7 @@ class PyROQ:
 
     def gram_schmidt(self, bases, vec):
         """
-        Calculating the normalized residual (= a new basis) of a vector vec from known bases
+        Calculating the normalized residual (= a new basis term) of a vector vec from known bases
         """
         for i in np.arange(0,len(bases)):
             vec = vec - self.proj(bases[i], vec)
@@ -311,6 +311,7 @@ class PyROQ:
             s2sphere_tmp               = p['s2s1'],p['s2s2'],p['s2s3']
             p['s2x'],p['s2y'],p['s2z'] = self.spherical_to_cartesian(s2sphere_tmp)
     
+        # We build a linear basis only for hp, since empirically the same basis accurately works to represent hc too (see [arXiv:1604.08253).
         hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp
 
@@ -333,12 +334,8 @@ class PyROQ:
         return np.sqrt(np.vdot(residual, residual))
         
     def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term):
-        """
-        Now generating N=npts waveforms at points that are 
-        randomly uniformly distributed in parameter space
-        and calculate their inner products with the 1st waveform
-        so as to find the best waveform as the new basis
-        """
+
+        # Generate npts random waveforms.
         if self.parallel:
             paramspointslist = paramspoints.tolist()
             pool = mp.Pool(processes=nprocesses)
@@ -350,45 +347,60 @@ class PyROQ:
             for i,paramspoint in enumerate(paramspoints):
                 modula[i] = np.real(self._compute_modulus(paramspoint, known_bases, term))
 
+        # Select the worst represented waveform (in terms of the previous known basis)
         arg_newbasis = np.argmax(modula) 
         hp = self._paramspoint_to_wave(paramspoints[arg_newbasis])
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
         else               : raise TermError
+        
+        # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
+        # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
         basis_new = self.gram_schmidt(known_bases, hp)
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
             
     def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term):
+        
         if term == 'lin':
-            nbases = self.nbases
-            fbase = self.outputdir+'/ROQ_data/Linear/linearbases.npy'
+            nbases  = self.nbases
+            fbase   = self.outputdir+'/ROQ_data/Linear/linearbases.npy'
             fparams = self.outputdir+'/ROQ_data/Linear/linearbasiswaveformparams.npy'
         elif term=='quad':
-            nbases = self.nbases_quad
-            fbase = self.outputdir+'/ROQ_data/Quadratic/quadraticbases.npy'
+            nbases  = self.nbases_quad
+            fbase   = self.outputdir+'/ROQ_data/Quadratic/quadraticbases.npy'
             fparams = self.outputdir+'/ROQ_data/Quadratic/quadraticbasiswaveformparams.npy'
         else:
             raise TermError
     
+        # This block generates a basis of dimension nbases (maximum dimension selected by the user).
         print('\n\n###########################\n# Starting {} iteration #\n###########################\n'.format(term.ljust(4)))
         for k in np.arange(0,nbases-1):
+            
+            # Generate npts random waveforms.
             paramspoints = self.generate_params_points()
+            
+            # From the npts randomly generated waveforms, select the worst represented one (i.e. with the largest residuals after basis projection).
             basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term)
             if self.verbose:
                 np.set_printoptions(suppress=True)
-                print("Iter: ".format(term), k+1, " and new basis waveform", params_new)
+                print("Iter: ".format(term), k+1, " -- New basis waveform:", params_new)
                 np.set_printoptions(suppress=False)
-            known_bases= np.append(known_bases, np.array([basis_new]), axis=0)
-            params = np.append(params, np.array([params_new]), axis = 0)
+
+            # The worst represented waveform becomes the new basis element.
+            known_bases     = np.append(known_bases, np.array([basis_new]), axis=0)
+            params          = np.append(params, np.array([params_new]), axis = 0)
             residual_modula = np.append(residual_modula, rm_new)
+
+        # Store the constructed basis.
         np.save(fbase,known_bases)
         np.save(fparams,params)
+
         return known_bases, params, residual_modula
     
     def initial_basis(self):
         """
-        Initialize parameter ranges and basis
+        Initialize parameter ranges and basis.
         """
         if self.verbose:
             print('\n\n######################\n# Initialising basis #\n######################\n')
@@ -415,9 +427,12 @@ class PyROQ:
         return 
 
     def empnodes(self, ndim, known_bases, fact=100000000):
+        
         """
-        Here known_bases is the full copy known_bases_copy. Its length is equal to or longer than ndim.
+        Generate the empirical interpolation nodes from a given basis.
+        Follows the algorithm detailed in Ref. MISSING.
         """
+        
         emp_nodes = np.arange(0,ndim) * fact
         emp_nodes[0] = np.argmax(np.absolute(known_bases[0]))
         c1 = known_bases[1,emp_nodes[0]]/known_bases[0,1]
@@ -445,33 +460,47 @@ class PyROQ:
         ndim = len(emp_nodes)
         V = np.transpose(known_bases[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
+        
         return np.array([ndim, inverse_V, emp_nodes])
 
     def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
+        # Create benchmark waveform
         hp = self.generate_a_waveform(paramspoint)
-        
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
         else               : raise TermError
         
-        Ci           = np.dot(inverse_V, hp[emp_nodes])
+        # Initialise the interpolant
         interpolantA = np.zeros(len(hp))+np.zeros(len(hp))*1j
         
+        # Compute the coefficients c_i of the interpolant written in terms of the basis.
+        Ci           = np.dot(inverse_V, hp[emp_nodes])
+        
+        # Construct the interpolant, summing over each basis element.
         for j in np.arange(0, ndim):
             tmp           = np.multiply(Ci[j], known_bases[j])
             interpolantA += tmp
 
+        # Return the mismatch of the interpolated waveform and the original waveform
         return (1-self.overlap_of_two_waveforms(hp, interpolantA))*self.deltaF
     
     def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term):
+        
+        """
+            Basis construction stopping function.
+            Compute the overlap representation error on a set of random points, using the given basis. If all of them are below tolerance, this is the basis we are searching for.
+        """
+        
+        # Initialise tolerance, parameter space and data structures.
         if   term == 'lin':  tol = self.tolerance
         elif term == 'quad': tol = self.tolerance_quad
-        else:                raise ValueError("Unknown basis term requested.")
-        
+        else:                raise TermError
         paramspoints = self.generate_params_points(npts=self.ntests)
-        surros = np.zeros(self.ntests)
-        count = 0
+        surros       = np.zeros(self.ntests)
+        count        = 0
+        
+        # Compute the overlap representation error
         for i, paramspoint in enumerate(paramspoints):
             surros[i] = self._surroerror(ndim,
                                          inverse_V,
@@ -479,17 +508,19 @@ class PyROQ:
                                          known_bases[0:ndim],
                                          paramspoint, 
                                          term)
+            # Store outliers
             if (surros[i] > tol):
+                print("Found outlier: ", paramspoint, " with surrogate error ", surros[i])
                 count = count+1
+    
         if self.verbose:
             print('\n{}'.format(ndim), "basis elements gave", count, "bad points of surrogate error >", self.tolerance, '\n')
-        if count == 0:
-            return 0
-        else:
-            return 1
+        if count == 0: return 0
+        else:          return 1
     
     def _roqs(self, known_bases, term):
         
+        # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
             ndimlow      = self.ndimlow
             ndimhigh     = self.ndimhigh
@@ -505,16 +536,24 @@ class PyROQ:
         else:
               raise TermError
 
+        # Start from a user-selected minimum number of basis elements and keep adding elements until that basis represents well enough a sufficient number of random waveforms or until you hit the user-selected maximum basis elements number.
         flag = 0
         for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
             
+            # Build the empirical interpolation nodes for this basis.
             ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases)
             
-            if self._surros(ndim, inverse_V, emp_nodes, known_bases, term) == 0:
+            # If the overlap representation error is below tolerance, stop the iteration and store this basis.
+            if(self._surros(ndim, inverse_V, emp_nodes, known_bases, term) == 0):
+                
+                # Build the interpolant from the given basis.
                 b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
                 f = self.freq[emp_nodes]
+                
+                # Store the output.
                 np.save(froq,np.transpose(b))
                 np.save(fnodes,f)
+                
                 if self.verbose:
                     print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
                 flag = 1
@@ -524,26 +563,36 @@ class PyROQ:
 
         return b,f
 
-    ## Main function starting the ROQ construction
+    ## Main function starting the ROQ construction.
 
     def run(self):
+        
+        # Initialise data.
         d          = {}
+        
+        # Initialise basis.
         hp1        = self.hp1
         hp1_quad   = (np.absolute(hp1))**2
         params_ini = self.params_ini
-        
-        # Search for linear basis elements to build & save linear ROQ data in the local directory.
+
         known_bases_start     = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
         basis_waveforms_start = np.array([hp1])
         residual_modula_start = np.array([0.0])
         
+        # Construct the linear basis.
+        # Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
         bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start,
                                                                                     basis_waveforms_start,
                                                                                     params_ini,
                                                                                     residual_modula_start,
                                                                                     'lin')
+
+        # From the linear basis constructed above, extract:
+        # i) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
+        # ii) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
         B, f = self._roqs(bases, 'lin')
 
+        # Internally store the output data for later testing.
         d['lin_B']          = B
         d['lin_f']          = f
         d['lin_bases']      = bases
@@ -551,7 +600,9 @@ class PyROQ:
         d['lin_res']        = residual_modula
         d['lin_emp_nodes']  = np.searchsorted(self.freq, d['lin_f'])
 
-        # Search for quadratic basis elements to build & save quadratic ROQ data.
+
+        # Repeat the same as above for the quadratic terms.
+        # FIXME: Should be inserted in a loop and not repeated.
         known_bases_start     = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
         basis_waveforms_start = np.array([hp1_quad])
         residual_modula_start = np.array([0.0])
@@ -572,7 +623,7 @@ class PyROQ:
         
         return d
     
-    ## Functions to test the performance of the ROQ
+    ## Functions to test the performance of the waveform representation using the interpolant built from the basis.
     
     def testrep(self, b, emp_nodes, paramspoint, term):
         
@@ -619,14 +670,15 @@ class PyROQ:
     
     def surros_of_test_samples(self, b_linear, emp_nodes, term, nsamples=0):
         
+        # FIXME: check for repetitions in this function.
+        
         if   term == 'lin':  tol = self.tolerance
         elif term == 'quad': tol = self.tolerance_quad
-        else:                raise ValueError("Unknown basis term requested.")
+        else:                raise TermError
         
         if nsamples <= 0: nsamples = self.ntests
         ndim         = len(emp_nodes)
         surros       = np.zeros(self.ntests)
-
         paramspoints = self.generate_params_points(npts=nsamples)
         
         print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term.ljust(4)))
@@ -661,7 +713,8 @@ if __name__ == '__main__':
     mc_q_par           = True  # If true, mass ranges have to be passed through mc and q
     spin_sph           = False # If true, spin ranges have to be passed in spherical coordinates (see PyROQ class description for the names)
     approx             = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
-
+    output             = './test'
+    
     # approx = 'teobresums-giotto'
     # params_ranges = {
     #     'mc'      : [30, 31]    ,
@@ -741,7 +794,7 @@ if __name__ == '__main__':
         'phiref'  : 0.6 ,
     }
 
-    # Point(s) of the parameter space on which to initialise the basis
+    # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, select defaults.
     if not('params_ranges' in locals() or 'params_ranges' in globals()): params_ranges = defaults['params_ranges']
     if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = defaults['start_values']
 
@@ -772,7 +825,7 @@ if __name__ == '__main__':
                   parallel          = False,
                   nprocesses        = 4,
                   
-                  outputdir         ='./test',
+                  outputdir         = output,
                   verbose           = True,
                   )
 
@@ -787,10 +840,18 @@ if __name__ == '__main__':
         # Create the bases and save them
         data                   = pyroq.run()
     else:
-        raise Exception("test-and-plot-only not yet implemented")
+        data                   = {}
+        data['lin_f']          = np.load(output+'/ROQ_data/Linear/fnodes_linear.npy')
+        data['lin_B']          = np.load(output+'/ROQ_data/Linear/B_linear.npy')
+        data['quad_f']         = np.load(output+'/ROQ_data/Quadratic/fnodes_quadratic.npy')
+        data['quad_B']         = np.load(output+'/ROQ_data/Quadratic/B_quadratic.npy')
+        data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
+        data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
+
+        print('check np.traspose')
 
     print('\n###########\n# Results #\n###########\n')
-    print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
+    print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']),  len(freq)/len(data['lin_f'])))
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
 
     # Test waveform
@@ -801,13 +862,14 @@ if __name__ == '__main__':
     for name, val in test_values.items():
         print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
         parampoint.append(val)
-
     parampoint = np.array(parampoint)
-    pyroq.testrep( data['lin_B'] , data['lin_emp_nodes'], parampoint, 'lin')
+
+    # Now est the performance of the representation of a random waveform, using the interpolant built from the constructed basis.
+    pyroq.testrep(data['lin_B'] , data['lin_emp_nodes'] , parampoint, 'lin')
     pyroq.testrep(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
     # Surrogate tests
-    surros = pyroq.surros_of_test_samples(data['lin_B'],  data['lin_emp_nodes'],  'lin')
+    surros = pyroq.surros_of_test_samples(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
     surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
 
     if(show): plt.show()
