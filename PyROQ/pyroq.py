@@ -333,15 +333,12 @@ class PyROQ:
             p['s2x'],p['s2y'],p['s2z'] = self.spherical_to_cartesian(s2sphere_tmp)
     
         # We build a linear basis only for hp, since empirically the same basis accurately works to represent hc too (see [arXiv:1604.08253).
-        hp, _ = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
-        return hp
+        hp, hc = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
+        return hp, hc
 
-    def generate_a_waveform(self, paramspoint):
-        return self._paramspoint_to_wave(paramspoint)
-    
     def _compute_modulus(self, paramspoint, known_bases, term):
 
-        hp = self._paramspoint_to_wave(paramspoint)
+        hp, _ = self._paramspoint_to_wave(paramspoint)
 
         if   term == 'lin' : residual = hp
         elif term == 'quad': residual = (np.absolute(hp))**2
@@ -370,7 +367,7 @@ class PyROQ:
 
         # Select the worst represented waveform (in terms of the previous known basis)
         arg_newbasis = np.argmax(modula) 
-        hp = self._paramspoint_to_wave(paramspoints[arg_newbasis])
+        hp, _ = self._paramspoint_to_wave(paramspoints[arg_newbasis])
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
         else               : raise TermError
@@ -443,7 +440,7 @@ class PyROQ:
                                                                       params_ini_list[i]))
         self.params_ini = np.array([params_ini_list])
         # First waveform
-        self.hp1 = self.generate_a_waveform(params_ini_list)
+        self.hp1, _ = self._paramspoint_to_wave(params_ini_list)
         
         return 
 
@@ -493,7 +490,7 @@ class PyROQ:
     def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
         # Create benchmark waveform
-        hp = self.generate_a_waveform(paramspoint)
+        hp, _ = self._paramspoint_to_wave(paramspoint)
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
         else               : raise TermError
@@ -654,7 +651,7 @@ class PyROQ:
     
     def testrep(self, b, emp_nodes, paramspoint, term):
         
-        hp = self.generate_a_waveform(paramspoint)
+        hp, _ = self._paramspoint_to_wave(paramspoint)
         
         if   term == 'lin' : pass
         elif term == 'quad': hp = (np.absolute(hp))**2
@@ -709,7 +706,7 @@ class PyROQ:
         print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term.ljust(4)))
         for i,paramspoint in enumerate(paramspoints):
             
-            hp        = self.generate_a_waveform(paramspoint)
+            hp, _     = self._paramspoint_to_wave(paramspoint)
             hp_emp    = hp[emp_nodes]
             hp_rep    = np.dot(b_linear,hp_emp)
             
@@ -838,6 +835,7 @@ if __name__ == '__main__':
                   
                   ntests            = 6,
                   npts              = 80,
+                  error_version     = error_version,
                   
                   nbases            = 20,
                   ndimlow           = 10,
