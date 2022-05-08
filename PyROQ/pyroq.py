@@ -649,48 +649,105 @@ class PyROQ:
     
     ## Functions to test the performance of the waveform representation using the interpolant built from the basis.
     
-    def testrep(self, b, emp_nodes, paramspoint, term):
+    def plot_representation_error(self, b, emp_nodes, paramspoint, term):
         
-        hp, _ = self._paramspoint_to_wave(paramspoint)
+        hp, hc = self._paramspoint_to_wave(paramspoint)
         
-        if   term == 'lin' : pass
-        elif term == 'quad': hp = (np.absolute(hp))**2
-        else               : raise TermError
+        if   term == 'lin' :
+            pass
+        elif term == 'quad':
+            hp   = (np.absolute(hp))**2
+            hc   = (np.absolute(hc))**2
+            hphc = np.real(hp * np.conj(hc))
+        else               :
+            raise TermError
         
-        hp_emp    = hp[emp_nodes]
-        hp_rep    = np.dot(b,hp_emp)
-        diff      = hp_rep - hp
-        rep_error = diff/np.sqrt(np.vdot(hp,hp))
-        freq      = self.freq
+        freq           = self.freq
+        hp_emp, hc_emp = hp[emp_nodes], hc[emp_nodes]
+        hp_rep, hc_rep = np.dot(b,hp_emp), np.dot(b,hc_emp)
+        diff_hp        = hp_rep - hp
+        diff_hc        = hc_rep - hc
+        rep_error_hp   = diff_hp/np.sqrt(np.vdot(hp,hp))
+        rep_error_hc   = diff_hc/np.sqrt(np.vdot(hc,hc))
+        if term == 'quad':
+            hphc_emp       = hphc[emp_nodes]
+            hphc_rep       = np.dot(b,hphc_emp)
+            diff_hphc      = hphc_rep - hphc
+            rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
             
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(hp),     label='Real part of h+ (full)')
-        plt.plot(freq, np.real(hp_rep), label='Real part of h+ (ROQ)')
+        plt.plot(freq, np.real(hp),     label='Real part of h_+ (full)')
+        plt.plot(freq, np.real(hp_rep), label='Real part of h_+ (ROQ)')
         plt.xlabel('Frequency')
         plt.ylabel('Waveform')
         plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_real_{}.png'.format(term)))
         plt.legend(loc=0)
-      
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_real_{}.png'.format(term)))
+
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.imag(hp),     label='Imag part of h+ (full)')
-        plt.plot(freq, np.imag(hp_rep), label='Imag part of h+ (ROQ)')
+        plt.plot(freq, np.imag(hp),     label='Imag part of h_+ (full)')
+        plt.plot(freq, np.imag(hp_rep), label='Imag part of h_+ (ROQ)')
         plt.xlabel('Frequency')
         plt.ylabel('Waveform')
         plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_imag_{}.png'.format(term)))
         plt.legend(loc=0)
-        
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.png'.format(term)))
+
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(rep_error), label='Real      part of h+')
-        plt.plot(freq, np.imag(rep_error), label='Imaginary part of h+')
+        plt.plot(freq, np.real(hc),     label='Real part of h_x (full)')
+        plt.plot(freq, np.real(hc_rep), label='Real part of h_x (ROQ)')
+        plt.xlabel('Frequency')
+        plt.ylabel('Waveform')
+        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
+        plt.legend(loc=0)
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_real_{}.png'.format(term)))
+
+        plt.figure(figsize=(8,5))
+        plt.plot(freq, np.imag(hc),     label='Imag part of h_x (full)')
+        plt.plot(freq, np.imag(hc_rep), label='Imag part of h_x (ROQ)')
+        plt.xlabel('Frequency')
+        plt.ylabel('Waveform')
+        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
+        plt.legend(loc=0)
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.png'.format(term)))
+
+        if term == 'quad':
+            plt.figure(figsize=(8,5))
+            plt.plot(freq, hphc,     label='Real part of h_+ * conj(h_x) (full)')
+            plt.plot(freq, hphc_rep, label='Real part of h_+ * conj(h_x) (ROQ)')
+            plt.xlabel('Frequency')
+            plt.ylabel('Waveform')
+            plt.title('Waveform comparison ({})'.format(term.ljust(4)))
+            plt.legend(loc=0)
+            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hphc_real_{}.png'.format(term)))
+
+            plt.figure(figsize=(8,5))
+            plt.plot(freq, rep_error_hphc, label='Real part of (h_+ * conj(h_x))')
+            plt.xlabel('Frequency')
+            plt.ylabel('Fractional Representation Error')
+            plt.title('Representation Error ({})'.format(term.ljust(4)))
+            plt.legend(loc=0)
+            plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.png'.format(term)))
+
+        plt.figure(figsize=(8,5))
+        plt.plot(freq, np.real(rep_error_hp), label='Real      part of h_+')
+        plt.plot(freq, np.imag(rep_error_hp), label='Imaginary part of h_+')
         plt.xlabel('Frequency')
         plt.ylabel('Fractional Representation Error')
         plt.title('Representation Error ({})'.format(term.ljust(4)))
-        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_{}.png'.format(term)))
         plt.legend(loc=0)
-        
-        return freq, rep_error
+        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.png'.format(term)))
+
+        plt.figure(figsize=(8,5))
+        plt.plot(freq, np.real(rep_error_hc), label='Real      part of h_x')
+        plt.plot(freq, np.imag(rep_error_hc), label='Imaginary part of h_x')
+        plt.xlabel('Frequency')
+        plt.ylabel('Fractional Representation Error')
+        plt.title('Representation Error ({})'.format(term.ljust(4)))
+        plt.legend(loc=0)
+        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hc_{}.png'.format(term)))
+
+        return
     
     def surros_of_test_samples(self, b_linear, emp_nodes, term, nsamples=0):
         
@@ -890,12 +947,12 @@ if __name__ == '__main__':
         parampoint.append(val)
     parampoint = np.array(parampoint)
 
-    # Now est the performance of the representation of a random waveform, using the interpolant built from the constructed basis.
-    pyroq.testrep(data['lin_B'] , data['lin_emp_nodes'] , parampoint, 'lin')
-    pyroq.testrep(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
-
     # Surrogate tests
     surros = pyroq.surros_of_test_samples(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
     surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
+
+    # Now plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
+    pyroq.plot_representation_error(data['lin_B'] , data['lin_emp_nodes'] , parampoint, 'lin')
+    pyroq.plot_representation_error(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
     if(show): plt.show()
