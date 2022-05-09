@@ -444,7 +444,7 @@ class PyROQ:
         
         return 
 
-    def empnodes(self, ndim, known_bases, fact=100000000):
+    def empirical_nodes(self, ndim, known_bases, fact=100000000):
         
         """
         Generate the empirical interpolation nodes from a given basis.
@@ -487,7 +487,7 @@ class PyROQ:
         
         return np.array([ndim, inverse_V, emp_nodes])
 
-    def _surroerror(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
+    def _roq_error_from_basis(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
         # Create benchmark waveform
         hp, _ = self._paramspoint_to_wave(paramspoint)
@@ -509,7 +509,7 @@ class PyROQ:
         # Return the goodness-of-interpolation measure
         return self.overlap_of_two_waveforms(hp, interpolantA)
     
-    def _surros(self, ndim, inverse_V, emp_nodes, known_bases, term):
+    def _roq_error_check(self, ndim, inverse_V, emp_nodes, known_bases, term):
         
         """
             Basis construction stopping function.
@@ -526,12 +526,12 @@ class PyROQ:
         
         # Compute the overlap representation error
         for i, paramspoint in enumerate(paramspoints):
-            surros[i] = self._surroerror(ndim,
-                                         inverse_V,
-                                         emp_nodes,
-                                         known_bases[0:ndim],
-                                         paramspoint, 
-                                         term)
+            surros[i] = self._roq_error_from_basis(ndim,
+                                                   inverse_V,
+                                                   emp_nodes,
+                                                   known_bases[0:ndim],
+                                                   paramspoint,
+                                                   term)
             # Store outliers
             if (surros[i] > tol):
                 print("Found outlier: ", paramspoint, " with surrogate error ", surros[i])
@@ -565,10 +565,10 @@ class PyROQ:
         for num in np.arange(ndimlow, ndimhigh, ndimstepsize):
             
             # Build the empirical interpolation nodes for this basis.
-            ndim, inverse_V, emp_nodes = self.empnodes(num, known_bases)
+            ndim, inverse_V, emp_nodes = self.empirical_nodes(num, known_bases)
             
             # If the overlap representation error is below tolerance, stop the iteration and store this basis.
-            if(self._surros(ndim, inverse_V, emp_nodes, known_bases, term) == 0):
+            if(self._roq_error_check(ndim, inverse_V, emp_nodes, known_bases, term) == 0):
                 
                 # Build the interpolant from the given basis.
                 b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
@@ -615,7 +615,7 @@ class PyROQ:
         # i) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
         # ii) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
         B, f = self._roqs(bases, 'lin')
-
+            
         # Internally store the output data for later testing.
         d['lin_B']          = B
         d['lin_f']          = f
@@ -647,7 +647,7 @@ class PyROQ:
         
         return d
     
-    ## Functions to test the performance of the waveform representation using the interpolant built from the basis.
+    ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
     
     def plot_representation_error(self, b, emp_nodes, paramspoint, term):
         
@@ -656,9 +656,9 @@ class PyROQ:
         if   term == 'lin' :
             pass
         elif term == 'quad':
+            hphc = np.real(hp * np.conj(hc))
             hp   = (np.absolute(hp))**2
             hc   = (np.absolute(hc))**2
-            hphc = np.real(hp * np.conj(hc))
         else               :
             raise TermError
         
@@ -749,42 +749,80 @@ class PyROQ:
 
         return
     
-    def surros_of_test_samples(self, b_linear, emp_nodes, term, nsamples=0):
+    def test_roq_error(self, b, emp_nodes, term, nsamples=0):
         
-        if   term == 'lin':  tol = self.tolerance
-        elif term == 'quad': tol = self.tolerance_quad
-        else:                raise TermError
-        
+        # Initialise structures
         if nsamples <= 0: nsamples = self.ntests
         ndim         = len(emp_nodes)
-        surros       = np.zeros(self.ntests)
+        surros_hp    = np.zeros(self.ntests)
+        surros_hc    = np.zeros(self.ntests)
+        
+        # Draw random test points
         paramspoints = self.generate_params_points(npts=nsamples)
         
+        # Select tolerance
+        if   term == 'lin':
+            tol = self.tolerance
+        elif term == 'quad':
+            tol = self.tolerance_quad
+            surros_hphc = np.zeros(self.ntests)
+        else:
+            raise TermError
+        
+        # Start looping over test points
         print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term.ljust(4)))
+        print('Tolerance: ', tol)
         for i,paramspoint in enumerate(paramspoints):
             
-            hp, _     = self._paramspoint_to_wave(paramspoint)
-            hp_emp    = hp[emp_nodes]
-            hp_rep    = np.dot(b_linear,hp_emp)
+            # Generate test waveform
+            hp, hc = self._paramspoint_to_wave(paramspoint)
             
-            surros[i] = self.overlap_of_two_waveforms(hp, hp_rep)
+            # Compute quadratic terms and interpolant representations
+            if term == 'quad':
+                hphc     = np.real(hp * np.conj(hc))
+                hphc_emp = hphc[emp_nodes]
+                hphc_rep = np.dot(b,hphc_emp)
+            
+                hp       = (np.absolute(hp))**2
+                hc       = (np.absolute(hc))**2
 
+            hp_emp    = hp[emp_nodes]
+            hp_rep    = np.dot(b,hp_emp)
+            hc_emp    = hc[emp_nodes]
+            hc_rep    = np.dot(b,hc_emp)
+
+            # Compute the representation error. This is the same measure employed to stop adding elements to the basis
+            surros_hp[i] = self.overlap_of_two_waveforms(hp, hp_rep)
+            surros_hc[i] = self.overlap_of_two_waveforms(hc, hc_rep)
+            if term == 'quad':
+                surros_hphc[i] = self.overlap_of_two_waveforms(hphc, hphc_rep)
+
+            # If a test case exceeds the error, let the user know. Always print typical test result every 100 steps
             np.set_printoptions(suppress=True)
             if self.verbose:
-                if (surros[i] > tol):
-                    print("Above tolerance (tol={}): Iter: ".format(tol), i, "Surrogate value: ", surros[i], "Parameters: ", paramspoints[i])
+                if (surros_hp[i] > tol): print("h_+     above tolerance: Iter: ", i, "Surrogate value: ", surros_hp[i], "Parameters: ", paramspoints[i])
+                if (surros_hc[i] > tol): print("h_x     above tolerance: Iter: ", i, "Surrogate value: ", surros_hc[i], "Parameters: ", paramspoints[i])
+                if ((term == 'quad') and (surros_hphc[i] > tol)):
+                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
                 if i%100==0:
-                    print("Rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros[i])
+                    print("h_+     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hp[i])
+                    print("h_x     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hc[i])
+                    if (term == 'quad'):
+                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
             np.set_printoptions(suppress=False)
     
+        # Plot the test results
         plt.figure(figsize=(8,5))
-        plt.semilogy(surros,'o',color='black')
+        plt.semilogy(surros_hp,'o', label='h_+')
+        plt.semilogy(surros_hc,'o', label='h_x')
+        if term == 'quad':
+            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
         plt.xlabel("Number of Random Test Points")
         plt.ylabel("Surrogate Error ({})".format(term.ljust(4)))
+        plt.legend(loc=0)
         plt.savefig(os.path.join(self.outputdir,"Plots/Surrogate_errors_random_test_points_{}.png".format(term)))
     
-        return surros
-
+        return
 
 if __name__ == '__main__':
 
@@ -948,8 +986,8 @@ if __name__ == '__main__':
     parampoint = np.array(parampoint)
 
     # Surrogate tests
-    surros = pyroq.surros_of_test_samples(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
-    surros = pyroq.surros_of_test_samples(data['quad_B'], data['quad_emp_nodes'], 'quad')
+    pyroq.test_roq_error(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
+    pyroq.test_roq_error(data['quad_B'], data['quad_emp_nodes'], 'quad')
 
     # Now plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
     pyroq.plot_representation_error(data['lin_B'] , data['lin_emp_nodes'] , parampoint, 'lin')
