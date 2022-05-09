@@ -120,7 +120,7 @@ class PyROQ:
                  error_version     = 'v1',
 
                  # Basis construction parameters
-                 npts              = 80,   # Number of points for each search of a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elements. What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
+                 npts              = 80,   # Number of points for each search of a new basis element. For diagnostic testing, 30-100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements.
                  
                  nbases            = 80,   # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
                  ndimlow           = 40,   # Your estimation of fewest basis elements needed for this chunk of parameter space.
@@ -372,18 +372,18 @@ class PyROQ:
         # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
         basis_new = self.gram_schmidt(known_bases, hp)
        
-        return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins, residual mod
+        return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins&lambdas, residual mod
             
     def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term):
         
         if term == 'lin':
-            nbases  = self.nbases
-            fbase   = self.outputdir+'/ROQ_data/Linear/linearbases.npy'
-            fparams = self.outputdir+'/ROQ_data/Linear/linearbasiswaveformparams.npy'
+            nbases      = self.nbases
+            file_bases  = self.outputdir+'/ROQ_data/Linear/linear_bases.npy'
+            file_params = self.outputdir+'/ROQ_data/Linear/linear_bases_waveform_params.npy'
         elif term=='quad':
-            nbases  = self.nbases_quad
-            fbase   = self.outputdir+'/ROQ_data/Quadratic/quadraticbases.npy'
-            fparams = self.outputdir+'/ROQ_data/Quadratic/quadraticbasiswaveformparams.npy'
+            nbases      = self.nbases_quad
+            file_bases  = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases.npy'
+            file_params = self.outputdir+'/ROQ_data/Quadratic/quadratic_basis_waveform_params.npy'
         else:
             raise TermError
     
@@ -402,13 +402,13 @@ class PyROQ:
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
-            known_bases     = np.append(known_bases, np.array([basis_new]), axis=0)
-            params          = np.append(params, np.array([params_new]), axis = 0)
+            known_bases     = np.append(known_bases,     np.array([basis_new]),  axis=0)
+            params          = np.append(params,          np.array([params_new]), axis=0)
             residual_modula = np.append(residual_modula, rm_new)
 
-        # Store the constructed basis.
-        np.save(fbase,known_bases)
-        np.save(fparams,params)
+        # Store the constructed largest basis. If its dimension is enough to stay below tolerance, the ROQ greedy algorithm will downselect this to a smaller number, the minumum required to stay below tolerance.
+        np.save(file_bases,  known_bases)
+        np.save(file_params, params     )
 
         return known_bases, params, residual_modula
     
