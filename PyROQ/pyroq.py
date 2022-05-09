@@ -93,13 +93,18 @@ class PyROQ:
     * The parameter space is *defined* by the keywords of 'params_ranges' 
 
     """
-    def __init__(self,
-                 approximant       = 'teobresums-giotto',
-                 mc_q_par          = True,
-                 spin_sph          = False,
 
-                 # Dictionary with any parameter needed for the waveform approximant
-                 additional_waveform_params = {},
+    def __init__(self,
+                 
+                 # Waveform-related parameters
+                 approximant       = 'teobresums-giotto',
+                 distance          = 10,  # [Mpc]. Dummy value, distance does not enter the interpolants construction
+                 additional_waveform_params = {}, # Dictionary with any parameter needed for the waveform approximant
+                 
+                 # Parametrisation parameters
+                 mc_q_par          = True,  # Flag to activate parametrisation in Mchirp and mass ratio
+                 spin_sph          = False, # Flag to activate parametrisation in spins spherical components
+
                  # Intrinsic parameter space on which the interpolants will be constructed
                  params_ranges     = defaults['params_ranges'],
                  start_values      = defaults['start_values'],
@@ -109,42 +114,31 @@ class PyROQ:
                  f_max             = 1024,
                  deltaF            = 1./4.,
                  
-                 # Interpolants construction parameters
-                 
-                 # Number of random test waveforms. This is the number of cases that are checked to be below tolerance before stopping the ROQ construction.
-                 # For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
-                 ntests            = 1000,
-                 # Number of points for each search of a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elements.
-                 # What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
-                 npts              = 80,
+                 # Interpolants construction and test parameters
+                 n_tests_basis     = 1000, # Number of random validation test waveforms checked to be below tolerance before stopping adding basis elements in the interpolants construction. For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
+                 n_tests_post      = 1000, # Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`.
                  error_version     = 'v1',
+
+                 # Basis construction parameters
+                 npts              = 80,   # Number of points for each search of a new basis element. For diagnostic testing, 30 -100 is fine. For real ROQs computation, this can be 300 to 2000, roughly comparable to the number of basis elements. What value to choose depends on the nature of the waveform, such as how many features it has. It also depends on the parameter space and the signal length.
                  
-                 # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
-                 nbases            = 80,
-                 # Your estimation of fewest basis elements needed for this chunk of parameter space.
-                 ndimlow           = 40,
-                 # Number of linear basis elements increament to check if the basis satisfies the tolerance.
-                 ndimstepsize      = 10,
-                 # Surrogage error threshold for linear basis elements
-                 tolerance         = 1e-8,
+                 nbases            = 80,   # Specify the number of linear basis elements. Put your estimation here for the chunk of parameter space.
+                 ndimlow           = 40,   # Your estimation of fewest basis elements needed for this chunk of parameter space.
+                 ndimstepsize      = 10,   # Number of linear basis elements increament to check if the basis satisfies the tolerance.
+                 tolerance         = 1e-8, # Surrogage error threshold for linear basis elements
                  
-                 # Specify the number of quadratic basis elements, depending on the tolerance_quad, usually two thirds of that for linear basis
-                 nbases_quad       = 80,
+                 nbases_quad       = 80,   # Specify the number of quadratic basis elements, depending on the tolerance_quad, usually two thirds of that for linear basis
                  ndimlow_quad      = 20,
                  ndimstepsize_quad = 10,
-                 # Surrogage error threshold for quadratic basis elements
-                 tolerance_quad    = 1e-10,
+                 tolerance_quad    = 1e-10, # Surrogage error threshold for quadratic basis elements
                  
                  # Computing parameters
                  parallel          = False, # The parallel=True will turn on multiprocesses to search for a new basis. To turn it off, set it to be False. Do not turn it on if the waveform generation is not slow compared to data reading and writing to files. This is more useful when each waveform takes larger than 0.01 sec to generate.
-                 # Set the number of parallel processes when searching for a new basis.  nprocesses=mp.cpu_count()
-                 nprocesses        = 4,
+                 n_processes       = 4, # Set the number of parallel processes when searching for a new basis.  n_processes=mp.cpu_count()
                  
+                 # Output parameters
                  outputdir         = './',
                  verbose           = True,
-                 
-                 # Dummy value, distance does not enter the interpolants construction
-                 distance          = 10,  # 10 Mpc is default
                  ):
 
         # Read input params
@@ -160,9 +154,11 @@ class PyROQ:
         self.deltaF            = deltaF
         self.distance          = distance
 
-        self.ntests            = ntests
-        self.npts              = npts
+        self.n_tests_basis     = n_tests_basis
+        self.n_tests_post      = n_tests_post
         self.error_version     = error_version
+
+        self.npts              = npts
 
         # linear basis
         self.nbases            = nbases
@@ -179,7 +175,7 @@ class PyROQ:
         self.tolerance_quad    = tolerance_quad
 
         self.parallel          = parallel
-        self.nprocesses        = nprocesses
+        self.n_processes       = n_processes
         
         self.outputdir         = outputdir
         self.verbose           = verbose
@@ -356,7 +352,7 @@ class PyROQ:
         # Generate npts random waveforms.
         if self.parallel:
             paramspointslist = paramspoints.tolist()
-            pool = mp.Pool(processes=nprocesses)
+            pool = mp.Pool(processes=n_processes)
             modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
@@ -520,8 +516,8 @@ class PyROQ:
         if   term == 'lin':  tol = self.tolerance
         elif term == 'quad': tol = self.tolerance_quad
         else:                raise TermError
-        paramspoints = self.generate_params_points(npts=self.ntests)
-        surros       = np.zeros(self.ntests)
+        paramspoints = self.generate_params_points(npts=self.n_tests_basis)
+        surros       = np.zeros(self.n_tests_basis)
         count        = 0
         
         # Compute the overlap representation error
@@ -752,10 +748,10 @@ class PyROQ:
     def test_roq_error(self, b, emp_nodes, term, nsamples=0):
         
         # Initialise structures
-        if nsamples <= 0: nsamples = self.ntests
+        if nsamples <= 0: nsamples = self.n_tests_post
         ndim         = len(emp_nodes)
-        surros_hp    = np.zeros(self.ntests)
-        surros_hc    = np.zeros(self.ntests)
+        surros_hp    = np.zeros(nsamples)
+        surros_hc    = np.zeros(nsamples)
         
         # Draw random test points
         paramspoints = self.generate_params_points(npts=nsamples)
@@ -765,7 +761,7 @@ class PyROQ:
             tol = self.tolerance
         elif term == 'quad':
             tol = self.tolerance_quad
-            surros_hphc = np.zeros(self.ntests)
+            surros_hphc = np.zeros(nsamples)
         else:
             raise TermError
         
@@ -802,13 +798,13 @@ class PyROQ:
             if self.verbose:
                 if (surros_hp[i] > tol): print("h_+     above tolerance: Iter: ", i, "Surrogate value: ", surros_hp[i], "Parameters: ", paramspoints[i])
                 if (surros_hc[i] > tol): print("h_x     above tolerance: Iter: ", i, "Surrogate value: ", surros_hc[i], "Parameters: ", paramspoints[i])
-                if ((term == 'quad') and (surros_hphc[i] > tol)):
-                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
+#                if ((term == 'quad') and (surros_hphc[i] > tol)):
+#                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
                 if i%100==0:
                     print("h_+     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hp[i])
                     print("h_x     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hc[i])
-                    if (term == 'quad'):
-                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
+#                    if (term == 'quad'):
+#                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
             np.set_printoptions(suppress=False)
     
         # Plot the test results
@@ -919,8 +915,10 @@ if __name__ == '__main__':
 
     # Initialise ROQ
     pyroq = PyROQ(approximant       = approx,
+                  
                   mc_q_par          = mc_q_par,
                   spin_sph          = spin_sph,
+                  
                   params_ranges     = params_ranges,
                   start_values      = start_values,
                   
@@ -928,9 +926,11 @@ if __name__ == '__main__':
                   f_max             = 1024,
                   deltaF            = 1./1.,
                   
-                  ntests            = 6,
-                  npts              = 80,
+                  n_tests_basis     = 6,
+                  n_tests_post      = 6,
                   error_version     = error_version,
+                  
+                  npts              = 80,
                   
                   nbases            = 20,
                   ndimlow           = 10,
@@ -943,7 +943,7 @@ if __name__ == '__main__':
                   tolerance_quad    = 1e-5,
                   
                   parallel          = False,
-                  nprocesses        = 4,
+                  n_processes       = 4,
                   
                   outputdir         = output,
                   verbose           = True,
