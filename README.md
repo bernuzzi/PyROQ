@@ -14,3 +14,4 @@ SB (sebastiano.bernuzzi@uni-jena.de) 03/2022:
 
 GC (gregorio.carullo@uni-jena.de) 05/2022:
   * Debugged and simplified `refactored` branch.
+  * Switched to config file usage.
