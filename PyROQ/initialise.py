@@ -34,7 +34,7 @@ to be intended as part of the default value.
        * Parameters to be passed to the [Waveform_and_parametrisation] section. *
        **************************************************************************
 
-               approximant          Waveform approximant. Can be any LAL approximant, or MISSING. Default: 'teobresums-giotto'.
+               approximant          Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns', 'IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
                spins                Option to select spin degrees of freedom. Allowed values: ['no-spins', 'aligned', 'precessing']. Default: 'aligned'.
                tides                Flag to activate tides training. Default: 0.
                eccentricity         Flag to activate eccentricity training. Default: 0.
@@ -117,19 +117,19 @@ default_params_ranges = {
 }
 
 default_test_values = {
-        'mc'      : 1.3 ,
-        'q'       : 2.0 ,
-        's1x'     : 0.  ,
-        's1y'     : 0.0 ,
-        's1z'     : 0.2 ,
-        's2x'     : 0.0 ,
-        's2y'     : 0.0 ,
-        's2z'     : 0.1 ,
-        'lambda1' : 1000,
-        'lambda2' : 1000,
-        'ecc'     : 0.0 ,
-        'iota'    : 1.9 ,
-        'phiref'  : 0.6 ,
+        'mc'      : 1.3    ,
+        'q'       : 2.0    ,
+        's1x'     : 0.0    ,
+        's1y'     : 0.0    ,
+        's1z'     : 0.2    ,
+        's2x'     : 0.0    ,
+        's2y'     : 0.0    ,
+        's2z'     : 0.1    ,
+        'lambda1' : 1000.0 ,
+        'lambda2' : 1000.0 ,
+        'ecc'     : 0.0    ,
+        'iota'    : 1.9    ,
+        'phiref'  : 0.6    ,
 }
 
 default_start_values = {
@@ -279,7 +279,6 @@ def read_config(config_file):
         keytype = type(default_test_values[key])
         try:
             test_values[key]=keytype(Config.get('Test_values',key))
-            print("{name} : {value}".format(          name=key.ljust(max_len_keyword), value=test_values[key]))
         except (KeyError, configparser.NoOptionError, TypeError):
             
             # Putting this block here allows to test the accuracy of the ROQ against regimes outside the training range (e.g. trained with tides=0 and checking the error with non-zero tides)
@@ -293,10 +292,9 @@ def read_config(config_file):
             if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
             
             test_values[key]=default_test_values[key]
-            print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=test_values[key]))
         if key in params_ranges.keys():
             if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
-                warnings.warn("Chosen test value outside training range.")
+                warnings.warn("Chosen test value for {} outside training range.".format(key))
     print('\n')
 
     return input_par, params_ranges, test_values

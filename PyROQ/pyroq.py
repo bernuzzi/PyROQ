@@ -67,7 +67,9 @@ class PyROQ:
         self.outputdir           = config_pars['I/O']['output']
         self.verbose             = config_pars['I/O']['verbose']
         
-        # Choose waveform
+        # Convert to LAL identification number, if passing a LAL approximant, and choose waveform
+        if(not(config_pars['Waveform_and_parametrisation']['approximant']=='teobresums-giotto') and not(config_pars['Waveform_and_parametrisation']['approximant']=='mlgw-bns')):
+            self.approximant = lalsimulation.SimInspiralGetApproximantFromString(self.approximant)
         if self.approximant in WfWrapper.keys():
             self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
         else:
@@ -689,69 +691,27 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    parser         = OptionParser(initialise.usage)
+    # Initialise and read config.
+    parser      = OptionParser(initialise.usage)
     parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
-
     (opts,args) = parser.parse_args()
     config_file = opts.config_file
 
-    # Read ROQ parameters, and load training ranges and a point of the parameter space on which a targeted check is required.
     config_pars, params_ranges, test_values = initialise.read_config(config_file)
-    
-    # Convert to LAL identification number, if passing a LAL approximant
-    try:    config_pars['Waveform_and_parametrisation']['approximant'] = lalsimulation.SimInspiralGetApproximantFromString(config_pars['Waveform_and_parametrisation']['approximant'])
-    except: pass
-
-    # approx = 'teobresums-giotto'
-    # params_ranges = {
-    #     'mc'      : [30, 31]    ,
-    #     'q'       : [1, 1.2]    ,
-    #     's1x'     : [0, 0]      ,
-    #     's1y'     : [0, 0]      ,
-    #     's1z'     : [-0.5, 0.5] ,
-    #     's2x'     : [0, 0]      ,
-    #     's2y'     : [0, 0]      ,
-    #     's2z'     : [-0.5, 0.5] ,
-    #     'lambda1' : [0, 1000]   ,
-    #     'lambda2' : [0, 1000]   ,
-    #     'iota'    : [0, np.pi]  ,
-    #     'phiref'  : [0, 2*np.pi],
-    # }
-
-    #approx = 'mlgw-bns'
-    #    params_ranges = {
-    #        'mc'      : [0.9, 0.92] ,
-    #        'q'       : [1, 1.02]   ,
-    #        's1x'     : [0, 0]      ,
-    #        's1y'     : [0, 0]      ,
-    #        's1z'     : [-0.5, 0.5] ,
-    #        's2x'     : [0, 0]      ,
-    #        's2y'     : [0, 0]      ,
-    #        's2z'     : [-0.5, 0.5] ,
-    #        'lambda1' : [5, 50]     ,
-    #        'lambda2' : [5, 50]     ,
-    #        'iota'    : [0, np.pi]  ,
-    #        'phiref'  : [0, 2*np.pi],
-    #    }
-
-    start_values = {'{}'.format(key): params_ranges[key][0]  for key in params_ranges.keys()}
 
     # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, select defaults.
+    start_values = {'{}'.format(key): params_ranges[key][0]  for key in params_ranges.keys()}
     if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = initialise.default_start_values
 
-    # Initialise ROQ
+    # Initialise ROQ.
     pyroq = PyROQ(config_pars, params_ranges, start_values)
-
-    ##############################################
-    # No parameter should be changed below here. #
-    ##############################################
-
-    freq = pyroq.freq
+    freq  = pyroq.freq
 
     if not(config_pars['I/O']['post-processing-only']):
-        # Create the bases and save them
+        # Create the bases and save ROQ.
         data                   = pyroq.run()
     else:
+        # Read ROQ from previous run.
         data                   = {}
         data['lin_f']          = np.load(output+'/ROQ_data/Linear/fnodes_linear.npy')
         data['lin_B']          = np.load(output+'/ROQ_data/Linear/B_linear.npy')
@@ -763,25 +723,26 @@ if __name__ == '__main__':
         print('check np.traspose in storing B output.')
         raise Exception("Not yet completed.")
 
+    # Output the basis reduction factor.
     print('\n###########\n# Results #\n###########\n')
     print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']),  len(freq)/len(data['lin_f'])))
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
-
-    # Test waveform
-    print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
-    parampoint = []
-    print('name    | value | index')
-    for name, val in test_values.items():
-        print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
-        parampoint.append(val)
-    parampoint = np.array(parampoint)
 
     # Surrogate tests
     pyroq.test_roq_error(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
     pyroq.test_roq_error(data['quad_B'], data['quad_emp_nodes'], 'quad')
 
-    # Now plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
-    pyroq.plot_representation_error(data['lin_B'] , data['lin_emp_nodes'] , parampoint, 'lin')
-    pyroq.plot_representation_error(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
+    # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
+    print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
+    parampoint_test = []
+    print('name    | value | index')
+    for name, val in test_values.items():
+        print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
+        parampoint_test.append(val)
+    parampoint_test = np.array(parampoint_test)
 
+    pyroq.plot_representation_error(data['lin_B'] , data['lin_emp_nodes'] , parampoint_test, 'lin')
+    pyroq.plot_representation_error(data['quad_B'], data['quad_emp_nodes'], parampoint_test, 'quad')
+
+    # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()
