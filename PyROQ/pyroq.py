@@ -18,58 +18,6 @@ np.random.seed(150914)
 # PyRQQ
 # =====
 
-# Set some defaults
-defaults = {}
-
-# Parameter ranges
-
-# This is the training range of MLGW-BNS
-defaults['params_ranges'] = {
-    'mc'      : [0.9, 1.4]   ,
-    'q'       : [1, 3]       ,
-    's1x'     : [0, 0]       ,
-    's1y'     : [0, 0]       ,
-    's1z'     : [-0.5, 0.5]  ,
-    's2x'     : [0, 0]       ,
-    's2y'     : [0, 0]       ,
-    's2z'     : [-0.5, 0.5]  ,
-    'lambda1' : [5, 5000]    ,
-    'lambda2' : [5, 5000]    ,
-    'iota'    : [0, np.pi]   ,
-    'phiref'  : [0, 2*np.pi] ,
-}
-
-defaults['start_values'] = {
-    'mc'      : defaults['params_ranges']['mc'][0]     ,
-    'q'       : defaults['params_ranges']['q'][0]      ,
-    's1x'     : defaults['params_ranges']['s1x'][0]    ,
-    's1y'     : defaults['params_ranges']['s1y'][0]    ,
-    's1z'     : defaults['params_ranges']['s1z'][0]    ,
-    's2x'     : defaults['params_ranges']['s2x'][0]    ,
-    's2y'     : defaults['params_ranges']['s2y'][0]    ,
-    's2z'     : defaults['params_ranges']['s2z'][0]    ,
-    'lambda1' : defaults['params_ranges']['lambda1'][0],
-    'lambda2' : defaults['params_ranges']['lambda2'][0],
-    'iota'    : defaults['params_ranges']['iota'][0]   ,
-    'phiref'  : defaults['params_ranges']['phiref'][0] ,
-    }
-
-# Point of the parameter space on which a targeted check is required
-defaults['test_values'] = {
-        'mc'      : 1.3 ,
-        'q'       : 2   ,
-        's1x'     : 0.  ,
-        's1y'     : 0   ,
-        's1z'     : 0.2 ,
-        's2x'     : 0   ,
-        's2y'     : 0   ,
-        's2z'     : 0.1 ,
-        'lambda1' : 1000,
-        'lambda2' : 1000,
-        'iota'    : 1.9 ,
-        'phiref'  : 0.6 ,
-}
-
 #Description of the package. Printed on stdout if --help option is give.
 usage="""\n\n pyroq.py --config-file config.ini\n
 Package description TO BE FILLED.
@@ -101,6 +49,9 @@ to be intended as part of the default value.
        **************************************************************************
 
                approximant          Waveform approximant. Can be any LAL approximant, or MISSING. Default: 'teobresums-giotto'.
+               spins                Option to select spin degrees of freedom. Allowed values: ['no-spins', 'aligned', 'precessing']. Default: 'aligned'.
+               tides                Flag to activate tides training. Default: 0.
+               eccentricity         Flag to activate eccentricity training. Default: 0.
                mc-q-par             Flag to activate parametrisation in Mchirp and mass ratio. Default: 1.
                spin-sph             Flag to activate parametrisation in spins spherical components. Default: 0.
                f-min                Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
@@ -126,7 +77,92 @@ to be intended as part of the default value.
                n-basis-hig-quad     Same as above, for quadratic basis. Usually 66% of linear basis one. Default: 20.
                n-basis-step-quad    Same as above, for quadratic basis. Default: 1.
                tolerance-quad       Same as above, for quadratic basis. Default: 1e-5.
+               
+       **************************************************************************
+       * Parameters range and test values syntax.                               *
+       **************************************************************************
+       
+       Allowed parameter names and units are:
+       
+               mc   (mc-q-par=1) : chirp mass
+               q    (mc-q-par=1) : mass ratio
+               m1   (mc-q-par=0) : mass object 1 [Mo]
+               m2   (mc-q-par=0) : mass object 2 [Mo]
+               s1s1 (spin-sph=1) : spin components object 1, spherical coords (SPECIFY)
+               s1s2 (spin-sph=1) : spin components object 1, spherical coords (SPECIFY)
+               s1s3 (spin-sph=1) : spin components object 1, spherical coords (SPECIFY)
+               s2s1 (spin-sph=1) : spin components object 2, spherical coords (SPECIFY)
+               s2s2 (spin-sph=1) : spin components object 2, spherical coords (SPECIFY)
+               s2s3 (spin-sph=1) : spin components object 2, spherical coords (SPECIFY)
+               s1x  (spin-sph=0) : spin components object 1, cartesian coords
+               s1y  (spin-sph=0) : spin components object 1, cartesian coords
+               s1z  (spin-sph=0) : spin components object 1, cartesian coords
+               s2x  (spin-sph=0) : spin components object 2, cartesian coords
+               s2y  (spin-sph=0) : spin components object 2, cartesian coords
+               s2z  (spin-sph=0) : spin components object 2, cartesian coords
+               lambda1           : tidal polarizability parameter object 1
+               lambda2           : tidal polarizability parameter object 2
+               ecc               : eccentricity
+               iota              : inclination
+               phiref            : reference phase
+               
+      Waveform wrappers must work with these keywords.
+      Parameter ranges can be set using: par-X=value, where X can be ['min', 'max'] and par is any of the above names.
+
+      MISSING description of distance [Mpc]
+
     """
+
+# This is the training range of MLGW-BNS
+default_params_ranges = {
+    'mc'      : [0.9, 1.4]     ,
+    'q'       : [1.0, 3.0]     ,
+    's1x'     : [0.0, 0.0]     ,
+    's1y'     : [0.0, 0.0]     ,
+    's1z'     : [-0.5, 0.5]    ,
+    's2x'     : [0.0, 0.0]     ,
+    's2y'     : [0.0, 0.0]     ,
+    's2z'     : [-0.5, 0.5]    ,
+    'lambda1' : [5.0, 5000.0]  ,
+    'lambda2' : [5.0, 5000.0]  ,
+    'ecc'     : [0.0, 0.0]     ,
+    'iota'    : [0.0, np.pi]   ,
+    'phiref'  : [0.0, 2*np.pi] ,
+}
+
+default_test_values = {
+        'mc'      : 1.3 ,
+        'q'       : 2.0 ,
+        's1x'     : 0.  ,
+        's1y'     : 0.0 ,
+        's1z'     : 0.2 ,
+        's2x'     : 0.0 ,
+        's2y'     : 0.0 ,
+        's2z'     : 0.1 ,
+        'lambda1' : 1000,
+        'lambda2' : 1000,
+        'ecc'     : 0.0 ,
+        'iota'    : 1.9 ,
+        'phiref'  : 0.6 ,
+}
+
+## Set some defaults
+default_start_values = {
+    'mc'      : default_params_ranges['mc'][0]     ,
+    'q'       : default_params_ranges['q'][0]      ,
+    's1x'     : default_params_ranges['s1x'][0]    ,
+    's1y'     : default_params_ranges['s1y'][0]    ,
+    's1z'     : default_params_ranges['s1z'][0]    ,
+    's2x'     : default_params_ranges['s2x'][0]    ,
+    's2y'     : default_params_ranges['s2y'][0]    ,
+    's2z'     : default_params_ranges['s2z'][0]    ,
+    'lambda1' : default_params_ranges['lambda1'][0],
+    'lambda2' : default_params_ranges['lambda2'][0],
+    'ecc'     : default_params_ranges['ecc'][0]    ,
+    'iota'    : default_params_ranges['iota'][0]   ,
+    'phiref'  : default_params_ranges['phiref'][0] ,
+    }
+
 
 def read_config(config_file):
 
@@ -142,9 +178,9 @@ def read_config(config_file):
     print('With sections: '+str(Config.sections())+'.')
     print('\n----Input parameters----\nI\'ll be running with the following values:\n')
 
-    # ======================================================#
-    # Initialize and read from config the input parameters. #
-    # ======================================================#
+    # ==========================================================#
+    # Initialize and read from config the ROQ input parameters. #
+    # ==========================================================#
 
     sections  = ['I/O', 'Parallel', 'Waveform_and_parametrisation', 'ROQ']
     input_par = {}
@@ -162,6 +198,9 @@ def read_config(config_file):
 
     input_par['Waveform_and_parametrisation'] = {
                                                  'approximant'         : 'teobresums-giotto',
+                                                 'spins'               :'aligned',
+                                                 'tides'               : 0,
+                                                 'eccentricity'        : 0,
                                                  'mc-q-par'            : 1,
                                                  'spin-sph'            : 0,
                                                  'f-min'               : 20,
@@ -188,52 +227,92 @@ def read_config(config_file):
 
     max_len_keyword = len('post-processing-only')
     for section in sections:
-        print('[{}]'.format(section))
+        print('[{}]\n'.format(section))
         for key in input_par[section]:
             keytype = type(input_par[section][key])
             try:
                 input_par[section][key]=keytype(Config.get(section,key))
-                print("{name} : {value}".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
+                print("{name} : {value}".format(          name=key.ljust(max_len_keyword), value=input_par[section][key]))
             except (KeyError, configparser.NoOptionError, TypeError):
                 print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
-        print('')
-    return input_par
+        print('\n')
+
+    # Sanity checks
+    if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
+
+    # ====================================#
+    # Read training range and test point. #
+    # ====================================#
+
+    params_ranges = {}
+    print('[Training_range]\n')
+    for key in default_params_ranges:
+        
+        if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])):        continue
+        if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])):               continue
+        if((key=='s1x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+        if((key=='s2x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+        if((key=='s1y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+        if((key=='s2y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+        if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
+        if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
+
+        keytype = type(default_params_ranges[key][0])
+        try:
+            params_ranges[key]=[keytype(Config.get('Training_range',key+'-min')), keytype(Config.get('Training_range',key+'-max'))]
+            print("{name} : [{min},{max}]".format(          name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
+        except (KeyError, configparser.NoOptionError, TypeError):
+            params_ranges[key]=default_params_ranges[key]
+            print("{name} : [{min},{max}] (default)".format(name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
+
+        if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError("{} upper bound is smaller than its lower bound.".format(key))
+
+    print('\n')
+
+    test_values = {}
+    print('[Test_values]\n')
+    for key in default_test_values:
+        keytype = type(default_test_values[key])
+        try:
+            test_values[key]=keytype(Config.get('Test_values',key))
+            print("{name} : {value}".format(          name=key.ljust(max_len_keyword), value=test_values[key]))
+        except (KeyError, configparser.NoOptionError, TypeError):
+            
+            # Putting this block here allows to test the accuracy of the ROQ against regimes outside the training range (e.g. trained with tides=0 and checking the error with non-zero tides)
+            if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])):        continue
+            if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])):               continue
+            if((key=='s1x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+            if((key=='s2x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+            if((key=='s1y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+            if((key=='s2y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
+            if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
+            if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
+            
+            test_values[key]=default_test_values[key]
+            print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=test_values[key]))
+        if key in params_ranges.keys():
+            if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
+                warnings.warn("Chosen test value outside training range.")
+    print('\n')
+
+    return input_par, params_ranges, test_values
 
 class PyROQ:
     """
     PyROQ Class
     
     * Works with a list of very basic waveform wrappers provided in wvfwrappers.py
-
-    * Keywords for parameters:
-
-    'mc'       : chirp mass
-    'm1'       : mass object 1 [Mo]
-    'm2'       : mass object 2 [Mo]
-    'q'        : mass ratio
-    's1s[123]' : spin components object 1, spherical coords (3)
-    's2s[123]' : spin components object 2, "         "
-    's1[xyz]'  : spin components object 1, cartesian coords (3)
-    's2[xyz]'  : spin components object 2, "         "
-    'ecc'      : eccentricity
-    'lambda1'  : tidal polarizability parameter object 1
-    'lambda2'  : tidal polarizability parameter object 2
-    'iota'     : inclination
-    'phiref'   : reference phase
-    'distance' : distance [Mpc]
-
-    Waveform wrappers must work with these keywords
-
+    
     * The parameter space is *defined* by the keywords of 'params_ranges' 
 
     """
 
     def __init__(self,
                  config_pars,
-                 params_ranges              = defaults['params_ranges'],
-                 start_values               = defaults['start_values'] ,
-                 distance                   = 10                       , # [Mpc]. Dummy value, distance does not enter the interpolants construction
-                 additional_waveform_params = {}                       , # Dictionary with any parameter needed for the waveform approximant
+                 params_ranges              = default_params_ranges,
+                 start_values               = default_start_values ,
+                 distance                   = 10                   , # [Mpc]. Dummy value, distance does not enter the interpolants construction
+                 additional_waveform_params = {}                   , # Dictionary with any parameter needed for the waveform approximant
                  ):
 
         self.distance                   = distance
@@ -281,8 +360,8 @@ class PyROQ:
 
         if(self.spin_sph and (('s1x' in self.params_ranges) or ('s1y' in self.params_ranges) or ('s1z' in self.params_ranges) or ('s2x' in self.params_ranges) or ('s2y' in self.params_ranges) or ('s2z' in self.params_ranges))):
             raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
-        elif(not(self.spin_sph) and (not('s1x' in self.params_ranges) or not('s1y' in self.params_ranges) or not('s1z' in self.params_ranges) or not('s2x' in self.params_ranges) or not('s2y' in self.params_ranges) or not('s2z' in self.params_ranges))):
-            raise ValueError("Need to pass 's1[x,y,z]' and 's2[x,y,z]' in params_ranges with the 'spin_sph' option de-activated.")
+        if(not(self.spin_sph) and (('s1s1' in self.params_ranges) or ('s1s2' in self.params_ranges) or ('s1s3' in self.params_ranges) or ('s2s1' in self.params_ranges) or ('s2s2' in self.params_ranges) or ('s2s3' in self.params_ranges))):
+            raise ValueError("Cannot pass 's1s[123]' or 's2s[123]' in params_ranges with the 'spin_sph' option de-activated.")
 
         if(not(self.n_basis_low_lin>1) or not(self.n_basis_low_quad>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
         
@@ -904,8 +983,8 @@ class PyROQ:
         plt.figure(figsize=(8,5))
         plt.semilogy(surros_hp,'o', label='h_+')
         plt.semilogy(surros_hc,'o', label='h_x')
-        if term == 'quad':
-            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
+#        if term == 'quad':
+#            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
         plt.xlabel("Number of Random Test Points")
         plt.ylabel("Surrogate Error ({})".format(term.ljust(4)))
         plt.legend(loc=0)
@@ -921,7 +1000,8 @@ if __name__ == '__main__':
     (opts,args) = parser.parse_args()
     config_file = opts.config_file
 
-    config_pars = read_config(config_file)
+    # Read ROQ parameters, and load training ranges and a point of the parameter space on which a targeted check is required.
+    config_pars, params_ranges, test_values = read_config(config_file)
     
     # Convert to LAL identification number, if passing a LAL approximant
     try:    config_pars['Waveform_and_parametrisation']['approximant'] = lalsimulation.SimInspiralGetApproximantFromString(config_pars['Waveform_and_parametrisation']['approximant'])
@@ -959,56 +1039,10 @@ if __name__ == '__main__':
     #        'phiref'  : [0, 2*np.pi],
     #    }
 
-    # Range on which to train the ROQ
-    params_ranges = {
-        'mc'      : [30, 31]    ,
-        'q'       : [1, 1.2]    ,
-        's1x'     : [0, 0]      ,
-        's1y'     : [0, 0]      ,
-        's1z'     : [0.0, 0.2] ,
-        's2x'     : [0, 0]      ,
-        's2y'     : [0, 0]      ,
-        's2z'     : [0.0, 0.2] ,
-        'lambda1' : [0, 0]      ,
-        'lambda2' : [0, 0]      ,
-        'iota'    : [0, np.pi]  ,
-        'phiref'  : [0, 2*np.pi],
-    }
-
-    start_values = {
-        'mc'      : params_ranges['mc'][0]     ,
-        'q'       : params_ranges['q'][0]      ,
-        's1x'     : params_ranges['s1x'][0]    ,
-        's1y'     : params_ranges['s1y'][0]    ,
-        's1z'     : params_ranges['s1z'][0]    ,
-        's2x'     : params_ranges['s2x'][0]    ,
-        's2y'     : params_ranges['s2y'][0]    ,
-        's2z'     : params_ranges['s2z'][0]    ,
-        'lambda1' : params_ranges['lambda1'][0],
-        'lambda2' : params_ranges['lambda2'][0],
-        'iota'    : params_ranges['iota'][0]   ,
-        'phiref'  : params_ranges['phiref'][0] ,
-        }
-
-    # Point of the parameter space on which a targeted check is required
-    test_values = {
-        'mc'      : 30.5,
-        'q'       : 1.1 ,
-        's1x'     : 0.  ,
-        's1y'     : 0   ,
-        's1z'     : 0.2 ,
-        's2x'     : 0   ,
-        's2y'     : 0   ,
-        's2z'     : 0.1 ,
-        'lambda1' : 0   ,
-        'lambda2' : 0   ,
-        'iota'    : 1.9 ,
-        'phiref'  : 0.6 ,
-    }
+    start_values = {'{}'.format(key): params_ranges[key][0]  for key in params_ranges.keys()}
 
     # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, select defaults.
-    if not('params_ranges' in locals() or 'params_ranges' in globals()): params_ranges = defaults['params_ranges']
-    if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = defaults['start_values']
+    if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = default_start_values
 
     # Initialise ROQ
     pyroq = PyROQ(
@@ -1044,7 +1078,6 @@ if __name__ == '__main__':
 
     # Test waveform
     print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
-    if not('test_values' in locals() or 'test_values' in globals()): test_values = defaults['test_values']
     parampoint = []
     print('name    | value | index')
     for name, val in test_values.items():
