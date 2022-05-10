@@ -476,19 +476,20 @@ class PyROQ:
                                                                                     residual_modula_start,
                                                                                     'lin')
 
+        # Internally store the output data for later testing.
+        d['lin_bases']      = bases
+        d['lin_params']     = params
+        d['lin_res']        = residual_modula
+
         # From the linear basis constructed above, extract:
         # i) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
         # ii) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
         B, f = self._roqs(bases, 'lin')
-            
+        
         # Internally store the output data for later testing.
         d['lin_B']          = B
         d['lin_f']          = f
-        d['lin_bases']      = bases
-        d['lin_params']     = params
-        d['lin_res']        = residual_modula
         d['lin_emp_nodes']  = np.searchsorted(self.freq, d['lin_f'])
-
 
         # Repeat the same as above for the quadratic terms.
         # FIXME: Should be inserted in a loop and not repeated.
@@ -501,13 +502,13 @@ class PyROQ:
                                                                                     params_ini,
                                                                                     residual_modula_start,
                                                                                     'quad')
-        B, f = self._roqs(bases, 'quad')
-        
-        d['quad_B']         = B
-        d['quad_f']         = f
         d['quad_bases']     = bases
         d['quad_params']    = params
         d['quad_res']       = residual_modula
+
+        B, f = self._roqs(bases, 'quad')
+        d['quad_B']         = B
+        d['quad_f']         = f
         d['quad_emp_nodes'] = np.searchsorted(self.freq, d['quad_f'])
         
         return d
@@ -689,6 +690,20 @@ class PyROQ:
     
         return
 
+    def histogram_basis_params(self, params_basis):
+
+        p = {}
+        for i,k in self.i2n.items():
+            p[k] = []
+            for j in range(len(params_basis)):
+                p[k].append(params_basis[j][i])
+            
+            plt.figure()
+            plt.hist(p[k])
+            plt.xlabel(k)
+            plt.savefig(os.path.join(self.outputdir,"Plots/Basis_parameters_{}.png".format(k)))
+            plt.close()
+
 if __name__ == '__main__':
 
     # Initialise and read config.
@@ -719,6 +734,8 @@ if __name__ == '__main__':
         data['quad_B']         = np.load(output+'/ROQ_data/Quadratic/B_quadratic.npy')
         data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
         data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
+        data['lin_params']     = np.load(output+'/ROQ_data/Linear/linear_basis_waveform_params.npy')
+        data['quad_params']    = np.load(output+'/ROQ_data/Quadratic/quadratic_basis_waveform_params.npy')
 
         print('check np.traspose in storing B output.')
         raise Exception("Not yet completed.")
@@ -727,6 +744,10 @@ if __name__ == '__main__':
     print('\n###########\n# Results #\n###########\n')
     print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']),  len(freq)/len(data['lin_f'])))
     print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
+
+    # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
+    pyroq.histogram_basis_params(data['lin_params'][:len(data['lin_f'])])
+    pyroq.histogram_basis_params(data['quad_params'][:len(data['quad_f'])])
 
     # Surrogate tests
     pyroq.test_roq_error(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
