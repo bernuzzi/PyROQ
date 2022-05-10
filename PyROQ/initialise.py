@@ -221,8 +221,17 @@ def read_config(config_file):
                 print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
         print('\n')
 
-    # Sanity checks
+    if(not(input_par['ROQ']['n-basis-low-lin']>1) or not(input_par['ROQ']['n-basis-low-quad']>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
+
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
+
+    # Create dir structure
+    if not os.path.exists(input_par['I/O']['output']):
+        os.makedirs(input_par['I/O']['output'])
+        os.makedirs(os.path.join(input_par['I/O']['output'], 'Plots'))
+        os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data'))
+        os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Linear'))
+        os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Quadratic'))
 
     # ====================================#
     # Read training range and test point. #
@@ -252,6 +261,17 @@ def read_config(config_file):
         if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError("{} upper bound is smaller than its lower bound.".format(key))
 
     print('\n')
+
+    # Sanity checks
+    if(input_par['Waveform_and_parametrisation']['mc-q-par'] and (('m1' in params_ranges.keys()) or ('m2' in params_ranges.keys()))):
+        raise ValueError("Cannot pass 'm1' or 'm2' in params_ranges with the 'mc_q_par' option activated.")
+    elif(not(input_par['Waveform_and_parametrisation']['mc-q-par']) and (('mc' in params_ranges.keys()) or ('m2' in params_ranges.keys()))):
+        raise ValueError("Cannot pass 'mc' and 'q' in params_ranges with the 'mc_q_par' option de-activated.")
+
+    if(input_par['Waveform_and_parametrisation']['spin-sph'] and (('s1x' in params_ranges.keys()) or ('s1y' in params_ranges.keys()) or ('s1z' in params_ranges.keys()) or ('s2x' in params_ranges.keys()) or ('s2y' in params_ranges.keys()) or ('s2z' in params_ranges.keys()))):
+        raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
+    if(not(input_par['Waveform_and_parametrisation']['spin-sph']) and (('s1s1' in params_ranges.keys()) or ('s1s2' in params_ranges.keys()) or ('s1s3' in params_ranges.keys()) or ('s2s1' in params_ranges.keys()) or ('s2s2' in params_ranges.keys()) or ('s2s3' in params_ranges.keys()))):
+        raise ValueError("Cannot pass 's1s[123]' or 's2s[123]' in params_ranges with the 'spin_sph' option de-activated.")
 
     test_values = {}
     print('[Test_values]\n')

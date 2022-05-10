@@ -67,26 +67,6 @@ class PyROQ:
         self.outputdir           = config_pars['I/O']['output']
         self.verbose             = config_pars['I/O']['verbose']
         
-        # Sanity checks
-        if(self.mc_q_par and (('m1' in self.params_ranges) or ('m2' in self.params_ranges))):
-            raise ValueError("Cannot pass 'm1' or 'm2' in params_ranges with the 'mc_q_par' option activated.")
-        elif(not(self.mc_q_par) and (not('m1' in self.params_ranges) or not('m2' in self.params_ranges))):
-            raise ValueError("Need to pass 'm1' and 'm2' in params_ranges with the 'mc_q_par' option de-activated.")
-
-        if(self.spin_sph and (('s1x' in self.params_ranges) or ('s1y' in self.params_ranges) or ('s1z' in self.params_ranges) or ('s2x' in self.params_ranges) or ('s2y' in self.params_ranges) or ('s2z' in self.params_ranges))):
-            raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
-        if(not(self.spin_sph) and (('s1s1' in self.params_ranges) or ('s1s2' in self.params_ranges) or ('s1s3' in self.params_ranges) or ('s2s1' in self.params_ranges) or ('s2s2' in self.params_ranges) or ('s2s3' in self.params_ranges))):
-            raise ValueError("Cannot pass 's1s[123]' or 's2s[123]' in params_ranges with the 'spin_sph' option de-activated.")
-
-        if(not(self.n_basis_low_lin>1) or not(self.n_basis_low_quad>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
-        
-        if not os.path.exists(self.outputdir):
-            os.makedirs(self.outputdir)
-            os.makedirs(os.path.join(self.outputdir, 'Plots'))
-            os.makedirs(os.path.join(self.outputdir, 'ROQ_data'))
-            os.makedirs(os.path.join(self.outputdir, 'ROQ_data/Linear'))
-            os.makedirs(os.path.join(self.outputdir, 'ROQ_data/Quadratic'))
-    
         # Choose waveform
         if self.approximant in WfWrapper.keys():
             self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
