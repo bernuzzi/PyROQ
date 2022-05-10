@@ -4,7 +4,7 @@ from optparse import OptionParser
 
 # Package internal import
 from wvfwrappers import *
-from initialise  import usage, read_config, default_start_values
+import initialise
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
@@ -709,14 +709,14 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    parser         = OptionParser(usage)
+    parser         = OptionParser(initialise.usage)
     parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
 
     (opts,args) = parser.parse_args()
     config_file = opts.config_file
 
     # Read ROQ parameters, and load training ranges and a point of the parameter space on which a targeted check is required.
-    config_pars, params_ranges, test_values = read_config(config_file)
+    config_pars, params_ranges, test_values = initialise.read_config(config_file)
     
     # Convert to LAL identification number, if passing a LAL approximant
     try:    config_pars['Waveform_and_parametrisation']['approximant'] = lalsimulation.SimInspiralGetApproximantFromString(config_pars['Waveform_and_parametrisation']['approximant'])
@@ -757,7 +757,7 @@ if __name__ == '__main__':
     start_values = {'{}'.format(key): params_ranges[key][0]  for key in params_ranges.keys()}
 
     # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, select defaults.
-    if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = default_start_values
+    if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = initialise.default_start_values
 
     # Initialise ROQ
     pyroq = PyROQ(config_pars, params_ranges, start_values)
