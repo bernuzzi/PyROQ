@@ -308,11 +308,11 @@ class PyROQ:
     """
 
     def __init__(self,
-                 config_pars,
-                 params_ranges              = default_params_ranges,
-                 start_values               = default_start_values ,
-                 distance                   = 10                   , # [Mpc]. Dummy value, distance does not enter the interpolants construction
-                 additional_waveform_params = {}                   , # Dictionary with any parameter needed for the waveform approximant
+                 config_pars                    ,
+                 params_ranges                  ,
+                 start_values                   ,
+                 distance                   = 10, # [Mpc]. Dummy value, distance does not enter the interpolants construction
+                 additional_waveform_params = {}, # Dictionary with any parameter needed for the waveform approximant
                  ):
 
         self.distance                   = distance
@@ -1045,11 +1045,7 @@ if __name__ == '__main__':
     if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = default_start_values
 
     # Initialise ROQ
-    pyroq = PyROQ(
-                  config_pars,
-                  params_ranges = params_ranges,
-                  start_values  = start_values,
-                  )
+    pyroq = PyROQ(config_pars, params_ranges, start_values)
 
     ##############################################
     # No parameter should be changed below here. #
