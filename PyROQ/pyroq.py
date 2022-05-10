@@ -1,5 +1,10 @@
 # General python imports
 import matplotlib, matplotlib.pyplot as plt, multiprocessing as mp, numpy as np, os, random, warnings
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
+from optparse import OptionParser
 
 # Package internal import
 from wvfwrappers import *
@@ -65,6 +70,135 @@ defaults['test_values'] = {
         'phiref'  : 0.6 ,
 }
 
+#Description of the package. Printed on stdout if --help option is give.
+usage="""\n\n pyroq.py --config-file config.ini\n
+Package description TO BE FILLED.
+
+Options syntax: type, default values and sections of the configuration
+file where each parameter should be passed are declared below.
+By convention, booleans are represented by the integers [0,1].
+A dot is present at the end of each description line and is not
+to be intended as part of the default value.
+
+       **************************************************************************
+       * Parameters to be passed to the [I/O] section.                          *
+       **************************************************************************
+
+               output               Output directory. Default: './'.
+               verbose              Flag to activate verbose mode. Default: 1.
+               show-plots           Flag to show produced plots. Default: 0.
+               post-processing-only Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
+       
+       **************************************************************************
+       * Parameters to be passed to the [Parallel] section.                     *
+       **************************************************************************
+
+               parallel             Flag to activate parallelisation. Default: 0.
+               n-processes          Number of processes on which the parallelisation is carried on. Default: 4.
+       
+       **************************************************************************
+       * Parameters to be passed to the [Waveform_and_parametrisation] section. *
+       **************************************************************************
+
+               approximant          Waveform approximant. Can be any LAL approximant, or MISSING. Default: 'teobresums-giotto'.
+               mc-q-par             Flag to activate parametrisation in Mchirp and mass ratio. Default: 1.
+               spin-sph             Flag to activate parametrisation in spins spherical components. Default: 0.
+               f-min                Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
+               f-max                Maximum of the frequency axis on which the interpolant will be constructed. Default: 1024.
+               seglen               Inverse of the step of the frequency axis on which the interpolant will be constructed. Default: 4.
+
+       **************************************************************************
+       * Parameters to be passed to the [ROQ] section.                          *
+       **************************************************************************
+       
+               n-tests-basis        Number of random validation test waveforms checked to be below tolerance before stopping adding basis elements in the interpolants construction. For testing: ~1000, for production: ~1000000. Default: 1000.
+               n-tests-post         Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
+               error-version        DESCRIPTION MISSING. Default: 'v1'.
+           
+               n-basis-search-iter  Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements. Default: 80.
+           
+               n-basis-low-lin      Lower bound on number of linear basis elements checked to give interpolation below tolerance. Default: 40.
+               n-basis-hig-lin      Upper bound on number of linear basis elements checked to give interpolation below tolerance. Default: 80.
+               n-basis-step-lin     Number of linear basis elements incremental step to check if the interpolation satisfies the requested tolerance. Default: 10.
+               tolerance            Interpolation error threshold for linear basis elements. Default: 1e-8.
+           
+               n-basis-low-quad     Same as above, for quadratic basis. Default: 10.
+               n-basis-hig-quad     Same as above, for quadratic basis. Usually 66% of linear basis one. Default: 20.
+               n-basis-step-quad    Same as above, for quadratic basis. Default: 1.
+               tolerance-quad       Same as above, for quadratic basis. Default: 1e-5.
+    """
+
+def read_config(config_file):
+
+    if not config_file:
+        parser.print_help()
+        parser.error('Please specify a config file.')
+    if not os.path.exists(config_file):
+        parser.error('Config file {} not found.'.format(config_file))
+    Config = configparser.ConfigParser()
+    Config.read(config_file)
+
+    print('\nReading config file: {}'.format(config_file)+'.')
+    print('With sections: '+str(Config.sections())+'.')
+    print('\n----Input parameters----\nI\'ll be running with the following values:\n')
+
+    # ======================================================#
+    # Initialize and read from config the input parameters. #
+    # ======================================================#
+
+    sections  = ['I/O', 'Parallel', 'Waveform_and_parametrisation', 'ROQ']
+    input_par = {}
+
+    input_par['I/O']                           = {
+                                                 'output'              : './',
+                                                 'verbose'             : 1,
+                                                 'show-plots'          : 0,
+                                                 'post-processing-only': 0,
+                                                }
+    input_par['Parallel']                     = {
+                                                 'parallel'            : 0,
+                                                 'n-processes'         : 4,
+                                                }
+
+    input_par['Waveform_and_parametrisation'] = {
+                                                 'approximant'         : 'teobresums-giotto',
+                                                 'mc-q-par'            : 1,
+                                                 'spin-sph'            : 0,
+                                                 'f-min'               : 20,
+                                                 'f-max'               : 1024,
+                                                 'seglen'              : 4,
+                                                }
+    input_par['ROQ']                          = {
+                                                 'n-tests-basis'       : 1000,
+                                                 'n-tests-post'        : 1000,
+                                                 'error-version'       : 'v1',
+                                               
+                                                 'n-basis-search-iter' : 80,
+                                               
+                                                 'n-basis-low-lin'     : 40,
+                                                 'n-basis-hig-lin'     : 80,
+                                                 'n-basis-step-lin'    : 10,
+                                                 'tolerance'           : 1e-8,
+                                               
+                                                 'n-basis-low-quad'    : 20,
+                                                 'n-basis-hig-quad'    : 80,
+                                                 'n-basis-step-quad'   : 10,
+                                                 'tolerance-quad'      : 1e-10,
+                                                }
+
+    max_len_keyword = len('post-processing-only')
+    for section in sections:
+        print('[{}]'.format(section))
+        for key in input_par[section]:
+            keytype = type(input_par[section][key])
+            try:
+                input_par[section][key]=keytype(Config.get(section,key))
+                print("{name} : {value}".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
+            except (KeyError, configparser.NoOptionError, TypeError):
+                print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
+        print('')
+    return input_par
+
 class PyROQ:
     """
     PyROQ Class
@@ -95,87 +229,49 @@ class PyROQ:
     """
 
     def __init__(self,
-                 
-                 # Waveform-related parameters
-                 approximant         = 'teobresums-giotto',
-                 distance            = 10,    # [Mpc]. Dummy value, distance does not enter the interpolants construction
-                 additional_waveform_params = {}, # Dictionary with any parameter needed for the waveform approximant
-                 
-                 # Parametrisation parameters
-                 mc_q_par            = True,  # Flag to activate parametrisation in Mchirp and mass ratio
-                 spin_sph            = False, # Flag to activate parametrisation in spins spherical components
-
-                 # Intrinsic parameter space on which the interpolants will be constructed
-                 params_ranges       = defaults['params_ranges'],
-                 start_values        = defaults['start_values'],
-
-                 # Frequency axis on which the interpolant will be constructed
-                 f_min               = 20,
-                 f_max               = 1024,
-                 deltaF              = 1./4.,
-                 
-                 # Basis and interpolants construction and test parameters
-                 n_basis_search_iter = 80,    # Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements.
-                 
-                 n_basis_low_lin     = 40,    # Lower bound on number of linear basis elements checked to give interpolation below tolerance.
-                 n_basis_hig_lin     = 80,    # Upper bound on number of linear basis elements checked to give interpolation below tolerance. The algorithm first constructs a basis of this size, then checks for interpolation below tolerance starting from the lower bound until this upper bound (in steps of n_basis_step).
-                 n_basis_step_lin    = 10,    # Number of linear basis elements incremental step to check if the interpolation satisfies the requested tolerance.
-                 tolerance           = 1e-8,  # Interpolation error threshold for linear basis elements.
-                 
-                 n_basis_low_quad    = 20,    # Same as above, for quadratic basis.
-                 n_basis_hig_quad    = 80,    # Usually 66% of linear basis one.
-                 n_basis_step_quad   = 10,
-                 tolerance_quad      = 1e-10,
-                 
-                 n_tests_basis       = 1000,  # Number of random validation test waveforms checked to be below tolerance before stopping adding basis elements in the interpolants construction. For diagnostics, 1000 is fine. For real ROQs calculation, set it to be 1000000.
-                 n_tests_post        = 1000,  # Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`.
-                 error_version       = 'v1',
-
-                 # Computing parameters
-                 parallel            = False,   # The parallel=True will turn on multiprocesses to search for a new basis. To turn it off, set it to be False. Do not turn it on if the waveform generation is not slow compared to data reading and writing to files. This is more useful when each waveform takes larger than 0.01 sec to generate.
-                 n_processes         = 4,       # Set the number of parallel processes when searching for a new basis.  n_processes=mp.cpu_count()
-                 
-                 # Output parameters
-                 outputdir           = './',
-                 verbose             = True,
+                 config_pars,
+                 params_ranges              = defaults['params_ranges'],
+                 start_values               = defaults['start_values'] ,
+                 distance                   = 10                       , # [Mpc]. Dummy value, distance does not enter the interpolants construction
+                 additional_waveform_params = {}                       , # Dictionary with any parameter needed for the waveform approximant
                  ):
 
-        # Read input params
-        self.approximant         = approximant
-        self.distance            = distance
+        self.distance                   = distance
         self.additional_waveform_params = additional_waveform_params
-
-        self.mc_q_par            = mc_q_par
-        self.spin_sph            = spin_sph
+        self.params_ranges              = params_ranges
+        self.start_values               = start_values
         
-        self.params_ranges       = params_ranges
-        self.start_values        = start_values
+        # Read input params
+        self.approximant         = config_pars['Waveform_and_parametrisation']['approximant']
 
-        self.f_min               = f_min
-        self.f_max               = f_max
-        self.deltaF              = deltaF
+        self.mc_q_par            = config_pars['Waveform_and_parametrisation']['mc-q-par']
+        self.spin_sph            = config_pars['Waveform_and_parametrisation']['spin-sph']
+
+        self.f_min               = config_pars['Waveform_and_parametrisation']['f-min']
+        self.f_max               = config_pars['Waveform_and_parametrisation']['f-max']
+        self.deltaF              = 1./config_pars['Waveform_and_parametrisation']['seglen']
         
-        self.n_basis_search_iter = n_basis_search_iter
+        self.n_basis_search_iter = config_pars['ROQ']['n-basis-search-iter']
 
-        self.n_basis_low_lin     = n_basis_low_lin
-        self.n_basis_hig_lin     = n_basis_hig_lin
-        self.n_basis_step_lin    = n_basis_step_lin
-        self.tolerance           = tolerance
+        self.n_basis_low_lin     = config_pars['ROQ']['n-basis-low-lin']
+        self.n_basis_hig_lin     = config_pars['ROQ']['n-basis-hig-lin']
+        self.n_basis_step_lin    = config_pars['ROQ']['n-basis-step-lin']
+        self.tolerance           = config_pars['ROQ']['tolerance']
 
-        self.n_basis_hig_quad    = n_basis_hig_quad
-        self.n_basis_low_quad    = n_basis_low_quad
-        self.n_basis_step_quad   = n_basis_step_quad
-        self.tolerance_quad      = tolerance_quad
+        self.n_basis_low_quad    = config_pars['ROQ']['n-basis-low-quad']
+        self.n_basis_hig_quad    = config_pars['ROQ']['n-basis-hig-quad']
+        self.n_basis_step_quad   = config_pars['ROQ']['n-basis-step-quad']
+        self.tolerance_quad      = config_pars['ROQ']['tolerance-quad']
 
-        self.n_tests_basis       = n_tests_basis
-        self.n_tests_post        = n_tests_post
-        self.error_version       = error_version
+        self.n_tests_basis       = config_pars['ROQ']['n-tests-basis']
+        self.n_tests_post        = config_pars['ROQ']['n-tests-post']
+        self.error_version       = config_pars['ROQ']['error-version']
 
-        self.parallel            = parallel
-        self.n_processes         = n_processes
+        self.parallel            = config_pars['Parallel']['parallel']
+        self.n_processes         = config_pars['Parallel']['n-processes']
         
-        self.outputdir           = outputdir
-        self.verbose             = verbose
+        self.outputdir           = config_pars['I/O']['output']
+        self.verbose             = config_pars['I/O']['verbose']
         
         # Sanity checks
         if(self.mc_q_par and (('m1' in self.params_ranges) or ('m2' in self.params_ranges))):
@@ -819,14 +915,18 @@ class PyROQ:
 
 if __name__ == '__main__':
 
-    show               = False
-    test_and_plot_only = False
-    mc_q_par           = True  # If true, mass ranges have to be passed through mc and q
-    spin_sph           = False # If true, spin ranges have to be passed in spherical coordinates (see PyROQ class description for the names)
-    approx             = lalsimulation.IMRPhenomPv2 # 'teobresums-giotto' #'mlgw-bns'
-    error_version      = 'v1'
-    output             = './test'
+    parser         = OptionParser(usage)
+    parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
+
+    (opts,args) = parser.parse_args()
+    config_file = opts.config_file
+
+    config_pars = read_config(config_file)
     
+    # Convert to LAL identification number, if passing a LAL approximant
+    try:    config_pars['Waveform_and_parametrisation']['approximant'] = lalsimulation.SimInspiralGetApproximantFromString(config_pars['Waveform_and_parametrisation']['approximant'])
+    except: pass
+
     # approx = 'teobresums-giotto'
     # params_ranges = {
     #     'mc'      : [30, 31]    ,
@@ -911,41 +1011,11 @@ if __name__ == '__main__':
     if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = defaults['start_values']
 
     # Initialise ROQ
-    pyroq = PyROQ(approximant         = approx,
-                  
-                  mc_q_par            = mc_q_par,
-                  spin_sph            = spin_sph,
-                  
-                  params_ranges       = params_ranges,
-                  start_values        = start_values,
-                  
-                  f_min               = 50,
-                  f_max               = 1024,
-                  deltaF              = 1./1.,
-                  
-                  n_tests_basis       = 6,
-                  n_tests_post        = 6,
-                  error_version       = error_version,
-                  
-                  n_basis_search_iter = 80,
-                  
-                  n_basis_low_lin     = 10,
-                  n_basis_hig_lin     = 20,
-                  n_basis_step_lin    = 1,
-                  tolerance           = 1e-4,
-                  
-                  n_basis_low_quad    = 10,
-                  n_basis_hig_quad    = 20,
-                  n_basis_step_quad   = 1,
-                  tolerance_quad      = 1e-5,
-                  
-                  parallel            = False,
-                  n_processes         = 4,
-                  
-                  outputdir           = output,
-                  verbose             = True,
+    pyroq = PyROQ(
+                  config_pars,
+                  params_ranges = params_ranges,
+                  start_values  = start_values,
                   )
-
 
     ##############################################
     # No parameter should be changed below here. #
@@ -953,7 +1023,7 @@ if __name__ == '__main__':
 
     freq = pyroq.freq
 
-    if not(test_and_plot_only):
+    if not(config_pars['I/O']['post-processing-only']):
         # Create the bases and save them
         data                   = pyroq.run()
     else:
@@ -990,4 +1060,4 @@ if __name__ == '__main__':
     pyroq.plot_representation_error(data['lin_B'] , data['lin_emp_nodes'] , parampoint, 'lin')
     pyroq.plot_representation_error(data['quad_B'], data['quad_emp_nodes'], parampoint, 'quad')
 
-    if(show): plt.show()
+    if(config_pars['I/O']['show-plots']): plt.show()
