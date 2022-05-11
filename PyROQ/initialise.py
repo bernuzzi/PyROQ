@@ -132,22 +132,6 @@ default_test_values = {
         'phiref'  : 0.6    ,
 }
 
-default_start_values = {
-    'mc'      : default_params_ranges['mc'][0]     ,
-    'q'       : default_params_ranges['q'][0]      ,
-    's1x'     : default_params_ranges['s1x'][0]    ,
-    's1y'     : default_params_ranges['s1y'][0]    ,
-    's1z'     : default_params_ranges['s1z'][0]    ,
-    's2x'     : default_params_ranges['s2x'][0]    ,
-    's2y'     : default_params_ranges['s2y'][0]    ,
-    's2z'     : default_params_ranges['s2z'][0]    ,
-    'lambda1' : default_params_ranges['lambda1'][0],
-    'lambda2' : default_params_ranges['lambda2'][0],
-    'ecc'     : default_params_ranges['ecc'][0]    ,
-    'iota'    : default_params_ranges['iota'][0]   ,
-    'phiref'  : default_params_ranges['phiref'][0] ,
-    }
-
 def read_config(config_file):
 
     if not config_file:
