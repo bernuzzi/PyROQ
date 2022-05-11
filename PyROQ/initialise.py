@@ -274,7 +274,6 @@ def read_config(config_file):
         raise ValueError("Cannot pass 's1s[123]' or 's2s[123]' in params_ranges with the 'spin_sph' option de-activated.")
 
     test_values = {}
-    print('[Test_values]\n')
     for key in default_test_values:
         keytype = type(default_test_values[key])
         try:
@@ -295,6 +294,5 @@ def read_config(config_file):
         if key in params_ranges.keys():
             if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
                 warnings.warn("Chosen test value for {} outside training range.".format(key))
-    print('\n')
 
     return input_par, params_ranges, test_values

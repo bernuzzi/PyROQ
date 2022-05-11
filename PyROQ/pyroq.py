@@ -85,7 +85,7 @@ class PyROQ:
         
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
-        self.initial_basis() # self.params_low, self.params_hig, self.params_ini, self.hp1
+        self.initial_basis() # self.params_low, self.params_hig, self.params_ini, self.hp_low
         
     def howmany_within_range(self, row, minimum, maximum):
         """
@@ -99,28 +99,32 @@ class PyROQ:
 
     def proj(self, u, v):
         """
-        Calculating the projection of complex vector v on complex vector u
-        Note: this algorithm assume denominator isn't zero
+        Calculating the projection of complex vector v on complex vector u.
+        Note: this algorithm assumes u isn't zero.
         """
         return u * np.vdot(v,u) / np.vdot(u,u) 
 
+    def vector_normalised(self, vec):
+
+        return vec/np.sqrt(np.vdot(vec,vec))
+
     def gram_schmidt(self, bases, vec):
         """
-        Calculating the normalized residual (= a new basis term) of a vector vec from known bases
+        Calculating the normalized residual (= a new basis term) of a vector vec from known bases.
         """
         for i in np.arange(0,len(bases)):
             vec = vec - self.proj(bases[i], vec)
-        return vec/np.sqrt(np.vdot(vec,vec)) # normalized new basis
+        return self.vector_normalised(vec) # normalized new basis
     
     def overlap_of_two_waveforms(self, wf1, wf2):
         """
-            Calculating overlap (FIXME: change to a more representative name) of two waveforms
+            Calculating overlap (FIXME: change to a more representative name) of two waveforms.
         """
         
         # From the forked master version of the public PyROQ: https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L40
         if(self.error_version=='v1'):
-            wf1norm = wf1/np.sqrt(np.vdot(wf1,wf1))
-            wf2norm = wf2/np.sqrt(np.vdot(wf2,wf2))
+            wf1norm = self.vector_normalised(wf1)
+            wf2norm = self.vector_normalised(wf2)
             measure = (1-np.real(np.vdot(wf1norm, wf2norm)))*self.deltaF
         # From the PyROQ paper: https://arxiv.org/abs/2009.13812
         elif(self.error_version=='v2'):
@@ -206,14 +210,13 @@ class PyROQ:
         hp, hc = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp, hc
 
-    def _compute_modulus(self, paramspoint, known_bases, term):
+    def _compute_new_element_residual_from_basis(self, paramspoint, known_bases, term):
 
+        #FIXME: this function has a large repetition with gram_schmidt
         hp, _ = self._paramspoint_to_wave(paramspoint)
-
         if   term == 'lin' : residual = hp
         elif term == 'quad': residual = (np.absolute(hp))**2
         else               : raise TermError
-
         h_to_proj = residual
 
         for k in np.arange(0,len(known_bases)):
@@ -221,21 +224,31 @@ class PyROQ:
         
         return np.sqrt(np.vdot(residual, residual))
         
-    def _least_match_waveform_unnormalized(self, paramspoints, known_bases, term):
+    def _search_new_basis_element(self, paramspoints, known_bases, term):
 
-        # Generate npts random waveforms.
+        """
+
+           Given an array of new random points in the parameter space (paramspoints) and the known basis elements, this function searches and constructs a new basis element. The new element is constructed by:
+           
+           1) Projecting the waveforms corresponding to parampoints on the known basis;
+           2) Selecting the waveform with the largest residual (modulus) after projection;
+           3) Computing the normalised residual projection of the selected waveform on the known basis.
+           
+        """
+
+        # Generate npts random waveforms corresponding to parampoints.
         if self.parallel:
             paramspointslist = paramspoints.tolist()
             pool = mp.Pool(processes=n_processes)
-            modula = [pool.apply(self._compute_modulus, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
+            modula = [pool.apply(self._compute_new_element_residual_from_basis, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
             npts   = len(paramspoints) # = self.npts
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = np.real(self._compute_modulus(paramspoint, known_bases, term))
+                modula[i] = np.real(self._compute_new_element_residual_from_basis(paramspoint, known_bases, term))
 
-        # Select the worst represented waveform (in terms of the previous known basis)
+        # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
         hp, _ = self._paramspoint_to_wave(paramspoints[arg_newbasis])
         if   term == 'lin' : pass
@@ -248,7 +261,7 @@ class PyROQ:
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins&lambdas, residual mod
             
-    def _bases_searching_results_unnormalized(self, known_bases, basis_waveforms, params, residual_modula, term):
+    def _construct_basis(self, known_bases, params, residual_modula, term):
         
         if term == 'lin':
             n_basis_hig = self.n_basis_hig_lin
@@ -269,7 +282,7 @@ class PyROQ:
             paramspoints = self.generate_params_points()
             
             # From the npts randomly generated waveforms, select the worst represented one (i.e. with the largest residuals after basis projection).
-            basis_new, params_new, rm_new = self._least_match_waveform_unnormalized(paramspoints, known_bases, term)
+            basis_new, params_new, rm_new = self._search_new_basis_element(paramspoints, known_bases, term)
             if self.verbose:
                 np.set_printoptions(suppress=True)
                 print("Iter: ".format(term), k+1, " -- New basis waveform:", params_new)
@@ -310,7 +323,7 @@ class PyROQ:
                                                                       params_ini_list[i]))
         self.params_ini = np.array([params_ini_list])
         # First waveform
-        self.hp1, _ = self._paramspoint_to_wave(params_ini_list)
+        self.hp_low, _ = self._paramspoint_to_wave(params_ini_list)
         
         return 
 
@@ -430,7 +443,7 @@ class PyROQ:
         else:
               raise TermError
 
-        # Start from a user-selected minimum number of basis elements and keep adding elements until that basis represents well enough a sufficient number of random waveforms or until you hit the user-selected maximum basis elements number.
+        # Start from a user-selected minimum number of basis elements and keep adding elements until that basis represents well enough a sufficient number of random waveforms or until you hit the user-selected maximum number of basis elements.
         flag = 0
         for num in np.arange(n_basis_low, n_basis_hig+1, n_basis_step):
             
@@ -465,21 +478,16 @@ class PyROQ:
         d          = {}
         
         # Initialise basis.
-        hp1        = self.hp1
+        hp1        = self.hp_low
         hp1_quad   = (np.absolute(hp1))**2
         params_ini = self.params_ini
 
-        known_bases_start     = np.array([hp1/np.sqrt(np.vdot(hp1,hp1))])
-        basis_waveforms_start = np.array([hp1])
+        known_bases_start     = np.array([self.vector_normalised(hp1)])
         residual_modula_start = np.array([0.0])
         
         # Construct the linear basis.
         # Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
-        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start,
-                                                                                    basis_waveforms_start,
-                                                                                    params_ini,
-                                                                                    residual_modula_start,
-                                                                                    'lin')
+        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'lin')
 
         # Internally store the output data for later testing.
         d['lin_bases']      = bases
@@ -498,15 +506,10 @@ class PyROQ:
 
         # Repeat the same as above for the quadratic terms.
         # FIXME: Should be inserted in a loop and not repeated.
-        known_bases_start     = np.array([hp1_quad/np.sqrt(np.vdot(hp1_quad,hp1_quad))])
-        basis_waveforms_start = np.array([hp1_quad])
+        known_bases_start     = np.array([self.vector_normalised(hp1_quad)])
         residual_modula_start = np.array([0.0])
         
-        bases, params, residual_modula = self._bases_searching_results_unnormalized(known_bases_start,
-                                                                                    basis_waveforms_start,
-                                                                                    params_ini,
-                                                                                    residual_modula_start,
-                                                                                    'quad')
+        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'quad')
         d['quad_bases']     = bases
         d['quad_params']    = params
         d['quad_res']       = residual_modula
@@ -706,7 +709,7 @@ class PyROQ:
             plt.figure()
             sns.displot(p[k], color='darkred')
             plt.xlabel(k, fontsize=labels_fontsize)
-            plt.savefig(os.path.join(self.outputdir,"Plots/Basis_parameters_{}.pdf".format(k)), bbox_inches='tight')
+            plt.savefig(os.path.join(self.outputdir,'Plots/Basis_parameters_{}.pdf'.format(k)), bbox_inches='tight')
             plt.close()
 
 if __name__ == '__main__':
@@ -721,7 +724,7 @@ if __name__ == '__main__':
 
     # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, select defaults.
     start_values = {'{}'.format(key): params_ranges[key][0]  for key in params_ranges.keys()}
-    if not('start_values'  in locals() or 'start_values'  in globals()): start_values  = initialise.default_start_values
+    if not('start_values' in locals() or 'start_values' in globals()): start_values  = initialise.default_start_values
 
     # Initialise ROQ.
     pyroq = PyROQ(config_pars, params_ranges, start_values)
