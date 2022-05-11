@@ -1,5 +1,5 @@
 # General python imports
-import matplotlib, matplotlib.pyplot as plt, multiprocessing as mp, numpy as np, os, random, warnings
+import matplotlib, matplotlib.pyplot as plt, multiprocessing as mp, numpy as np, os, random, seaborn as sns, warnings
 from optparse import OptionParser
 
 # Package internal import
@@ -11,6 +11,11 @@ np.set_printoptions(linewidth=np.inf)
 TermError    = ValueError("Unknown basis term requested.")
 VersionError = ValueError("Unknown version requested.")
 np.random.seed(150914)
+
+matplotlib.rcParams['mathtext.fontset'] = 'stix'
+matplotlib.rcParams['font.family'] = 'STIXGeneral'
+labels_fontsize = 16
+
 
 class PyROQ:
     """
@@ -542,76 +547,76 @@ class PyROQ:
             rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
             
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(hp),     label='Real part of h_+ (full)')
-        plt.plot(freq, np.real(hp_rep), label='Real part of h_+ (ROQ)')
-        plt.xlabel('Frequency')
-        plt.ylabel('Waveform')
-        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_real_{}.png'.format(term)))
+        plt.plot(freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_+] \,\, \mathrm{(full)}$')
+        plt.plot(freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_+] \,\, \mathrm{(ROQ)}$' )
+        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_real_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.imag(hp),     label='Imag part of h_+ (full)')
-        plt.plot(freq, np.imag(hp_rep), label='Imag part of h_+ (ROQ)')
-        plt.xlabel('Frequency')
-        plt.ylabel('Waveform')
-        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.png'.format(term)))
+        plt.plot(freq, np.imag(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Im[h_+] \,\, \mathrm{(full)}$')
+        plt.plot(freq, np.imag(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Im[h_+] \,\, \mathrm{(ROQ)}$' )
+        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(hc),     label='Real part of h_x (full)')
-        plt.plot(freq, np.real(hc_rep), label='Real part of h_x (ROQ)')
-        plt.xlabel('Frequency')
-        plt.ylabel('Waveform')
-        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_real_{}.png'.format(term)))
+        plt.plot(freq, np.real(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_{\\times}] \,\, \mathrm{(full)}$')
+        plt.plot(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_{\\times}] \,\, \mathrm{(ROQ)}$' )
+        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.imag(hc),     label='Imag part of h_x (full)')
-        plt.plot(freq, np.imag(hc_rep), label='Imag part of h_x (ROQ)')
-        plt.xlabel('Frequency')
-        plt.ylabel('Waveform')
-        plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.png'.format(term)))
+        plt.plot(freq, np.imag(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Im[h_{\\times}] \,\, \mathrm{(full)}$')
+        plt.plot(freq, np.imag(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Im[h_{\\times}] \,\, \mathrm{(ROQ)}$' )
+        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
         if term == 'quad':
             plt.figure(figsize=(8,5))
-            plt.plot(freq, hphc,     label='Real part of h_+ * conj(h_x) (full)')
-            plt.plot(freq, hphc_rep, label='Real part of h_+ * conj(h_x) (ROQ)')
-            plt.xlabel('Frequency')
-            plt.ylabel('Waveform')
-            plt.title('Waveform comparison ({})'.format(term.ljust(4)))
-            plt.legend(loc=0)
-            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hphc_real_{}.png'.format(term)))
+            plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_+ \, {h}^*_{\\times}] \,\, \mathrm{(full)}$')
+            plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_+ \, {h}^*_{\\times}] \,\, \mathrm{(ROQ)}$' )
+            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+            plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
+            plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+            plt.legend(loc='best')
+            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
             plt.figure(figsize=(8,5))
-            plt.plot(freq, rep_error_hphc, label='Real part of (h_+ * conj(h_x))')
-            plt.xlabel('Frequency')
-            plt.ylabel('Fractional Representation Error')
-            plt.title('Representation Error ({})'.format(term.ljust(4)))
-            plt.legend(loc=0)
-            plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.png'.format(term)))
+            plt.plot(freq, rep_error_hphc, color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
+            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+            plt.ylabel('$\mathrm{Fractional Representation Error}$', fontsize=labels_fontsize)
+            plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+            plt.legend(loc='best')
+            plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(rep_error_hp), label='Real      part of h_+')
-        plt.plot(freq, np.imag(rep_error_hp), label='Imaginary part of h_+')
-        plt.xlabel('Frequency')
-        plt.ylabel('Fractional Representation Error')
-        plt.title('Representation Error ({})'.format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.png'.format(term)))
+        plt.plot(freq, np.real(rep_error_hp), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+]$')
+        plt.plot(freq, np.imag(rep_error_hp), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_+]$')
+        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(rep_error_hc), label='Real      part of h_x')
-        plt.plot(freq, np.imag(rep_error_hc), label='Imaginary part of h_x')
-        plt.xlabel('Frequency')
-        plt.ylabel('Fractional Representation Error')
-        plt.title('Representation Error ({})'.format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hc_{}.png'.format(term)))
+        plt.plot(freq, np.real(rep_error_hc), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_{\\times}]$')
+        plt.plot(freq, np.imag(rep_error_hc), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_{\\times}]$')
+        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hc_{}.pdf'.format(term)), bbox_inches='tight')
 
         return
     
@@ -679,14 +684,14 @@ class PyROQ:
     
         # Plot the test results
         plt.figure(figsize=(8,5))
-        plt.semilogy(surros_hp,'o', label='h_+')
-        plt.semilogy(surros_hc,'o', label='h_x')
+        plt.semilogy(surros_hp, 'x', color='darkred',    label='$\Re[h_+]$')
+#        plt.semilogy(surros_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
 #        if term == 'quad':
 #            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
-        plt.xlabel("Number of Random Test Points")
-        plt.ylabel("Surrogate Error ({})".format(term.ljust(4)))
-        plt.legend(loc=0)
-        plt.savefig(os.path.join(self.outputdir,"Plots/Surrogate_errors_random_test_points_{}.png".format(term)))
+        plt.xlabel('$\mathrm{Number \,\, of \,\, Random \,\, Test \,\, Points}$',            fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Surrogate \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.legend(loc='best')
+        plt.savefig(os.path.join(self.outputdir,'Plots/Surrogate_errors_random_test_points_{}.pdf'.format(term)), bbox_inches='tight')
     
         return
 
@@ -699,9 +704,9 @@ class PyROQ:
                 p[k].append(params_basis[j][i])
             
             plt.figure()
-            plt.hist(p[k])
-            plt.xlabel(k)
-            plt.savefig(os.path.join(self.outputdir,"Plots/Basis_parameters_{}.png".format(k)))
+            sns.displot(p[k], color='darkred')
+            plt.xlabel(k, fontsize=labels_fontsize)
+            plt.savefig(os.path.join(self.outputdir,"Plots/Basis_parameters_{}.pdf".format(k)), bbox_inches='tight')
             plt.close()
 
 if __name__ == '__main__':
