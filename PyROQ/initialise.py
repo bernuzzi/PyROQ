@@ -6,7 +6,7 @@ except ImportError:
 
 #Description of the package. Printed on stdout if --help option is give.
 usage="""\n\n pyroq.py --config-file config.ini\n
-Package description TO BE FILLED.
+Package description FIXME.
 
 Options syntax: type, default values and sections of the configuration
 file where each parameter should be passed are declared below.
@@ -95,7 +95,7 @@ to be intended as part of the default value.
       Waveform wrappers must work with these keywords.
       Parameter ranges can be set using: par-X=value, where X can be ['min', 'max'] and par is any of the above names.
 
-      MISSING description of distance [Mpc]
+      FIXME description of distance [Mpc]
 
     """
 
@@ -103,12 +103,20 @@ to be intended as part of the default value.
 default_params_ranges = {
     'mc'      : [0.9, 1.4]     ,
     'q'       : [1.0, 3.0]     ,
+    'm1'      : [1.0, 3.0]     ,
+    'm2'      : [0.5, 2.0]     ,
     's1x'     : [0.0, 0.0]     ,
     's1y'     : [0.0, 0.0]     ,
     's1z'     : [-0.5, 0.5]    ,
     's2x'     : [0.0, 0.0]     ,
     's2y'     : [0.0, 0.0]     ,
     's2z'     : [-0.5, 0.5]    ,
+    's1s1'    : [0.0, 0.5]     , # mlgw-bns is non-precessing, but these values are to set conventions and it won't be called with spherical spin coords anyway (an error will be raised in such a case).
+    's1s2'    : [0.0, np.pi]   ,
+    's1s3'    : [0.0, 2*np.pi] ,
+    's2s1'    : [0.0, 0.5]     ,
+    's2s2'    : [0.0, np.pi]   ,
+    's2s3'    : [0.0, 2*np.pi] ,
     'lambda1' : [5.0, 5000.0]  ,
     'lambda2' : [5.0, 5000.0]  ,
     'ecc'     : [0.0, 0.0]     ,
@@ -119,12 +127,20 @@ default_params_ranges = {
 default_test_values = {
         'mc'      : 1.3    ,
         'q'       : 2.0    ,
+        'm1'      : 1.5    , 
+        'm2'      : 1.5    ,
         's1x'     : 0.0    ,
         's1y'     : 0.0    ,
         's1z'     : 0.2    ,
         's2x'     : 0.0    ,
         's2y'     : 0.0    ,
         's2z'     : 0.1    ,
+        's1s1'    : 0.3    ,
+        's1s2'    : 0.4    ,
+        's1s3'    : 0.5    ,
+        's2s1'    : 0.3    ,
+        's2s2'    : 0.4    ,
+        's2s3'    : 0.5    ,
         'lambda1' : 1000.0 ,
         'lambda2' : 1000.0 ,
         'ecc'     : 0.0    ,
@@ -206,6 +222,8 @@ def read_config(config_file):
         print('\n')
 
     if(not(input_par['ROQ']['n-basis-low-lin']>1) or not(input_par['ROQ']['n-basis-low-quad']>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
+    if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
+        raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
 
@@ -225,8 +243,24 @@ def read_config(config_file):
     print('[Training_range]\n')
     for key in default_params_ranges:
         
-        if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])):        continue
-        if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])):               continue
+        if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='m2')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='mc')       and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='q')        and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='s1s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])       ): continue
+        if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])              ): continue
         if((key=='s1x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
         if((key=='s2x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
         if((key=='s1y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
@@ -246,27 +280,34 @@ def read_config(config_file):
 
     print('\n')
 
-    # Sanity checks
-    if(input_par['Waveform_and_parametrisation']['mc-q-par'] and (('m1' in params_ranges.keys()) or ('m2' in params_ranges.keys()))):
-        raise ValueError("Cannot pass 'm1' or 'm2' in params_ranges with the 'mc_q_par' option activated.")
-    elif(not(input_par['Waveform_and_parametrisation']['mc-q-par']) and (('mc' in params_ranges.keys()) or ('m2' in params_ranges.keys()))):
-        raise ValueError("Cannot pass 'mc' and 'q' in params_ranges with the 'mc_q_par' option de-activated.")
-
-    if(input_par['Waveform_and_parametrisation']['spin-sph'] and (('s1x' in params_ranges.keys()) or ('s1y' in params_ranges.keys()) or ('s1z' in params_ranges.keys()) or ('s2x' in params_ranges.keys()) or ('s2y' in params_ranges.keys()) or ('s2z' in params_ranges.keys()))):
-        raise ValueError("Cannot pass 's1[xyz]' or 's2[xyz]' in params_ranges with the 'spin_sph' option activated.")
-    if(not(input_par['Waveform_and_parametrisation']['spin-sph']) and (('s1s1' in params_ranges.keys()) or ('s1s2' in params_ranges.keys()) or ('s1s3' in params_ranges.keys()) or ('s2s1' in params_ranges.keys()) or ('s2s2' in params_ranges.keys()) or ('s2s3' in params_ranges.keys()))):
-        raise ValueError("Cannot pass 's1s[123]' or 's2s[123]' in params_ranges with the 'spin_sph' option de-activated.")
-
     test_values = {}
     for key in default_test_values:
+        
+        if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='m2')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='mc')       and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='q')        and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
+        if((key=='s1s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+    
         keytype = type(default_test_values[key])
         try:
             test_values[key]=keytype(Config.get('Test_values',key))
         except (KeyError, configparser.NoOptionError, TypeError):
             
             # Putting this block here allows to test the accuracy of the ROQ against regimes outside the training range (e.g. trained with tides=0 and checking the error with non-zero tides)
-            if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])):        continue
-            if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])):               continue
+            if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])       ): continue
+            if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])              ): continue
             if((key=='s1x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
             if((key=='s2x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
             if((key=='s1y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
