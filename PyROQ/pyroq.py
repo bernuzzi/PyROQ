@@ -28,11 +28,11 @@ class PyROQ:
     """
 
     def __init__(self,
-                 config_pars                    ,
-                 params_ranges                  ,
-                 start_values                   ,
-                 distance                   = 10, # [Mpc]. Dummy value, distance does not enter the interpolants construction
-                 additional_waveform_params = {}, # Dictionary with any parameter needed for the waveform approximant
+                 config_pars                      ,
+                 params_ranges                    ,
+                 start_values               = None,
+                 distance                   = 10,   # [Mpc]. Dummy value, distance does not enter the interpolants construction
+                 additional_waveform_params = {},   # Dictionary with any parameter needed for the waveform approximant
                  ):
 
         self.distance                   = distance
@@ -306,25 +306,30 @@ class PyROQ:
         if self.verbose:
             print('\n\n######################\n# Initialising basis #\n######################\n')
             print('nparams = {}\n'.format(self.nparams))
-            print('index | name    | ( min - max )           | start')
+            print('index | name    | ( min - max )           ')
 
-        self.params_low, self.params_hig, params_ini_list = [], [], []
+        self.params_low, self.params_hig = [], []
         # Set bounds
         for i,n in self.i2n.items():
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
-            params_ini_list.append(self.start_values[n])
-
+            
             if self.verbose:
-                print('{}    | {} | ( {:.6f} - {:.6f} ) | {:.6f}'.format(str(i).ljust(2),
+                print('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2),
                                                                       n.ljust(len('lambda1')),
                                                                       self.params_low[i],
-                                                                      self.params_hig[i],
-                                                                      params_ini_list[i]))
-        self.params_ini = np.array([params_ini_list])
-        # First waveform
-        self.hp_low, _ = self._paramspoint_to_wave(params_ini_list)
+                                                                      self.params_hig[i]))
+
+        if(self.start_values==None):
+            self.params_ini = np.array([self.params_low])
+            self.params_ini = np.append(self.params_ini, np.array([self.params_hig]), axis=0)
+        else:
+            raise Exception("Start parameters selected by the user have not yet been implemented.")
         
+        # First waveforms
+        self.hp_low, _ = self._paramspoint_to_wave(self.params_low)
+        self.hp_hig, _ = self._paramspoint_to_wave(self.params_hig)
+
         return 
 
     def empirical_nodes(self, ndim, known_bases, fact=100000000):
@@ -478,15 +483,21 @@ class PyROQ:
         d          = {}
         
         # Initialise basis.
-        hp1        = self.hp_low
-        hp1_quad   = (np.absolute(hp1))**2
-        params_ini = self.params_ini
-
-        known_bases_start     = np.array([self.vector_normalised(hp1)])
-        residual_modula_start = np.array([0.0])
+        hp_low      = self.hp_low
+        hp_low_quad = (np.absolute(hp_low))**2
+        hp_hig      = self.hp_hig
+        hp_hig_quad = (np.absolute(hp_hig))**2
+        params_ini  = self.params_ini
         
-        # Construct the linear basis.
-        # Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
+        #FIXME: there is an asymmetry here. Also known_bases and residual_modula should be initialise inside initial_basis, like params_ini.
+        #This way, if the parameters are passed by the user, they are set accordingly.
+        
+        known_bases_start     = np.array([self.vector_normalised(hp_low)])
+        known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig)]), axis=0)
+        residual_modula_start = np.array([0.0])
+        residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
+
+        # Construct the linear basis. Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
         bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'lin')
 
         # Internally store the output data for later testing.
@@ -506,9 +517,11 @@ class PyROQ:
 
         # Repeat the same as above for the quadratic terms.
         # FIXME: Should be inserted in a loop and not repeated.
-        known_bases_start     = np.array([self.vector_normalised(hp1_quad)])
+        known_bases_start     = np.array([self.vector_normalised(hp_low_quad)])
+        known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig_quad)]), axis=0)
         residual_modula_start = np.array([0.0])
-        
+        residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
+
         bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'quad')
         d['quad_bases']     = bases
         d['quad_params']    = params
@@ -722,12 +735,11 @@ if __name__ == '__main__':
 
     config_pars, params_ranges, test_values = initialise.read_config(config_file)
 
-    # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, select defaults.
-    start_values = {'{}'.format(key): params_ranges[key][0]  for key in params_ranges.keys()}
-    if not('start_values' in locals() or 'start_values' in globals()): start_values  = initialise.default_start_values
+    # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, defaults to upper/lower corner of the parameter space.
+    start_values = None
 
     # Initialise ROQ.
-    pyroq = PyROQ(config_pars, params_ranges, start_values)
+    pyroq = PyROQ(config_pars, params_ranges, start_values=start_values)
     freq  = pyroq.freq
 
     if not(config_pars['I/O']['post-processing-only']):
