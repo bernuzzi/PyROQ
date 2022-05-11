@@ -270,7 +270,7 @@ class PyROQ:
         elif term=='quad':
             n_basis_hig = self.n_basis_hig_quad
             file_bases  = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Quadratic/quadratic_basis_waveform_params.npy'
+            file_params = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'
         else:
             raise TermError
     
@@ -463,7 +463,7 @@ class PyROQ:
                 f = self.freq[emp_nodes]
                 
                 # Store the output.
-                np.save(froq,np.transpose(b))
+                np.save(froq, b)
                 np.save(fnodes,f)
                 
                 if self.verbose:
@@ -748,17 +748,14 @@ if __name__ == '__main__':
     else:
         # Read ROQ from previous run.
         data                   = {}
-        data['lin_f']          = np.load(output+'/ROQ_data/Linear/fnodes_linear.npy')
-        data['lin_B']          = np.load(output+'/ROQ_data/Linear/B_linear.npy')
-        data['quad_f']         = np.load(output+'/ROQ_data/Quadratic/fnodes_quadratic.npy')
-        data['quad_B']         = np.load(output+'/ROQ_data/Quadratic/B_quadratic.npy')
+        data['lin_f']          = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/fnodes_linear.npy'))
+        data['lin_B']          = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/B_linear.npy'))
+        data['quad_f']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/fnodes_quadratic.npy'))
+        data['quad_B']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/B_quadratic.npy'))
         data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
         data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
-        data['lin_params']     = np.load(output+'/ROQ_data/Linear/linear_basis_waveform_params.npy')
-        data['quad_params']    = np.load(output+'/ROQ_data/Quadratic/quadratic_basis_waveform_params.npy')
-
-        print('check np.traspose in storing B output.')
-        raise Exception("Not yet completed.")
+        data['lin_params']     = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/linear_bases_waveform_params.npy'))
+        data['quad_params']    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'))
 
     # Output the basis reduction factor.
     print('\n###########\n# Results #\n###########\n')
