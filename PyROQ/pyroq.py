@@ -85,7 +85,7 @@ class PyROQ:
         
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
-        self.initial_basis() # self.params_low, self.params_hig, self.params_ini, self.hp_low, self.hp_hig
+        self.set_training_range()
         
     def howmany_within_range(self, row, minimum, maximum):
         """
@@ -299,7 +299,7 @@ class PyROQ:
 
         return known_bases, params, residual_modula
     
-    def initial_basis(self):
+    def set_training_range(self):
         """
         Initialize parameter ranges and basis.
         """
@@ -320,17 +320,29 @@ class PyROQ:
                                                                       self.params_low[i],
                                                                       self.params_hig[i]))
 
-        if(self.start_values==None):
-            self.params_ini = np.array([self.params_low])
-            self.params_ini = np.append(self.params_ini, np.array([self.params_hig]), axis=0)
-        else:
-            raise Exception("Start parameters selected by the user have not yet been implemented.")
-        
-        # First waveforms
+        return 
+
+    def construct_corner_basis(self, run_type):
+
+        # Corner waveforms
         self.hp_low, _ = self._paramspoint_to_wave(self.params_low)
         self.hp_hig, _ = self._paramspoint_to_wave(self.params_hig)
+        if  (run_type=='lin'): hp_low, hp_hig = self.hp_low, self.hp_hig
+        elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
+        else                 : raise TermError
+        # FIXME: should test if it's more efficient to gram_schmidt hp2 before adding it to the basis.
+        known_bases_start = np.array([self.vector_normalised(hp_low)])
+        known_bases_start = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig)]), axis=0)
+        
+        # Corner params
+        params_ini = np.array([self.params_low])
+        params_ini = np.append(params_ini, np.array([self.params_hig]), axis=0)
+        
+        # Corner residuals
+        residual_modula_start = np.array([0.0])
+        residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
 
-        return 
+    return known_bases_start, params_ini, residual_modula_start
 
     def empirical_nodes(self, ndim, known_bases, fact=100000000):
         
@@ -482,21 +494,17 @@ class PyROQ:
         # Initialise data.
         d = {}
         
-        # Initialise basis.
-        if  (run_type=='lin'): hp_low, hp_hig = self.hp_low, self.hp_hig
-        elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
-        else                 : raise TermError
-        
-        #FIXME: there is an asymmetry here. Also known_bases and residual_modula should be initialise inside initial_basis, like params_ini.
-        #This way, if the parameters are passed by the user, they are set accordingly.
-        params_ini            = self.params_ini
-        known_bases_start     = np.array([self.vector_normalised(hp_low)])
-        known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig)]), axis=0)
-        residual_modula_start = np.array([0.0])
-        residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
+        # Initialise basis, either using a default choice or a previously constructed one.
+        if(self.start_values==None):
+            # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note these are not the N-D corners of the parameter space N-cube.
+            initial_basis, initial_params, initial_residual_modula = construct_corner_basis(run_type)
+        else:
+            # FIXME: load a previously constructed basis.
+            initial_basis, initial_params, initial_residual_modula = None, None, None
+            raise Exception("Start parameters selected by the user have not yet been implemented.")
 
         # Construct the basis. Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
-        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, run_type)
+        bases, params, residual_modula = self._construct_basis(initial_basis, initial_params, initial_residual_modula, run_type)
 
         # Internally store the output data for later testing.
         d['{}_bases'.format(run_type)]  = bases
@@ -516,6 +524,7 @@ class PyROQ:
         return d
     
     ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
+    # FIXME: these should be moved to another file (plots.py), but they use internal functions, e.g. _paramspoint_to_wave. Since they are defined in this file and the plots.py would be imported here, you would have an importing loop.
     
     def plot_representation_error(self, b, emp_nodes, paramspoint, term):
         
