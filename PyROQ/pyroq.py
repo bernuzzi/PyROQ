@@ -82,16 +82,8 @@ class PyROQ:
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
         self.set_training_range()
-        
-    def howmany_within_range(self, row, minimum, maximum):
-        """
-        Returns how many numbers lie within `maximum` and `minimum` in a given `row`
-        """
-        count = 0
-        for n in row:
-            if minimum <= n <= maximum:
-                count = count + 1
-        return count
+            
+    ## General linear algebra routines
 
     def proj(self, u, v):
         """
@@ -139,6 +131,8 @@ class PyROQ:
         
         return measure
 
+    ## Parameters transformations utils
+
     def spherical_to_cartesian(self, sph):
         x = sph[0]*np.sin(sph[1])*np.cos(sph[2])
         y = sph[0]*np.sin(sph[1])*np.sin(sph[2])
@@ -154,6 +148,8 @@ class PyROQ:
         mmin = self.get_m1m2_from_mcq(mc_low,q_high)[1]
         mmax = self.get_m1m2_from_mcq(mc_high,q_high)[0]
         return [mmin, mmax]
+
+    ## Parameters handling functions
 
     def map_params_indexs(self):
         """
@@ -204,6 +200,8 @@ class PyROQ:
         # We build a linear basis only for hp, since empirically the same basis accurately works to represent hc too (see [arXiv:1604.08253).
         hp, hc = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp, hc
+
+    ## Basis construction functions
 
     def _compute_new_element_residual_from_basis(self, paramspoint, known_bases, term):
 
@@ -295,6 +293,8 @@ class PyROQ:
 
         return known_bases, params, residual_modula
     
+    ## Initial basis functions
+    
     def set_training_range(self):
         """
         Initialize parameter ranges and basis.
@@ -339,6 +339,8 @@ class PyROQ:
         residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
 
         return known_bases_start, params_ini, residual_modula_start
+
+    ## Interpolant building functions
 
     def empirical_nodes(self, ndim, known_bases, fact=100000000):
         
