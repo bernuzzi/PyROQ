@@ -50,16 +50,12 @@ class PyROQ:
         self.f_max               = config_pars['Waveform_and_parametrisation']['f-max']
         self.deltaF              = 1./config_pars['Waveform_and_parametrisation']['seglen']
         
-        self.n_basis_search_iter = config_pars['ROQ']['n-basis-search-iter']
+        self.n_pre_basis_search_iter = config_pars['ROQ']['n-pre-basis-search-iter']
+        self.n_pre_basis             = config_pars['ROQ']['n-pre-basis']
 
-        self.n_basis_low_lin     = config_pars['ROQ']['n-basis-low-lin']
-        self.n_basis_hig_lin     = config_pars['ROQ']['n-basis-hig-lin']
-        self.n_basis_step_lin    = config_pars['ROQ']['n-basis-step-lin']
+
         self.tolerance           = config_pars['ROQ']['tolerance-lin']
 
-        self.n_basis_low_qua     = config_pars['ROQ']['n-basis-low-qua']
-        self.n_basis_hig_qua     = config_pars['ROQ']['n-basis-hig-qua']
-        self.n_basis_step_qua    = config_pars['ROQ']['n-basis-step-qua']
         self.tolerance_qua       = config_pars['ROQ']['tolerance-qua']
 
         self.n_tests_basis       = config_pars['ROQ']['n-tests-basis']
@@ -181,11 +177,10 @@ class PyROQ:
 
         return p
          
-    def generate_params_points(self,npts=0,round_to_digits=6):
+    def generate_params_points(self,npts,round_to_digits=6):
         """
         Uniformly sample the parameter arrays
         """
-        if npts <= 0: npts = self.n_basis_search_iter
         paramspoints = np.random.uniform(self.params_low,
                                          self.params_hig,
                                          size=(npts,self.nparams))
@@ -214,9 +209,9 @@ class PyROQ:
 
         #FIXME: this function has a large repetition with gram_schmidt
         hp, _ = self._paramspoint_to_wave(paramspoint)
-        if   term == 'lin' : residual = hp
+        if   term == 'lin': residual = hp
         elif term == 'qua': residual = (np.absolute(hp))**2
-        else               : raise TermError
+        else              : raise TermError
         h_to_proj = residual
 
         for k in np.arange(0,len(known_bases)):
@@ -236,24 +231,24 @@ class PyROQ:
            
         """
 
-        # Generate npts random waveforms corresponding to parampoints.
+        # Generate len(paramspoints) random waveforms corresponding to parampoints.
         if self.parallel:
             paramspointslist = paramspoints.tolist()
             pool = mp.Pool(processes=n_processes)
             modula = [pool.apply(self._compute_new_element_residual_from_basis, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
-            npts   = len(paramspoints) # = self.npts
+            npts   = len(paramspoints)
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
                 modula[i] = np.real(self._compute_new_element_residual_from_basis(paramspoint, known_bases, term))
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
-        hp, _ = self._paramspoint_to_wave(paramspoints[arg_newbasis])
-        if   term == 'lin' : pass
+        hp, _        = self._paramspoint_to_wave(paramspoints[arg_newbasis])
+        if   term == 'lin': pass
         elif term == 'qua': hp = (np.absolute(hp))**2
-        else               : raise TermError
+        else              : raise TermError
         
         # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
         # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
@@ -261,31 +256,32 @@ class PyROQ:
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]]) # elements, masses&spins&lambdas, residual mod
             
-    def _construct_basis(self, known_bases, params, residual_modula, term):
+    def _construct_preselection_basis(self, known_bases, params, residual_modula, term):
         
         if term == 'lin':
             n_basis_hig = self.n_basis_hig_lin
-            file_bases  = self.outputdir+'/ROQ_data/Linear/linear_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Linear/linear_bases_waveform_params.npy'
+            file_bases  = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases.npy'
+            file_params = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases_waveform_params.npy'
         elif term=='qua':
             n_basis_hig = self.n_basis_hig_qua
-            file_bases  = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'
+            file_bases  = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases.npy'
+            file_params = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases_waveform_params.npy'
         else:
             raise TermError
     
-        # This block generates a basis of dimension nbases (maximum dimension selected by the user).
-        print('\n\n###########################\n# Starting {} iteration #\n###########################\n'.format(term))
-        for k in np.arange(0,n_basis_hig-1):
+        # This block generates a basis of dimension n_pre_basis.
+        print('\n\n###########################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n###########################\n'.format(term, self.n_pre_basis_search_iter))
+        # The -2 comes from the fact that the corner basis is composed by two elements.
+        for k in np.arange(0,self.n_pre_basis-2):
             
-            # Generate npts random waveforms.
-            paramspoints = self.generate_params_points()
+            # Generate n_pre_basis_search_iter random points.
+            paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
             
-            # From the npts randomly generated waveforms, select the worst represented one (i.e. with the largest residuals after basis projection).
+            # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
             basis_new, params_new, rm_new = self._search_new_basis_element(paramspoints, known_bases, term)
             if self.verbose:
                 np.set_printoptions(suppress=True)
-                print("Iter: ".format(term), k+1, " -- New basis waveform:", params_new)
+                print("Preselection iteration: {}/{}".format(k,n_basis_hig), k+1, " -- New basis waveform with parameters:", params_new)
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
@@ -498,23 +494,25 @@ class PyROQ:
         if(self.start_values==None):
             # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note these are not the N-D corners of the parameter space N-cube.
             initial_basis, initial_params, initial_residual_modula = self._construct_corner_basis(run_type)
+            # Run a first preselection loop, building a basis of dimension n_pre_basis
+            preselection_basis, preselection_params, preselection_residual_modula = self._construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, run_type)
         else:
             # FIXME: load a previously constructed basis.
-            initial_basis, initial_params, initial_residual_modula = None, None, None
+            preselection_basis, preselection_params, preselection_residual_modula = None, None, None
             raise Exception("Start parameters selected by the user have not yet been implemented.")
 
-        # Construct the basis. Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
-        bases, params, residual_modula = self._construct_basis(initial_basis, initial_params, initial_residual_modula, run_type)
 
         # Internally store the output data for later testing.
-        d['{}_bases'.format(run_type)]  = bases
-        d['{}_params'.format(run_type)] = params
-        d['{}_res'.format(run_type)]    = residual_modula
+        d['{}_pre_bases'.format(run_type)]  = preselection_basis
+        d['{}_pre_params'.format(run_type)] = preselection_params
+        d['{}_pre_res'.format(run_type)]    = preselection_residual_modula
+
+        # HERE start the loop with increasing number of tests and decreasing tolerance
 
         # From the basis constructed above, extract:
         # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
         # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
-        B, f = self._roqs(bases, run_type)
+        B, f = self._roqs(preselection_basis, run_type)
         
         # Internally store the output data for later testing.
         d['{}_B'.format(run_type)]         = B

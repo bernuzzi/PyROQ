@@ -55,7 +55,7 @@ to be intended as part of the default value.
                n-tests-post         Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
                error-version        DESCRIPTION MISSING. Default: 'v1'.
            
-               n-basis-search-iter  Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements. Default: 80.
+               n-pre-basis-search-iter Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements. Default: 80.
            
                n-basis-low-lin      Lower bound on number of linear basis elements checked to give interpolation below tolerance. Default: 40.
                n-basis-hig-lin      Upper bound on number of linear basis elements checked to give interpolation below tolerance. Default: 80.
@@ -190,29 +190,24 @@ def read_config(config_file):
                                                  'eccentricity'        : 0,
                                                  'mc-q-par'            : 1,
                                                  'spin-sph'            : 0,
-                                                 'f-min'               : 20,
-                                                 'f-max'               : 1024,
-                                                 'seglen'              : 4,
+                                                 'f-min'                   : 20,
+                                                 'f-max'                   : 1024,
+                                                 'seglen'                  : 4,
                                                 }
     input_par['ROQ']                          = {
                                                  'basis-lin': 1,
                                                  'basis-qua': 1,
+                                   
+                                                 'tolerance-lin'           : 1e-8,
+                                                 'tolerance-qua'           : 1e-10,
 
-                                                 'n-tests-basis'       : 1000,
-                                                 'n-tests-post'        : 1000,
-                                                 'error-version'       : 'v1',
-                                               
-                                                 'n-basis-search-iter' : 80,
-                                               
-                                                 'n-basis-low-lin'     : 40,
-                                                 'n-basis-hig-lin'     : 80,
-                                                 'n-basis-step-lin'    : 10,
-                                                 'tolerance-lin'       : 1e-8,
-                                               
-                                                 'n-basis-low-qua'     : 20,
-                                                 'n-basis-hig-qua'     : 80,
-                                                 'n-basis-step-qua'    : 10,
-                                                 'tolerance-qua'       : 1e-10,
+                                                 'n-pre-basis-search-iter' : 80,
+                                                 'n-pre-basis'             : 80,
+                              
+                                                 'n-tests-basis'           : 1000,
+                                                 'n-tests-post'            : 1000,
+                                                 'error-version'           : 'v1',
+                              
                                                 }
 
     max_len_keyword = len('post-processing-only')
