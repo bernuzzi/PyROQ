@@ -48,6 +48,9 @@ to be intended as part of the default value.
        * Parameters to be passed to the [ROQ] section.                          *
        **************************************************************************
        
+               basis-lin            Flag to activate linear    basis construction. Default: 1.
+               basis-qua            Flag to activate quadratic basis construction. Default: 1.
+       
                n-tests-basis        Number of random validation test waveforms checked to be below tolerance before stopping adding basis elements in the interpolants construction. For testing: ~1000, for production: ~1000000. Default: 1000.
                n-tests-post         Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
                error-version        DESCRIPTION MISSING. Default: 'v1'.
@@ -192,6 +195,9 @@ def read_config(config_file):
                                                  'seglen'              : 4,
                                                 }
     input_par['ROQ']                          = {
+                                                 'basis-lin': 1,
+                                                 'basis-qua': 1,
+
                                                  'n-tests-basis'       : 1000,
                                                  'n-tests-post'        : 1000,
                                                  'error-version'       : 'v1',
@@ -221,6 +227,7 @@ def read_config(config_file):
                 print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
         print('\n')
 
+    # Sanity checks
     if(not(input_par['ROQ']['n-basis-low-lin']>1) or not(input_par['ROQ']['n-basis-low-qua']>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
@@ -234,6 +241,11 @@ def read_config(config_file):
         os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data'))
         os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Linear'))
         os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Quadratic'))
+
+    # Set run types
+    input_par['I/O']['run-types'] = []
+    if(input_par['ROQ']['basis-lin']): input_par['I/O']['run-types'].append('linear')
+    if(input_par['ROQ']['basis-qua']): input_par['I/O']['run-types'].append('quadratic')
 
     # ====================================#
     # Read training range and test point. #

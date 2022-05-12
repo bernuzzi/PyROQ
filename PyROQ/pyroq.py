@@ -85,7 +85,7 @@ class PyROQ:
         
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
-        self.initial_basis() # self.params_low, self.params_hig, self.params_ini, self.hp_low
+        self.initial_basis() # self.params_low, self.params_hig, self.params_ini, self.hp_low, self.hp_hig
         
     def howmany_within_range(self, row, minimum, maximum):
         """
@@ -477,60 +477,41 @@ class PyROQ:
 
     ## Main function starting the ROQ construction.
 
-    def run(self):
+    def run(self, run_type):
         
         # Initialise data.
-        d          = {}
+        d = {}
         
         # Initialise basis.
-        hp_low      = self.hp_low
-        hp_low_qua = (np.absolute(hp_low))**2
-        hp_hig      = self.hp_hig
-        hp_hig_qua = (np.absolute(hp_hig))**2
-        params_ini  = self.params_ini
+        if  (run_type=='lin'): hp_low, hp_hig = self.hp_low, self.hp_hig
+        elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
+        else                 : raise TermError
         
         #FIXME: there is an asymmetry here. Also known_bases and residual_modula should be initialise inside initial_basis, like params_ini.
         #This way, if the parameters are passed by the user, they are set accordingly.
-        
+        params_ini            = self.params_ini
         known_bases_start     = np.array([self.vector_normalised(hp_low)])
         known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig)]), axis=0)
         residual_modula_start = np.array([0.0])
         residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
 
-        # Construct the linear basis. Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
-        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'lin')
+        # Construct the basis. Also store the basis in a file, so that it can be re-used in the next iterations, if the currently selected maximum number of basis elements is too small to meet the required tolerance.
+        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, run_type)
 
         # Internally store the output data for later testing.
-        d['lin_bases']      = bases
-        d['lin_params']     = params
-        d['lin_res']        = residual_modula
+        d['{}_bases'.format(run_type)]  = bases
+        d['{}_params'.format(run_type)] = params
+        d['{}_res'.format(run_type)]    = residual_modula
 
-        # From the linear basis constructed above, extract:
-        # i) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
-        # ii) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
-        B, f = self._roqs(bases, 'lin')
+        # From the basis constructed above, extract:
+        # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
+        # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
+        B, f = self._roqs(bases, run_type)
         
         # Internally store the output data for later testing.
-        d['lin_B']          = B
-        d['lin_f']          = f
-        d['lin_emp_nodes']  = np.searchsorted(self.freq, d['lin_f'])
-
-        # Repeat the same as above for the quadratic terms.
-        # FIXME: Should be inserted in a loop and not repeated.
-        known_bases_start     = np.array([self.vector_normalised(hp_low_qua)])
-        known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig_qua)]), axis=0)
-        residual_modula_start = np.array([0.0])
-        residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
-
-        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'qua')
-        d['qua_bases']     = bases
-        d['qua_params']    = params
-        d['qua_res']       = residual_modula
-
-        B, f = self._roqs(bases, 'qua')
-        d['qua_B']         = B
-        d['qua_f']         = f
-        d['qua_emp_nodes'] = np.searchsorted(self.freq, d['qua_f'])
+        d['{}_B'.format(run_type)]         = B
+        d['{}_f'.format(run_type)]         = f
+        d['{}_emp_nodes'.format(run_type)] = np.searchsorted(self.freq, d['{}_f'.format(run_type)])
         
         return d
     
@@ -744,51 +725,42 @@ if __name__ == '__main__':
 
     data = {}
 
-#    for run_type in config_pars['I/O']['run-types']:
-#
-#        short_key =
-#        long_key  = run_type
-    if not(config_pars['I/O']['post-processing-only']):
-        # Create the bases and save ROQ.
-        data = pyroq.run()
-#        data[run_type] = pyroq.run(run_type)
-    else:
-        # Read ROQ from previous run.
-#        data[run_type]        = {}
-        data                  = {}
-        data['lin_f']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/fnodes_linear.npy'))
-        data['lin_B']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/B_linear.npy'))
-        data['qua_f']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/fnodes_quadratic.npy'))
-        data['qua_B']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/B_quadratic.npy'))
-        data['lin_emp_nodes'] = np.searchsorted(freq, data['lin_f'])
-        data['qua_emp_nodes'] = np.searchsorted(freq, data['qua_f'])
-        data['lin_params']    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/linear_bases_waveform_params.npy'))
-        data['qua_params']    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'))
+    for run_type in config_pars['I/O']['run-types']:
 
-    # Output the basis reduction factor.
-    print('\n###########\n# Results #\n###########\n')
-    print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
-    print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['qua_f']), len(freq)/len(data['qua_f'])))
+        term = run_type[0:3]
+        if not(config_pars['I/O']['post-processing-only']):
+            # Create the bases and save ROQ.
+            data[run_type] = pyroq.run(term)
+        else:
+            # Read ROQ from previous run.
+            data[run_type] = {}
+            data[run_type]['{}_f'.format(term)]         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/fnodes_{type}.npy'.format(type=run_type)))
+            data[run_type]['{}_B'.format(term)]         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/B_{type}.npy'.format(type=run_type)))
+            data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
+            data[run_type]['{}_params'.format(term)]    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
 
-    # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
-    pyroq.histogram_basis_params(data['lin_params'][:len(data['lin_f'])])
-    pyroq.histogram_basis_params(data['qua_params'][:len(data['qua_f'])])
+        print(data[run_type].keys())
 
-    # Surrogate tests
-    pyroq.test_roq_error(data['lin_B'], data['lin_emp_nodes'], 'lin')
-    pyroq.test_roq_error(data['qua_B'], data['qua_emp_nodes'], 'qua')
+        # Output the basis reduction factor.
+        print('\n###########\n# Results #\n###########\n')
+        print('{} basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(run_type, len(freq), len(data[run_type]['{}_f'.format(term)]), len(freq)/len(data[run_type]['{}_f'.format(term)])))
 
-    # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
-    print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
-    parampoint_test = []
-    print('name    | value | index')
-    for name, val in test_values.items():
-        print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
-        parampoint_test.append(val)
-    parampoint_test = np.array(parampoint_test)
+        # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
+        pyroq.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])])
 
-    pyroq.plot_representation_error(data['lin_B'], data['lin_emp_nodes'], parampoint_test, 'lin')
-    pyroq.plot_representation_error(data['qua_B'], data['qua_emp_nodes'], parampoint_test, 'qua')
+        # Surrogate tests
+        pyroq.test_roq_error(data[run_type]['{}_B'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term)
+
+        # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
+        print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
+        parampoint_test = []
+        print('name    | value | index')
+        for name, val in test_values.items():
+            print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
+            parampoint_test.append(val)
+        parampoint_test = np.array(parampoint_test)
+
+        pyroq.plot_representation_error(data[run_type]['{}_B'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term)
 
     # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()
