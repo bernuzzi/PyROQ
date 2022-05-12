@@ -521,13 +521,13 @@ class PyROQ:
         
         hp, hc = self._paramspoint_to_wave(paramspoint)
         
-        if   term == 'lin' :
+        if   term == 'lin':
             pass
         elif term == 'qua':
             hphc = np.real(hp * np.conj(hc))
             hp   = (np.absolute(hp))**2
             hc   = (np.absolute(hc))**2
-        else               :
+        else              :
             raise TermError
         
         freq           = self.freq
@@ -544,53 +544,68 @@ class PyROQ:
             rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
     
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_+] \,\, \mathrm{(full)}$')
-        plt.plot(freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_+] \,\, \mathrm{(ROQ)}$' )
+        if term == 'lin':
+            plt.plot(    freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+            plt.plot(    freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+        else:
+            plt.semilogy(freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$mathrm{Full}$')
+            plt.semilogy(freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+        plt.scatter(freq[emp_nodes], np.real(hp)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{\Re[h_+]}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_real_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
-        plt.plot(freq, np.imag(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Im[h_+] \,\, \mathrm{(full)}$')
-        plt.plot(freq, np.imag(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Im[h_+] \,\, \mathrm{(ROQ)}$' )
+        if term == 'lin':
+            plt.plot(freq, np.real(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+            plt.plot(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+        else:
+            plt.semilogy(freq, np.real(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+            plt.semilogy(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+        plt.scatter(freq[emp_nodes], np.real(hc)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
-
-        plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_{\\times}] \,\, \mathrm{(full)}$')
-        plt.plot(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_{\\times}] \,\, \mathrm{(ROQ)}$' )
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{\Re[h_{\\times}]}$', fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
-        plt.figure(figsize=(8,5))
-        plt.plot(freq, np.imag(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Im[h_{\\times}] \,\, \mathrm{(full)}$')
-        plt.plot(freq, np.imag(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Im[h_{\\times}] \,\, \mathrm{(ROQ)}$' )
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
-
-        if term == 'qua':
+        if term == 'lin':
             plt.figure(figsize=(8,5))
-            plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_+ \, {h}^*_{\\times}] \,\, \mathrm{(full)}$')
-            plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_+ \, {h}^*_{\\times}] \,\, \mathrm{(ROQ)}$' )
+            plt.plot(freq, np.imag(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+            plt.plot(freq, np.imag(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+            plt.scatter(freq[emp_nodes], np.imag(hp)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
             plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-            plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+            plt.ylabel('$\Im[h_+]$', fontsize=labels_fontsize)
+            plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+            plt.legend(loc='best')
+            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
+
+            plt.figure(figsize=(8,5))
+            plt.plot(freq, np.imag(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+            plt.plot(freq, np.imag(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+            plt.scatter(freq[emp_nodes], np.imag(hc)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
+            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+            plt.ylabel('$\Im[h_{\\times}]$', fontsize=labels_fontsize)
+            plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+            plt.legend(loc='best')
+            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
+
+        else:
+            plt.figure(figsize=(8,5))
+            plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+            plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+            plt.scatter(freq[emp_nodes], hphc[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
+            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+            plt.ylabel('$\Re[h_+ \, {h}^*_{\\times}]$', fontsize=labels_fontsize)
+            plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
             plt.legend(loc='best')
             plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
             plt.figure(figsize=(8,5))
-            plt.plot(freq, rep_error_hphc, color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
+            plt.plot(   freq,            rep_error_hphc,            color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
+            plt.scatter(freq[emp_nodes], rep_error_hphc[emp_nodes], color='dodgerblue', marker='o', s=10,          label='$\mathrm{Empirical \,\, nodes}$')
             plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
             plt.ylabel('$\mathrm{Fractional Representation Error}$', fontsize=labels_fontsize)
             plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
@@ -599,7 +614,10 @@ class PyROQ:
 
         plt.figure(figsize=(8,5))
         plt.plot(freq, np.real(rep_error_hp), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+]$')
-        plt.plot(freq, np.imag(rep_error_hp), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_+]$')
+        if term == 'lin':
+            plt.plot(freq, np.imag(rep_error_hp), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_+]$')
+        plt.scatter(freq[emp_nodes], np.real(rep_error_hp)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
+        plt.scatter(freq[emp_nodes], np.imag(rep_error_hp)[emp_nodes], marker='o', c='dodgerblue', s=10)
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
         plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
@@ -608,7 +626,10 @@ class PyROQ:
 
         plt.figure(figsize=(8,5))
         plt.plot(freq, np.real(rep_error_hc), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_{\\times}]$')
-        plt.plot(freq, np.imag(rep_error_hc), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_{\\times}]$')
+        if term == 'lin':
+            plt.plot(freq, np.imag(rep_error_hc), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_{\\times}]$')
+        plt.scatter(freq[emp_nodes], np.real(rep_error_hc)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
+        plt.scatter(freq[emp_nodes], np.imag(rep_error_hc)[emp_nodes], marker='o', c='dodgerblue', s=10)
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
         plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
