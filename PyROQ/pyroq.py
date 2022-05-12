@@ -257,20 +257,19 @@ class PyROQ:
     def _construct_preselection_basis(self, known_bases, params, residual_modula, term):
         
         if term == 'lin':
-            n_basis_hig = self.n_basis_hig_lin
             file_bases  = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases.npy'
             file_params = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases_waveform_params.npy'
         elif term=='qua':
-            n_basis_hig = self.n_basis_hig_qua
             file_bases  = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases.npy'
             file_params = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases_waveform_params.npy'
         else:
             raise TermError
     
         # This block generates a basis of dimension n_pre_basis.
-        print('\n\n###########################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n###########################\n'.format(term, self.n_pre_basis_search_iter))
+        print('\n\n#################################################################################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n#################################################################################\n'.format(term, self.n_pre_basis_search_iter))
         # The -2 comes from the fact that the corner basis is composed by two elements.
-        for k in np.arange(0,self.n_pre_basis-2):
+        total_iters = self.n_pre_basis-2
+        for k in np.arange(0, total_iters):
             
             # Generate n_pre_basis_search_iter random points.
             paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
@@ -279,7 +278,7 @@ class PyROQ:
             basis_new, params_new, rm_new = self._search_new_basis_element(paramspoints, known_bases, term)
             if self.verbose:
                 np.set_printoptions(suppress=True)
-                print("Preselection iteration: {}/{}".format(k,n_basis_hig), k+1, " -- New basis waveform with parameters:", params_new)
+                print("Preselection iteration: {}/{}".format(k, total_iters), k+1, " -- New basis waveform with parameters:", params_new)
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
@@ -444,42 +443,36 @@ class PyROQ:
         
         # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
-            n_basis_low  = self.n_basis_low_lin
-            n_basis_hig  = self.n_basis_hig_lin
-            n_basis_step = self.n_basis_step_lin
             froq         = self.outputdir+'/ROQ_data/Linear/B_linear.npy'
             fnodes       = self.outputdir+'/ROQ_data/Linear/fnodes_linear.npy'
         elif term == 'qua':
-            n_basis_low  = self.n_basis_low_qua
-            n_basis_hig  = self.n_basis_hig_qua
-            n_basis_step = self.n_basis_step_qua
             froq         = self.outputdir+'/ROQ_data/Quadratic/B_quadratic.npy'
             fnodes       = self.outputdir+'/ROQ_data/Quadratic/fnodes_quadratic.npy'
         else:
               raise TermError
 
         # Start from a user-selected minimum number of basis elements and keep adding elements until that basis represents well enough a sufficient number of random waveforms or until you hit the user-selected maximum number of basis elements.
-        flag = 0
-        for num in np.arange(n_basis_low, n_basis_hig+1, n_basis_step):
-            
-            # Build the empirical interpolation nodes for this basis.
-            ndim, inverse_V, emp_nodes = self.empirical_nodes(num, known_bases)
-            
-            # If the overlap representation error is below tolerance, stop the iteration and store this basis.
-            if(self._roq_error_check(ndim, inverse_V, emp_nodes, known_bases, term) == 0):
-                
-                # Build the interpolant from the given basis.
-                b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
-                f = self.freq[emp_nodes]
-                
-                # Store the output.
-                np.save(froq, b)
-                np.save(fnodes,f)
-                
-                if self.verbose:
-                    print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
-                flag = 1
-                break
+#        flag = 0
+#        for num in np.arange(n_basis_low, n_basis_hig+1, n_basis_step):
+#
+#            # Build the empirical interpolation nodes for this basis.
+#            ndim, inverse_V, emp_nodes = self.empirical_nodes(num, known_bases)
+#
+#            # If the overlap representation error is below tolerance, stop the iteration and store this basis.
+#            if(self._roq_error_check(ndim, inverse_V, emp_nodes, known_bases, term) == 0):
+#
+#                # Build the interpolant from the given basis.
+#                b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
+#                f = self.freq[emp_nodes]
+#
+#                # Store the output.
+#                np.save(froq, b)
+#                np.save(fnodes,f)
+#
+#                if self.verbose:
+#                    print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
+#                flag = 1
+#                break
 
         if not(flag): raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
 
@@ -509,18 +502,19 @@ class PyROQ:
         d['{}_pre_params'.format(run_type)] = preselection_params
         d['{}_pre_res'.format(run_type)]    = preselection_residual_modula
 
-        # HERE start the loop with increasing number of tests and decreasing tolerance
-
-        # From the basis constructed above, extract:
-        # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
-        # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
-        B, f = self._roqs(preselection_basis, run_type)
-        
-        # Internally store the output data for later testing.
-        d['{}_B'.format(run_type)]         = B
-        d['{}_f'.format(run_type)]         = f
-        d['{}_emp_nodes'.format(run_type)] = np.searchsorted(self.freq, d['{}_f'.format(run_type)])
-        
+#        exit()
+#        # HERE start the loop with increasing number of tests and decreasing tolerance
+#
+#        # From the basis constructed above, extract:
+#        # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
+#        # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
+#        B, f = self._roqs(preselection_basis, run_type)
+#
+#        # Internally store the output data for later testing.
+#        d['{}_B'.format(run_type)]         = B
+#        d['{}_f'.format(run_type)]         = f
+#        d['{}_emp_nodes'.format(run_type)] = np.searchsorted(self.freq, d['{}_f'.format(run_type)])
+#
         return d
     
     ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
@@ -768,6 +762,8 @@ if __name__ == '__main__':
             data[run_type]['{}_B'.format(term)]         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/B_{type}.npy'.format(type=run_type)))
             data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
             data[run_type]['{}_params'.format(term)]    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
+
+        continue
 
         # Output the basis reduction factor.
         print('\n###########\n# Results #\n###########\n')

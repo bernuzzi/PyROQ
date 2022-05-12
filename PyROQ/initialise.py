@@ -223,7 +223,7 @@ def read_config(config_file):
         print('\n')
 
     # Sanity checks
-    if(not(input_par['ROQ']['n-basis-low-lin']>1) or not(input_par['ROQ']['n-basis-low-qua']>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
+    if not(input_par['ROQ']['n-pre-basis']>2): raise ValueError("The minimum number of basis elements has to be larger than 2, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).")
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
