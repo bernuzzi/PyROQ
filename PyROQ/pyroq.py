@@ -739,8 +739,6 @@ if __name__ == '__main__':
             data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
             data[run_type]['{}_params'.format(term)]    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
 
-        print(data[run_type].keys())
-
         # Output the basis reduction factor.
         print('\n###########\n# Results #\n###########\n')
         print('{} basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(run_type, len(freq), len(data[run_type]['{}_f'.format(term)]), len(freq)/len(data[run_type]['{}_f'.format(term)])))
