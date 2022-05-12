@@ -55,12 +55,12 @@ class PyROQ:
         self.n_basis_low_lin     = config_pars['ROQ']['n-basis-low-lin']
         self.n_basis_hig_lin     = config_pars['ROQ']['n-basis-hig-lin']
         self.n_basis_step_lin    = config_pars['ROQ']['n-basis-step-lin']
-        self.tolerance           = config_pars['ROQ']['tolerance']
+        self.tolerance           = config_pars['ROQ']['tolerance-lin']
 
-        self.n_basis_low_quad    = config_pars['ROQ']['n-basis-low-quad']
-        self.n_basis_hig_quad    = config_pars['ROQ']['n-basis-hig-quad']
-        self.n_basis_step_quad   = config_pars['ROQ']['n-basis-step-quad']
-        self.tolerance_quad      = config_pars['ROQ']['tolerance-quad']
+        self.n_basis_low_qua     = config_pars['ROQ']['n-basis-low-qua']
+        self.n_basis_hig_qua     = config_pars['ROQ']['n-basis-hig-qua']
+        self.n_basis_step_qua    = config_pars['ROQ']['n-basis-step-qua']
+        self.tolerance_qua       = config_pars['ROQ']['tolerance-qua']
 
         self.n_tests_basis       = config_pars['ROQ']['n-tests-basis']
         self.n_tests_post        = config_pars['ROQ']['n-tests-post']
@@ -215,7 +215,7 @@ class PyROQ:
         #FIXME: this function has a large repetition with gram_schmidt
         hp, _ = self._paramspoint_to_wave(paramspoint)
         if   term == 'lin' : residual = hp
-        elif term == 'quad': residual = (np.absolute(hp))**2
+        elif term == 'qua': residual = (np.absolute(hp))**2
         else               : raise TermError
         h_to_proj = residual
 
@@ -252,7 +252,7 @@ class PyROQ:
         arg_newbasis = np.argmax(modula) 
         hp, _ = self._paramspoint_to_wave(paramspoints[arg_newbasis])
         if   term == 'lin' : pass
-        elif term == 'quad': hp = (np.absolute(hp))**2
+        elif term == 'qua': hp = (np.absolute(hp))**2
         else               : raise TermError
         
         # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
@@ -267,15 +267,15 @@ class PyROQ:
             n_basis_hig = self.n_basis_hig_lin
             file_bases  = self.outputdir+'/ROQ_data/Linear/linear_bases.npy'
             file_params = self.outputdir+'/ROQ_data/Linear/linear_bases_waveform_params.npy'
-        elif term=='quad':
-            n_basis_hig = self.n_basis_hig_quad
+        elif term=='qua':
+            n_basis_hig = self.n_basis_hig_qua
             file_bases  = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases.npy'
             file_params = self.outputdir+'/ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'
         else:
             raise TermError
     
         # This block generates a basis of dimension nbases (maximum dimension selected by the user).
-        print('\n\n###########################\n# Starting {} iteration #\n###########################\n'.format(term.ljust(4)))
+        print('\n\n###########################\n# Starting {} iteration #\n###########################\n'.format(term))
         for k in np.arange(0,n_basis_hig-1):
             
             # Generate npts random waveforms.
@@ -380,7 +380,7 @@ class PyROQ:
         # Create benchmark waveform
         hp, _ = self._paramspoint_to_wave(paramspoint)
         if   term == 'lin' : pass
-        elif term == 'quad': hp = (np.absolute(hp))**2
+        elif term == 'qua': hp = (np.absolute(hp))**2
         else               : raise TermError
         
         # Initialise the interpolant
@@ -406,7 +406,7 @@ class PyROQ:
         
         # Initialise tolerance, parameter space and data structures.
         if   term == 'lin':  tol = self.tolerance
-        elif term == 'quad': tol = self.tolerance_quad
+        elif term == 'qua': tol = self.tolerance_qua
         else:                raise TermError
         paramspoints = self.generate_params_points(npts=self.n_tests_basis)
         surros       = np.zeros(self.n_tests_basis)
@@ -439,10 +439,10 @@ class PyROQ:
             n_basis_step = self.n_basis_step_lin
             froq         = self.outputdir+'/ROQ_data/Linear/B_linear.npy'
             fnodes       = self.outputdir+'/ROQ_data/Linear/fnodes_linear.npy'
-        elif term == 'quad':
-            n_basis_low  = self.n_basis_low_quad
-            n_basis_hig  = self.n_basis_hig_quad
-            n_basis_step = self.n_basis_step_quad
+        elif term == 'qua':
+            n_basis_low  = self.n_basis_low_qua
+            n_basis_hig  = self.n_basis_hig_qua
+            n_basis_step = self.n_basis_step_qua
             froq         = self.outputdir+'/ROQ_data/Quadratic/B_quadratic.npy'
             fnodes       = self.outputdir+'/ROQ_data/Quadratic/fnodes_quadratic.npy'
         else:
@@ -484,9 +484,9 @@ class PyROQ:
         
         # Initialise basis.
         hp_low      = self.hp_low
-        hp_low_quad = (np.absolute(hp_low))**2
+        hp_low_qua = (np.absolute(hp_low))**2
         hp_hig      = self.hp_hig
-        hp_hig_quad = (np.absolute(hp_hig))**2
+        hp_hig_qua = (np.absolute(hp_hig))**2
         params_ini  = self.params_ini
         
         #FIXME: there is an asymmetry here. Also known_bases and residual_modula should be initialise inside initial_basis, like params_ini.
@@ -517,20 +517,20 @@ class PyROQ:
 
         # Repeat the same as above for the quadratic terms.
         # FIXME: Should be inserted in a loop and not repeated.
-        known_bases_start     = np.array([self.vector_normalised(hp_low_quad)])
-        known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig_quad)]), axis=0)
+        known_bases_start     = np.array([self.vector_normalised(hp_low_qua)])
+        known_bases_start     = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig_qua)]), axis=0)
         residual_modula_start = np.array([0.0])
         residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
 
-        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'quad')
-        d['quad_bases']     = bases
-        d['quad_params']    = params
-        d['quad_res']       = residual_modula
+        bases, params, residual_modula = self._construct_basis(known_bases_start, params_ini, residual_modula_start, 'qua')
+        d['qua_bases']     = bases
+        d['qua_params']    = params
+        d['qua_res']       = residual_modula
 
-        B, f = self._roqs(bases, 'quad')
-        d['quad_B']         = B
-        d['quad_f']         = f
-        d['quad_emp_nodes'] = np.searchsorted(self.freq, d['quad_f'])
+        B, f = self._roqs(bases, 'qua')
+        d['qua_B']         = B
+        d['qua_f']         = f
+        d['qua_emp_nodes'] = np.searchsorted(self.freq, d['qua_f'])
         
         return d
     
@@ -542,7 +542,7 @@ class PyROQ:
         
         if   term == 'lin' :
             pass
-        elif term == 'quad':
+        elif term == 'qua':
             hphc = np.real(hp * np.conj(hc))
             hp   = (np.absolute(hp))**2
             hc   = (np.absolute(hc))**2
@@ -556,18 +556,18 @@ class PyROQ:
         diff_hc        = hc_rep - hc
         rep_error_hp   = diff_hp/np.sqrt(np.vdot(hp,hp))
         rep_error_hc   = diff_hc/np.sqrt(np.vdot(hc,hc))
-        if term == 'quad':
+        if term == 'qua':
             hphc_emp       = hphc[emp_nodes]
             hphc_rep       = np.dot(b,hphc_emp)
             diff_hphc      = hphc_rep - hphc
             rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
-            
+    
         plt.figure(figsize=(8,5))
         plt.plot(freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_+] \,\, \mathrm{(full)}$')
         plt.plot(freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_+] \,\, \mathrm{(ROQ)}$' )
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_real_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -576,7 +576,7 @@ class PyROQ:
         plt.plot(freq, np.imag(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Im[h_+] \,\, \mathrm{(ROQ)}$' )
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -585,7 +585,7 @@ class PyROQ:
         plt.plot(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_{\\times}] \,\, \mathrm{(ROQ)}$' )
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -594,17 +594,17 @@ class PyROQ:
         plt.plot(freq, np.imag(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Im[h_{\\times}] \,\, \mathrm{(ROQ)}$' )
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
-        if term == 'quad':
+        if term == 'qua':
             plt.figure(figsize=(8,5))
             plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\Re[h_+ \, {h}^*_{\\times}] \,\, \mathrm{(full)}$')
             plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\Re[h_+ \, {h}^*_{\\times}] \,\, \mathrm{(ROQ)}$' )
             plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
             plt.ylabel('$\mathrm{Waveform}$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+            plt.title('$\mathrm{Waveform \,\, comparison (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
             plt.legend(loc='best')
             plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -612,7 +612,7 @@ class PyROQ:
             plt.plot(freq, rep_error_hphc, color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
             plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
             plt.ylabel('$\mathrm{Fractional Representation Error}$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+            plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
             plt.legend(loc='best')
             plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -621,7 +621,7 @@ class PyROQ:
         plt.plot(freq, np.imag(rep_error_hp), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_+]$')
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -630,7 +630,7 @@ class PyROQ:
         plt.plot(freq, np.imag(rep_error_hc), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_{\\times}]$')
         plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
         plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hc_{}.pdf'.format(term)), bbox_inches='tight')
 
@@ -650,14 +650,14 @@ class PyROQ:
         # Select tolerance
         if   term == 'lin':
             tol = self.tolerance
-        elif term == 'quad':
-            tol = self.tolerance_quad
+        elif term == 'qua':
+            tol = self.tolerance_qua
             surros_hphc = np.zeros(nsamples)
         else:
             raise TermError
         
         # Start looping over test points
-        print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term.ljust(4)))
+        print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term))
         print('Tolerance: ', tol)
         for i,paramspoint in enumerate(paramspoints):
             
@@ -665,7 +665,7 @@ class PyROQ:
             hp, hc = self._paramspoint_to_wave(paramspoint)
             
             # Compute quadratic terms and interpolant representations
-            if term == 'quad':
+            if term == 'qua':
                 hphc     = np.real(hp * np.conj(hc))
                 hphc_emp = hphc[emp_nodes]
                 hphc_rep = np.dot(b,hphc_emp)
@@ -681,7 +681,7 @@ class PyROQ:
             # Compute the representation error. This is the same measure employed to stop adding elements to the basis
             surros_hp[i] = self.overlap_of_two_waveforms(hp, hp_rep)
             surros_hc[i] = self.overlap_of_two_waveforms(hc, hc_rep)
-            if term == 'quad':
+            if term == 'qua':
                 surros_hphc[i] = self.overlap_of_two_waveforms(hphc, hphc_rep)
 
             # If a test case exceeds the error, let the user know. Always print typical test result every 100 steps
@@ -689,12 +689,12 @@ class PyROQ:
             if self.verbose:
                 if (surros_hp[i] > tol): print("h_+     above tolerance: Iter: ", i, "Surrogate value: ", surros_hp[i], "Parameters: ", paramspoints[i])
                 if (surros_hc[i] > tol): print("h_x     above tolerance: Iter: ", i, "Surrogate value: ", surros_hc[i], "Parameters: ", paramspoints[i])
-#                if ((term == 'quad') and (surros_hphc[i] > tol)):
+#                if ((term == 'qua') and (surros_hphc[i] > tol)):
 #                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
                 if i%100==0:
                     print("h_+     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hp[i])
                     print("h_x     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hc[i])
-#                    if (term == 'quad'):
+#                    if (term == 'qua'):
 #                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
             np.set_printoptions(suppress=False)
     
@@ -702,10 +702,10 @@ class PyROQ:
         plt.figure(figsize=(8,5))
         plt.semilogy(surros_hp, 'x', color='darkred',    label='$\Re[h_+]$')
 #        plt.semilogy(surros_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
-#        if term == 'quad':
+#        if term == 'qua':
 #            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
         plt.xlabel('$\mathrm{Number \,\, of \,\, Random \,\, Test \,\, Points}$',            fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Surrogate \,\, Error \,\, (%s \,\, basis)}$'%(term.ljust(4)), fontsize=labels_fontsize)
+        plt.ylabel('$\mathrm{Surrogate \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
         plt.savefig(os.path.join(self.outputdir,'Plots/Surrogate_errors_random_test_points_{}.pdf'.format(term)), bbox_inches='tight')
     
@@ -742,33 +742,41 @@ if __name__ == '__main__':
     pyroq = PyROQ(config_pars, params_ranges, start_values=start_values)
     freq  = pyroq.freq
 
+    data = {}
+
+#    for run_type in config_pars['I/O']['run-types']:
+#
+#        short_key =
+#        long_key  = run_type
     if not(config_pars['I/O']['post-processing-only']):
         # Create the bases and save ROQ.
-        data                   = pyroq.run()
+        data = pyroq.run()
+#        data[run_type] = pyroq.run(run_type)
     else:
         # Read ROQ from previous run.
-        data                   = {}
-        data['lin_f']          = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/fnodes_linear.npy'))
-        data['lin_B']          = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/B_linear.npy'))
-        data['quad_f']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/fnodes_quadratic.npy'))
-        data['quad_B']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/B_quadratic.npy'))
-        data['lin_emp_nodes']  = np.searchsorted(freq, data['lin_f'])
-        data['quad_emp_nodes'] = np.searchsorted(freq, data['quad_f'])
-        data['lin_params']     = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/linear_bases_waveform_params.npy'))
-        data['quad_params']    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'))
+#        data[run_type]        = {}
+        data                  = {}
+        data['lin_f']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/fnodes_linear.npy'))
+        data['lin_B']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/B_linear.npy'))
+        data['qua_f']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/fnodes_quadratic.npy'))
+        data['qua_B']         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/B_quadratic.npy'))
+        data['lin_emp_nodes'] = np.searchsorted(freq, data['lin_f'])
+        data['qua_emp_nodes'] = np.searchsorted(freq, data['qua_f'])
+        data['lin_params']    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Linear/linear_bases_waveform_params.npy'))
+        data['qua_params']    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/Quadratic/quadratic_bases_waveform_params.npy'))
 
     # Output the basis reduction factor.
     print('\n###########\n# Results #\n###########\n')
-    print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']),  len(freq)/len(data['lin_f'])))
-    print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['quad_f']), len(freq)/len(data['quad_f'])))
+    print('Linear    basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['lin_f']), len(freq)/len(data['lin_f'])))
+    print('Quadratic basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(len(freq), len(data['qua_f']), len(freq)/len(data['qua_f'])))
 
     # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
     pyroq.histogram_basis_params(data['lin_params'][:len(data['lin_f'])])
-    pyroq.histogram_basis_params(data['quad_params'][:len(data['quad_f'])])
+    pyroq.histogram_basis_params(data['qua_params'][:len(data['qua_f'])])
 
     # Surrogate tests
-    pyroq.test_roq_error(data['lin_B'] , data['lin_emp_nodes'] , 'lin')
-    pyroq.test_roq_error(data['quad_B'], data['quad_emp_nodes'], 'quad')
+    pyroq.test_roq_error(data['lin_B'], data['lin_emp_nodes'], 'lin')
+    pyroq.test_roq_error(data['qua_B'], data['qua_emp_nodes'], 'qua')
 
     # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
     print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
@@ -779,8 +787,8 @@ if __name__ == '__main__':
         parampoint_test.append(val)
     parampoint_test = np.array(parampoint_test)
 
-    pyroq.plot_representation_error(data['lin_B'] , data['lin_emp_nodes'] , parampoint_test, 'lin')
-    pyroq.plot_representation_error(data['quad_B'], data['quad_emp_nodes'], parampoint_test, 'quad')
+    pyroq.plot_representation_error(data['lin_B'], data['lin_emp_nodes'], parampoint_test, 'lin')
+    pyroq.plot_representation_error(data['qua_B'], data['qua_emp_nodes'], parampoint_test, 'qua')
 
     # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()

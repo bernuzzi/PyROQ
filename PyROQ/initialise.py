@@ -57,12 +57,12 @@ to be intended as part of the default value.
                n-basis-low-lin      Lower bound on number of linear basis elements checked to give interpolation below tolerance. Default: 40.
                n-basis-hig-lin      Upper bound on number of linear basis elements checked to give interpolation below tolerance. Default: 80.
                n-basis-step-lin     Number of linear basis elements incremental step to check if the interpolation satisfies the requested tolerance. Default: 10.
-               tolerance            Interpolation error threshold for linear basis elements. Default: 1e-8.
+               tolerance-lin        Interpolation error threshold for linear basis elements. Default: 1e-8.
            
-               n-basis-low-quad     Same as above, for quadratic basis. Default: 10.
-               n-basis-hig-quad     Same as above, for quadratic basis. Usually 66% of linear basis one. Default: 20.
-               n-basis-step-quad    Same as above, for quadratic basis. Default: 1.
-               tolerance-quad       Same as above, for quadratic basis. Default: 1e-5.
+               n-basis-low-qua      Same as above, for quadratic basis. Default: 10.
+               n-basis-hig-qua      Same as above, for quadratic basis. Usually 66% of linear basis one. Default: 20.
+               n-basis-step-qua     Same as above, for quadratic basis. Default: 1.
+               tolerance-qua        Same as above, for quadratic basis. Default: 1e-5.
                
        **************************************************************************
        * Parameters range and test values syntax.                               *
@@ -74,12 +74,12 @@ to be intended as part of the default value.
                q    (mc-q-par=1) : mass ratio
                m1   (mc-q-par=0) : mass object 1 [Mo]
                m2   (mc-q-par=0) : mass object 2 [Mo]
-               s1s1 (spin-sph=1) : spin components object 1, spherical coords (SPECIFY)
-               s1s2 (spin-sph=1) : spin components object 1, spherical coords (SPECIFY)
-               s1s3 (spin-sph=1) : spin components object 1, spherical coords (SPECIFY)
-               s2s1 (spin-sph=1) : spin components object 2, spherical coords (SPECIFY)
-               s2s2 (spin-sph=1) : spin components object 2, spherical coords (SPECIFY)
-               s2s3 (spin-sph=1) : spin components object 2, spherical coords (SPECIFY)
+               s1s1 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
+               s1s2 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
+               s1s3 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
+               s2s1 (spin-sph=1) : spin components object 2, spherical coords (FIXME: SPECIFY)
+               s2s2 (spin-sph=1) : spin components object 2, spherical coords (FIXME: SPECIFY)
+               s2s3 (spin-sph=1) : spin components object 2, spherical coords (FIXME: SPECIFY)
                s1x  (spin-sph=0) : spin components object 1, cartesian coords
                s1y  (spin-sph=0) : spin components object 1, cartesian coords
                s1z  (spin-sph=0) : spin components object 1, cartesian coords
@@ -201,12 +201,12 @@ def read_config(config_file):
                                                  'n-basis-low-lin'     : 40,
                                                  'n-basis-hig-lin'     : 80,
                                                  'n-basis-step-lin'    : 10,
-                                                 'tolerance'           : 1e-8,
+                                                 'tolerance-lin'       : 1e-8,
                                                
-                                                 'n-basis-low-quad'    : 20,
-                                                 'n-basis-hig-quad'    : 80,
-                                                 'n-basis-step-quad'   : 10,
-                                                 'tolerance-quad'      : 1e-10,
+                                                 'n-basis-low-qua'     : 20,
+                                                 'n-basis-hig-qua'     : 80,
+                                                 'n-basis-step-qua'    : 10,
+                                                 'tolerance-qua'       : 1e-10,
                                                 }
 
     max_len_keyword = len('post-processing-only')
@@ -221,7 +221,7 @@ def read_config(config_file):
                 print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
         print('\n')
 
-    if(not(input_par['ROQ']['n-basis-low-lin']>1) or not(input_par['ROQ']['n-basis-low-quad']>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
+    if(not(input_par['ROQ']['n-basis-low-lin']>1) or not(input_par['ROQ']['n-basis-low-qua']>1)): raise ValueError("The minimum number of basis elements has to be larger than 1.")
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
