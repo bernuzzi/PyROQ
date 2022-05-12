@@ -322,7 +322,7 @@ class PyROQ:
 
         return 
 
-    def construct_corner_basis(self, run_type):
+    def _construct_corner_basis(self, run_type):
 
         # Corner waveforms
         self.hp_low, _ = self._paramspoint_to_wave(self.params_low)
@@ -342,7 +342,7 @@ class PyROQ:
         residual_modula_start = np.array([0.0])
         residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
 
-    return known_bases_start, params_ini, residual_modula_start
+        return known_bases_start, params_ini, residual_modula_start
 
     def empirical_nodes(self, ndim, known_bases, fact=100000000):
         
@@ -497,7 +497,7 @@ class PyROQ:
         # Initialise basis, either using a default choice or a previously constructed one.
         if(self.start_values==None):
             # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note these are not the N-D corners of the parameter space N-cube.
-            initial_basis, initial_params, initial_residual_modula = construct_corner_basis(run_type)
+            initial_basis, initial_params, initial_residual_modula = self._construct_corner_basis(run_type)
         else:
             # FIXME: load a previously constructed basis.
             initial_basis, initial_params, initial_residual_modula = None, None, None
