@@ -418,13 +418,13 @@ class PyROQ:
 
         # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
-            tol    = self.tolerance
-            froq   = self.outputdir+'/ROQ_data/Linear/B_linear.npy'
-            fnodes = self.outputdir+'/ROQ_data/Linear/fnodes_linear.npy'
+            tol                  = self.tolerance
+            file_interpolant     = self.outputdir+'/ROQ_data/Linear/basis_interpolant_linear.npy'
+            file_empirical_freqs = self.outputdir+'/ROQ_data/Linear/empirical_frequencies_linear.npy'
         elif term == 'qua':
-            tol    = self.tolerance_qua
-            froq   = self.outputdir+'/ROQ_data/Quadratic/B_quadratic.npy'
-            fnodes = self.outputdir+'/ROQ_data/Quadratic/fnodes_quadratic.npy'
+            tol                  = self.tolerance_qua
+            file_interpolant     = self.outputdir+'/ROQ_data/Quadratic/basis_interpolant_quadratic.npy'
+            file_empirical_freqs = self.outputdir+'/ROQ_data/Quadratic/empirical_frequencies_quadratic.npy'
         else:
             raise TermError
 
@@ -435,7 +435,7 @@ class PyROQ:
             training_set_n_outlier = self.training_set_n_outliers[n_cycle]
             training_set_tol       = self.training_set_rel_tol[n_cycle] * tol
         
-            print('\n################################\n# Starting {}/{} enrichment loop #\n################################\n\nTraining set size: {}\nTolerance: {}\nTolerated outliers: {}\n\n'.format(n_cycle+1, self.n_training_set_cycles, training_set_size, training_set_tol, training_set_n_outlier))
+            print('\n################################\n# Starting {}/{} enrichment loop #\n################################\n\nTraining set size  : {}\nTolerance          : {}\nTolerated outliers : {}\n\n'.format(n_cycle+1, self.n_training_set_cycles, training_set_size, training_set_tol, training_set_n_outlier))
 
             paramspoints = self.generate_params_points(npts=training_set_size)
             outliers     = paramspoints[ :training_set_size]
@@ -446,7 +446,7 @@ class PyROQ:
                 # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
                 # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
                 ndim, inverse_V, emp_nodes = self.empirical_nodes(len(known_bases), known_bases)
-                b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
+                basis_interpolant          = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
                 print('FIXME: PARALLELISE ME!\n')
                 
                 # Initialise empirical interpolation errors and loop over test points.
@@ -460,7 +460,7 @@ class PyROQ:
                     else              : raise TermError
 
                     # Compute the empirical interpolation error.
-                    hp_interp = np.dot(b,hp[emp_nodes])
+                    hp_interp = np.dot(basis_interpolant,hp[emp_nodes])
                     dh        = hp - hp_interp
                     eies.append(np.real(np.vdot(dh, dh)))
     #                self.overlap_of_two_waveforms(hp, hp_interp)
@@ -495,22 +495,23 @@ class PyROQ:
                     print('FIXME: track residual modula')
                     # residual_modula = np.append(residual_modula, rm_new)
 
+        print('store basis at each iteration or just store last one even if not enough?')
 
         # Finalise and store the output.
-        f = self.freq[emp_nodes]
-        np.save(froq, b)
-        np.save(fnodes,f)
+        frequencies = self.freq[emp_nodes]
+        np.save(file_interpolant,     basis_interpolant)
+        np.save(file_empirical_freqs, frequencies)
         
         print('FIXME: Implement some stopping condition for bases that are too large, e.g. comparable to the number of original freqs.')
 
 #        if self.verbose:
-#            print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
+#            print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",file_interpolant, '\n')
 #        flag = 1
 #        break
 #
 #        if not(flag): raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
 
-        return b,f
+        return frequencies, basis_interpolant, known_params
 
     ## Main function starting the ROQ construction.
 
@@ -530,19 +531,19 @@ class PyROQ:
             preselection_basis, preselection_params, preselection_residual_modula = None, None, None
             raise Exception("Start parameters selected by the user have not yet been implemented.")
 
-
         # Internally store the output data for later testing.
         d['{}_pre_bases'.format(run_type)]  = preselection_basis
         d['{}_pre_params'.format(run_type)] = preselection_params
         d['{}_pre_res'.format(run_type)]    = preselection_residual_modula
 
         # Start the series of loops in which the pre-selected basis is enriched by the outliers found on ever increasing training sets.
-        B, f = self._roqs(preselection_basis, preselection_params, preselection_residual_modula, run_type)
+        frequencies, basis_interpolant, basis_parameters = self._roqs(preselection_basis, preselection_params, preselection_residual_modula, run_type)
 
         # Internally store the output data for later testing.
-        d['{}_B'.format(run_type)]         = B
-        d['{}_f'.format(run_type)]         = f
-        d['{}_emp_nodes'.format(run_type)] = np.searchsorted(self.freq, d['{}_f'.format(run_type)])
+        d['{}_interpolant'.format(run_type)] = basis_interpolant
+        d['{}_f'.format(run_type)]           = frequencies
+        d['{}_emp_nodes'.format(run_type)]   = np.searchsorted(self.freq, d['{}_f'.format(run_type)])
+        d['{}_params'.format(run_type)]      = basis_parameters
 
         return d
     
@@ -787,10 +788,10 @@ if __name__ == '__main__':
         else:
             # Read ROQ from previous run.
             data[run_type] = {}
-            data[run_type]['{}_f'.format(term)]         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/fnodes_{type}.npy'.format(type=run_type)))
-            data[run_type]['{}_B'.format(term)]         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/B_{type}.npy'.format(type=run_type)))
-            data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
-            data[run_type]['{}_params'.format(term)]    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
+            data[run_type]['{}_f'.format(term)]           = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_frequencies_{type}.npy'.format(type=run_type)))
+            data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
+            data[run_type]['{}_emp_nodes'.format(term)]   = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
+            data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
 
         # Output the basis reduction factor.
         print('\n###########\n# Results #\n###########\n')
@@ -800,7 +801,7 @@ if __name__ == '__main__':
         pyroq.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])])
 
         # Surrogate tests
-        pyroq.test_roq_error(data[run_type]['{}_B'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term)
+        pyroq.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term)
 
         # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
         print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
@@ -811,7 +812,7 @@ if __name__ == '__main__':
             parampoint_test.append(val)
         parampoint_test = np.array(parampoint_test)
 
-        pyroq.plot_representation_error(data[run_type]['{}_B'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term)
+        pyroq.plot_representation_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term)
 
     # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()
