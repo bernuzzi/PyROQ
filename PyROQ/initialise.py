@@ -222,16 +222,23 @@ def read_config(config_file):
                 input_par[section][key]=keytype(Config.get(section,key))
                 leg = ''
             except (KeyError, configparser.NoOptionError, TypeError):
-                leg = 'default'
+                leg = '(default)'
             # Format lists
             if((key=='training-set-sizes') or (key=='training-set-n-outliers') or (key=='training-set-rel-tol')):
                 input_par[section][key] = input_par[section][key].split(',')
+                if(key=='training-set-rel-tol'):
+                    for x in range(len(input_par[section][key])): input_par[section][key][x] = float(input_par[section][key][x])
+                else:
+                    for x in range(len(input_par[section][key])): input_par[section][key][x] = int(input_par[section][key][x])
             print("{name} : {value} {leg}".format(name=key.ljust(max_len_keyword), value=input_par[section][key], leg=leg))
         print('\n')
 
-
-
     # Sanity checks
+    list_keys = ['training-set-sizes', 'training-set-n-outliers', 'training-set-rel-tol']
+    for list_key in list_keys:
+        if not(len(input_par['ROQ'][list_key])==input_par['ROQ']['n-training-set-cycles']):
+            raise ValueError("Length of {} list has to be equal to the number of training cycles ('n-training-set-cycles').".format(key))
+
     if not(input_par['ROQ']['n-pre-basis']>2): raise ValueError("The minimum number of basis elements has to be larger than 2, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).")
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')

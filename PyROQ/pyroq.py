@@ -430,16 +430,15 @@ class PyROQ:
 
         # Start a loop over training cycles with varying training size, tolerance and allowed outliers
         for n_cycle in range(self.n_training_set_cycles):
-        
+            
             training_set_size      = self.training_set_sizes[n_cycle]
             training_set_n_outlier = self.training_set_n_outliers[n_cycle]
             training_set_tol       = self.training_set_rel_tol[n_cycle] * tol
         
+            print('\n################################\n# Starting {}/{} enrichment loop #\n################################\n\nTraining set size: {}\nTolerance: {}\nTolerated outliers: {}\n\n'.format(n_cycle+1, self.n_training_set_cycles, training_set_size, training_set_tol, training_set_n_outlier))
+
             paramspoints = self.generate_params_points(npts=training_set_size)
-            outliers     = paramspoints[training_set_size]
-            
-            print(outliers)
-            exit()
+            outliers     = paramspoints[ :training_set_size]
             
             while(len(outliers) > training_set_n_outlier):
 
@@ -448,14 +447,14 @@ class PyROQ:
                 # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
                 ndim, inverse_V, emp_nodes = self.empirical_nodes(len(known_bases), known_bases)
                 b = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
-                print('\n\nPARALLELISE ME!\n\n')
+                print('FIXME: PARALLELISE ME!\n')
                 
                 # Initialise empirical interpolation errors and loop over test points.
                 eies = []
                 for training_point in outliers:
 
                     # Create benchmark waveform.
-                    hp, _ = self._paramspoint_to_wave(paramspoint)
+                    hp, _ = self._paramspoint_to_wave(training_point)
                     if   term == 'lin': pass
                     elif term == 'qua': hp = (np.absolute(hp))**2
                     else              : raise TermError
@@ -473,27 +472,27 @@ class PyROQ:
                 # Update outliers.
                 outliers = outliers[np.array(eies) > training_set_tol]
 
+                # Update the user on how many outliers remain.
+                if self.verbose:
+                    print("\n{}".format(ndim), "basis elements gave", len(outliers), "outliers with surrogate error >", training_set_tol, " out of {} training points.\n".format(training_set_size))
+                    for xy in range(len(outliers)): print("Outlier: {}, with surrogate error {}".format(outliers[xy], eies[np.array(eies) > training_set_tol][xy]))
+
                 # Enrich the basis with the worst outlier.
                 if(len(outliers) > 0):
-                    
-                    # Update the user on how many outliers remain.
-                    if self.verbose:
-                    print("\n{}".format(ndim), "basis elements gave", count, "outliers with surrogate error >", training_set_tol, " out of {} training points.\n".format(training_set_size))
-                    for xy in range(len(outliers)): print("Outlier: {}, with surrogate error {}".format(outliers[xy], eies[np.array(eies) > training_set_tol][xy]))
-                    
+                
                     # Create new basis element.
                     hp_new, _ = self._paramspoint_to_wave(new_basis_point)
                     if   term == 'lin': pass
                     elif term == 'qua': hp_new = (np.absolute(hp_new))**2
                     else              : raise TermError
                     hp_new    = vector_normalised(hp_new)
-                    print('Sure to gram_schimdt here?')
+                    print('FIXME: Sure to gram_schimdt here?')
                     basis_new = self.gram_schmidt(known_bases, hp_new)
                     
                     # Append to basis
                     known_bases  = np.append(known_bases,  np.array([basis_new]),       axis=0)
                     known_params = np.append(known_params, np.array([new_basis_point]), axis=0)
-                    print('track residual modula')
+                    print('FIXME: track residual modula')
                     # residual_modula = np.append(residual_modula, rm_new)
 
 
@@ -501,6 +500,8 @@ class PyROQ:
         f = self.freq[emp_nodes]
         np.save(froq, b)
         np.save(fnodes,f)
+        
+        print('FIXME: Implement some stopping condition for bases that are too large, e.g. comparable to the number of original freqs.')
 
 #        if self.verbose:
 #            print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",froq, '\n')
@@ -790,8 +791,6 @@ if __name__ == '__main__':
             data[run_type]['{}_B'.format(term)]         = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/B_{type}.npy'.format(type=run_type)))
             data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
             data[run_type]['{}_params'.format(term)]    = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
-
-        continue
 
         # Output the basis reduction factor.
         print('\n###########\n# Results #\n###########\n')
