@@ -1,22 +1,17 @@
 # General python imports
-import matplotlib, matplotlib.pyplot as plt, multiprocessing as mp, numpy as np, os, random, seaborn as sns, warnings
+import multiprocessing as mp, numpy as np, os, random, warnings
 from optparse import OptionParser
 
 # Package internal import
 from wvfwrappers    import *
 from linear_algebra import *
-import initialise
+import initialise, post_processing
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
 TermError    = ValueError("Unknown basis term requested.")
 VersionError = ValueError("Unknown version requested.")
 np.random.seed(150914)
-
-matplotlib.rcParams['mathtext.fontset'] = 'stix'
-matplotlib.rcParams['font.family'] = 'STIXGeneral'
-labels_fontsize = 16
-
 
 class PyROQ:
     """
@@ -58,7 +53,7 @@ class PyROQ:
         self.training_set_sizes         = config_pars['ROQ']['training-set-sizes']
         self.training_set_n_outliers    = config_pars['ROQ']['training-set-n-outliers']
         self.training_set_rel_tol       = config_pars['ROQ']['training-set-rel-tol']
-        self.tolerance                  = config_pars['ROQ']['tolerance-lin']
+        self.tolerance_lin              = config_pars['ROQ']['tolerance-lin']
         self.tolerance_qua              = config_pars['ROQ']['tolerance-qua']
 
         self.n_tests_post               = config_pars['ROQ']['n-tests-post']
@@ -136,7 +131,7 @@ class PyROQ:
                                          size=(npts,self.nparams))
         return paramspoints.round(decimals=round_to_digits)
     
-    def _paramspoint_to_wave(self, paramspoint):
+    def paramspoint_to_wave(self, paramspoint):
         """
         Generate a waveform given a paramspoint
         By default, if paramspoint contains the spherical spin, then updates the cartesian accordingly.
@@ -160,7 +155,7 @@ class PyROQ:
     def _compute_new_element_residual_from_basis(self, paramspoint, known_bases, term):
 
         #FIXME: this function has a large repetition with gram_schmidt
-        hp, _ = self._paramspoint_to_wave(paramspoint)
+        hp, _ = self.paramspoint_to_wave(paramspoint)
         if   term == 'lin': residual = hp
         elif term == 'qua': residual = (np.absolute(hp))**2
         else              : raise TermError
@@ -197,7 +192,7 @@ class PyROQ:
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
-        hp, _        = self._paramspoint_to_wave(paramspoints[arg_newbasis])
+        hp, _        = self.paramspoint_to_wave(paramspoints[arg_newbasis])
         if   term == 'lin': pass
         elif term == 'qua': hp = (np.absolute(hp))**2
         else              : raise TermError
@@ -274,8 +269,8 @@ class PyROQ:
     def _construct_corner_basis(self, run_type):
 
         # Corner waveforms
-        self.hp_low, _ = self._paramspoint_to_wave(self.params_low)
-        self.hp_hig, _ = self._paramspoint_to_wave(self.params_hig)
+        self.hp_low, _ = self.paramspoint_to_wave(self.params_low)
+        self.hp_hig, _ = self.paramspoint_to_wave(self.params_hig)
         if  (run_type=='lin'): hp_low, hp_hig = self.hp_low, self.hp_hig
         elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
         else                 : raise TermError
@@ -348,7 +343,7 @@ class PyROQ:
     def _roq_error_from_basis(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
         
         # Create benchmark waveform
-        hp, _ = self._paramspoint_to_wave(paramspoint)
+        hp, _ = self.paramspoint_to_wave(paramspoint)
         if   term == 'lin': pass
         elif term == 'qua': hp = (np.absolute(hp))**2
         else              : raise TermError
@@ -371,7 +366,7 @@ class PyROQ:
 
         # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
-            tol                  = self.tolerance
+            tol                  = self.tolerance_lin
             file_interpolant     = self.outputdir+'/ROQ_data/Linear/basis_interpolant_linear.npy'
             file_empirical_freqs = self.outputdir+'/ROQ_data/Linear/empirical_frequencies_linear.npy'
         elif term == 'qua':
@@ -407,7 +402,7 @@ class PyROQ:
                 for training_point in outliers:
 
                     # Create benchmark waveform.
-                    hp, _ = self._paramspoint_to_wave(training_point)
+                    hp, _ = self.paramspoint_to_wave(training_point)
                     if   term == 'lin': pass
                     elif term == 'qua': hp = (np.absolute(hp))**2
                     else              : raise TermError
@@ -434,7 +429,7 @@ class PyROQ:
                 if(len(outliers) > 0):
                 
                     # Create new basis element.
-                    hp_new, _ = self._paramspoint_to_wave(new_basis_point)
+                    hp_new, _ = self.paramspoint_to_wave(new_basis_point)
                     if   term == 'lin': pass
                     elif term == 'qua': hp_new = (np.absolute(hp_new))**2
                     else              : raise TermError
@@ -499,219 +494,6 @@ class PyROQ:
         d['{}_params'.format(run_type)]      = basis_parameters
 
         return d
-    
-    ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
-    # FIXME: these should be moved to another file (plots.py), but they use internal functions, e.g. _paramspoint_to_wave. Since they are defined in this file and the plots.py would be imported here, you would have an importing loop.
-    
-    def plot_representation_error(self, b, emp_nodes, paramspoint, term):
-        
-        hp, hc = self._paramspoint_to_wave(paramspoint)
-        
-        if   term == 'lin':
-            pass
-        elif term == 'qua':
-            hphc = np.real(hp * np.conj(hc))
-            hp   = (np.absolute(hp))**2
-            hc   = (np.absolute(hc))**2
-        else              :
-            raise TermError
-        
-        freq           = self.freq
-        hp_emp, hc_emp = hp[emp_nodes], hc[emp_nodes]
-        hp_rep, hc_rep = np.dot(b,hp_emp), np.dot(b,hc_emp)
-        diff_hp        = hp_rep - hp
-        diff_hc        = hc_rep - hc
-        rep_error_hp   = diff_hp/np.sqrt(np.vdot(hp,hp))
-        rep_error_hc   = diff_hc/np.sqrt(np.vdot(hc,hc))
-        if term == 'qua':
-            hphc_emp       = hphc[emp_nodes]
-            hphc_rep       = np.dot(b,hphc_emp)
-            diff_hphc      = hphc_rep - hphc
-            rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
-    
-        plt.figure(figsize=(8,5))
-        if term == 'lin':
-            plt.plot(    freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-            plt.plot(    freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-        else:
-            plt.semilogy(freq, np.real(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$mathrm{Full}$')
-            plt.semilogy(freq, np.real(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-        plt.scatter(freq[emp_nodes], np.real(hp)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{\Re[h_+]}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_real_{}.pdf'.format(term)), bbox_inches='tight')
-
-        plt.figure(figsize=(8,5))
-        if term == 'lin':
-            plt.plot(freq, np.real(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-            plt.plot(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-        else:
-            plt.semilogy(freq, np.real(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-            plt.semilogy(freq, np.real(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-        plt.scatter(freq[emp_nodes], np.real(hc)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{\Re[h_{\\times}]}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_real_{}.pdf'.format(term)), bbox_inches='tight')
-
-        if term == 'lin':
-            plt.figure(figsize=(8,5))
-            plt.plot(freq, np.imag(hp),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-            plt.plot(freq, np.imag(hp_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-            plt.scatter(freq[emp_nodes], np.imag(hp)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-            plt.ylabel('$\Im[h_+]$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-            plt.legend(loc='best')
-            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
-
-            plt.figure(figsize=(8,5))
-            plt.plot(freq, np.imag(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-            plt.plot(freq, np.imag(hc_rep), color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-            plt.scatter(freq[emp_nodes], np.imag(hc)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-            plt.ylabel('$\Im[h_{\\times}]$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-            plt.legend(loc='best')
-            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
-
-        else:
-            plt.figure(figsize=(8,5))
-            plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-            plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-            plt.scatter(freq[emp_nodes], hphc[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-            plt.ylabel('$\Re[h_+ \, {h}^*_{\\times}]$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-            plt.legend(loc='best')
-            plt.savefig(os.path.join(self.outputdir,'Plots/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
-
-            plt.figure(figsize=(8,5))
-            plt.plot(   freq,            rep_error_hphc,            color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
-            plt.scatter(freq[emp_nodes], rep_error_hphc[emp_nodes], color='dodgerblue', marker='o', s=10,          label='$\mathrm{Empirical \,\, nodes}$')
-            plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-            plt.ylabel('$\mathrm{Fractional Representation Error}$', fontsize=labels_fontsize)
-            plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-            plt.legend(loc='best')
-            plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
-
-        plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(rep_error_hp), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+]$')
-        if term == 'lin':
-            plt.plot(freq, np.imag(rep_error_hp), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_+]$')
-        plt.scatter(freq[emp_nodes], np.real(rep_error_hp)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-        plt.scatter(freq[emp_nodes], np.imag(rep_error_hp)[emp_nodes], marker='o', c='dodgerblue', s=10)
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
-
-        plt.figure(figsize=(8,5))
-        plt.plot(freq, np.real(rep_error_hc), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_{\\times}]$')
-        if term == 'lin':
-            plt.plot(freq, np.imag(rep_error_hc), color='darkred',    lw=1.3, alpha=0.8, ls='-', label='$\Im[h_{\\times}]$')
-        plt.scatter(freq[emp_nodes], np.real(rep_error_hc)[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-        plt.scatter(freq[emp_nodes], np.imag(rep_error_hc)[emp_nodes], marker='o', c='dodgerblue', s=10)
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Fractional \,\, Representation \,\, Error}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Representation_error_hc_{}.pdf'.format(term)), bbox_inches='tight')
-
-        return
-    
-    def test_roq_error(self, b, emp_nodes, term):
-        
-        # Initialise structures
-        nsamples  = self.n_tests_post
-        ndim      = len(emp_nodes)
-        surros_hp = np.zeros(nsamples)
-        surros_hc = np.zeros(nsamples)
-        
-        # Draw random test points
-        paramspoints = self.generate_params_points(npts=nsamples)
-        
-        # Select tolerance
-        if   term == 'lin':
-            tol = self.tolerance
-        elif term == 'qua':
-            tol = self.tolerance_qua
-            surros_hphc = np.zeros(nsamples)
-        else:
-            raise TermError
-        
-        # Start looping over test points
-        print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term))
-        print('Tolerance: ', tol)
-        for i,paramspoint in enumerate(paramspoints):
-            
-            # Generate test waveform
-            hp, hc = self._paramspoint_to_wave(paramspoint)
-            
-            # Compute quadratic terms and interpolant representations
-            if term == 'qua':
-                hphc     = np.real(hp * np.conj(hc))
-                hphc_emp = hphc[emp_nodes]
-                hphc_rep = np.dot(b,hphc_emp)
-            
-                hp       = (np.absolute(hp))**2
-                hc       = (np.absolute(hc))**2
-
-            hp_emp    = hp[emp_nodes]
-            hp_rep    = np.dot(b,hp_emp)
-            hc_emp    = hc[emp_nodes]
-            hc_rep    = np.dot(b,hc_emp)
-
-            # Compute the representation error. This is the same measure employed to stop adding elements to the basis
-            surros_hp[i] = overlap_of_two_waveforms(hp, hp_rep, self.deltaF, self.error_version)
-            surros_hc[i] = overlap_of_two_waveforms(hc, hc_rep, self.deltaF, self.error_version)
-            if term == 'qua':
-                surros_hphc[i] = overlap_of_two_waveforms(hphc, hphc_rep, self.deltaF, self.error_version)
-
-            # If a test case exceeds the error, let the user know. Always print typical test result every 100 steps
-            np.set_printoptions(suppress=True)
-            if self.verbose:
-                if (surros_hp[i] > tol): print("h_+     above tolerance: Iter: ", i, "Surrogate value: ", surros_hp[i], "Parameters: ", paramspoints[i])
-                if (surros_hc[i] > tol): print("h_x     above tolerance: Iter: ", i, "Surrogate value: ", surros_hc[i], "Parameters: ", paramspoints[i])
-#                if ((term == 'qua') and (surros_hphc[i] > tol)):
-#                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
-                if i%100==0:
-                    print("h_+     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hp[i])
-                    print("h_x     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hc[i])
-#                    if (term == 'qua'):
-#                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
-            np.set_printoptions(suppress=False)
-    
-        # Plot the test results
-        plt.figure(figsize=(8,5))
-        plt.semilogy(surros_hp, 'x', color='darkred',    label='$\Re[h_+]$')
-#        plt.semilogy(surros_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
-#        if term == 'qua':
-#            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
-        plt.xlabel('$\mathrm{Number \,\, of \,\, Random \,\, Test \,\, Points}$',            fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Surrogate \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(self.outputdir,'Plots/Surrogate_errors_random_test_points_{}.pdf'.format(term)), bbox_inches='tight')
-    
-        return
-
-    def histogram_basis_params(self, params_basis):
-
-        p = {}
-        for i,k in self.i2n.items():
-            p[k] = []
-            for j in range(len(params_basis)):
-                p[k].append(params_basis[j][i])
-            
-            plt.figure()
-            sns.displot(p[k], color='darkred')
-            plt.xlabel(k, fontsize=labels_fontsize)
-            plt.savefig(os.path.join(self.outputdir,'Plots/Basis_parameters_{}.pdf'.format(k)), bbox_inches='tight')
-            plt.close()
 
 if __name__ == '__main__':
 
@@ -726,7 +508,7 @@ if __name__ == '__main__':
     # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, defaults to upper/lower corner of the parameter space.
     start_values = None
 
-    # Initialise ROQ.
+    # Initialise ROQ parameters and structures.
     pyroq = PyROQ(config_pars, params_ranges, start_values=start_values)
     freq  = pyroq.freq
 
@@ -740,7 +522,7 @@ if __name__ == '__main__':
             data[run_type] = pyroq.run(term)
         else:
             # Read ROQ from previous run.
-            data[run_type] = {}
+            data[run_type]                                = {}
             data[run_type]['{}_f'.format(term)]           = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_frequencies_{type}.npy'.format(type=run_type)))
             data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
             data[run_type]['{}_emp_nodes'.format(term)]   = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
@@ -751,10 +533,10 @@ if __name__ == '__main__':
         print('{} basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(run_type, len(freq), len(data[run_type]['{}_f'.format(term)]), len(freq)/len(data[run_type]['{}_f'.format(term)])))
 
         # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
-        pyroq.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])])
+        post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n)
 
-        # Surrogate tests
-        pyroq.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term)
+        # Surrogate tests.
+        post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
 
         # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
         print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
@@ -765,7 +547,7 @@ if __name__ == '__main__':
             parampoint_test.append(val)
         parampoint_test = np.array(parampoint_test)
 
-        pyroq.plot_representation_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term)
+        post_processing.plot_representation_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term, pyroq.outputdir, freq, pyroq.paramspoint_to_wave)
 
     # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()
