@@ -51,7 +51,6 @@ to be intended as part of the default value.
                basis-lin            Flag to activate linear    basis construction. Default: 1.
                basis-qua            Flag to activate quadratic basis construction. Default: 1.
        
-               n-tests-basis        Number of random validation test waveforms checked to be below tolerance before stopping adding basis elements in the interpolants construction. For testing: ~1000, for production: ~1000000. Default: 1000.
                n-tests-post         Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
                error-version        DESCRIPTION MISSING. Default: 'v1'.
            
@@ -197,14 +196,18 @@ def read_config(config_file):
     input_par['ROQ']                          = {
                                                  'basis-lin': 1,
                                                  'basis-qua': 1,
-                                   
+
+                                                 'n-pre-basis'             : 80,
+                                                 'n-pre-basis-search-iter' : 80,
+                                                 
+                                                 'n-training-set-cycles'   : 4,
+                                                 'training-set-sizes'      : '10000,100000,1000000,10000000',
+                                                 'training-set-n-outliers' : '20,20,1,0',
+                                                 'training-set-rel-tol'    : '0.1,0.1,0.05,0.3,1.0',
+
                                                  'tolerance-lin'           : 1e-8,
                                                  'tolerance-qua'           : 1e-10,
-
-                                                 'n-pre-basis-search-iter' : 80,
-                                                 'n-pre-basis'             : 80,
                               
-                                                 'n-tests-basis'           : 1000,
                                                  'n-tests-post'            : 1000,
                                                  'error-version'           : 'v1',
                               
@@ -214,13 +217,19 @@ def read_config(config_file):
     for section in sections:
         print('[{}]\n'.format(section))
         for key in input_par[section]:
-            keytype = type(input_par[section][key])
             try:
+                keytype = type(input_par[section][key])
                 input_par[section][key]=keytype(Config.get(section,key))
-                print("{name} : {value}".format(          name=key.ljust(max_len_keyword), value=input_par[section][key]))
+                leg = ''
             except (KeyError, configparser.NoOptionError, TypeError):
-                print("{name} : {value} (default)".format(name=key.ljust(max_len_keyword), value=input_par[section][key]))
+                leg = 'default'
+            # Format lists
+            if((key=='training-set-sizes') or (key=='training-set-n-outliers') or (key=='training-set-rel-tol')):
+                input_par[section][key] = input_par[section][key].split(',')
+            print("{name} : {value} {leg}".format(name=key.ljust(max_len_keyword), value=input_par[section][key], leg=leg))
         print('\n')
+
+
 
     # Sanity checks
     if not(input_par['ROQ']['n-pre-basis']>2): raise ValueError("The minimum number of basis elements has to be larger than 2, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).")
