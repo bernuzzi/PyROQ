@@ -3,7 +3,8 @@ import matplotlib, matplotlib.pyplot as plt, multiprocessing as mp, numpy as np,
 from optparse import OptionParser
 
 # Package internal import
-from wvfwrappers import *
+from wvfwrappers    import *
+from linear_algebra import *
 import initialise
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
@@ -83,54 +84,6 @@ class PyROQ:
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
         self.set_training_range()
-            
-    ## General linear algebra routines
-
-    def proj(self, u, v):
-        """
-        Calculating the projection of complex vector v on complex vector u.
-        Note: this algorithm assumes u isn't zero.
-        """
-        return u * np.vdot(v,u) / np.vdot(u,u) 
-
-    def vector_normalised(self, vec):
-
-        return vec/np.sqrt(np.vdot(vec,vec))
-
-    def gram_schmidt(self, bases, vec):
-        """
-        Calculating the normalized residual (= a new basis term) of a vector vec from known bases.
-        """
-        for i in np.arange(0,len(bases)):
-            vec = vec - self.proj(bases[i], vec)
-        return self.vector_normalised(vec) # normalized new basis
-    
-    def overlap_of_two_waveforms(self, wf1, wf2):
-        """
-            Calculating overlap (FIXME: change to a more representative name) of two waveforms.
-        """
-        
-        # From the forked master version of the public PyROQ: https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L40
-        if(self.error_version=='v1'):
-            wf1norm = self.vector_normalised(wf1)
-            wf2norm = self.vector_normalised(wf2)
-            measure = (1-np.real(np.vdot(wf1norm, wf2norm)))*self.deltaF
-        # From the PyROQ paper: https://arxiv.org/abs/2009.13812
-        elif(self.error_version=='v2'):
-            diff    = wf1 - wf2
-            measure = np.real(np.vdot(diff, diff))*self.deltaF
-        # From the forked master version of the public PyROQ (commented): https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L39
-        elif(self.error_version=='v3'):
-            diff    = wf1 - wf2
-            measure = 1 - 0.5*np.real(np.vdot(diff, diff))
-        # Same as 'v3', but without the (1-0.5*) factor
-        elif(self.error_version=='v4'):
-            diff    = wf1 - wf2
-            measure = np.real(np.vdot(diff, diff))
-        else:
-            raise VersionError
-        
-        return measure
 
     ## Parameters transformations utils
 
@@ -214,7 +167,7 @@ class PyROQ:
         h_to_proj = residual
 
         for k in np.arange(0,len(known_bases)):
-            residual -= self.proj(known_bases[k],h_to_proj)
+            residual -= proj(known_bases[k],h_to_proj)
         
         return np.sqrt(np.vdot(residual, residual))
         
@@ -251,7 +204,7 @@ class PyROQ:
         
         # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
         # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
-        basis_new = self.gram_schmidt(known_bases, hp)
+        basis_new = gram_schmidt(known_bases, hp)
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]])
             
@@ -327,8 +280,8 @@ class PyROQ:
         elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
         else                 : raise TermError
         # FIXME: should test if it's more efficient to gram_schmidt hp2 before adding it to the basis.
-        known_bases_start = np.array([self.vector_normalised(hp_low)])
-        known_bases_start = np.append(known_bases_start, np.array([self.vector_normalised(hp_hig)]), axis=0)
+        known_bases_start = np.array([vector_normalised(hp_low)])
+        known_bases_start = np.append(known_bases_start, np.array([vector_normalised(hp_hig)]), axis=0)
         
         # Corner params
         params_ini = np.array([self.params_low])
@@ -412,7 +365,7 @@ class PyROQ:
             interpolantA += tmp
         
         # Return the goodness-of-interpolation measure
-        return self.overlap_of_two_waveforms(hp, interpolantA)
+        return overlap_of_two_waveforms(hp, interpolantA, self.deltaF, self.error_version)
     
     def _roqs(self, known_bases, known_params, known_residual_modula, term):
 
@@ -463,7 +416,7 @@ class PyROQ:
                     hp_interp = np.dot(basis_interpolant,hp[emp_nodes])
                     dh        = hp - hp_interp
                     eies.append(np.real(np.vdot(dh, dh)))
-    #                self.overlap_of_two_waveforms(hp, hp_interp)
+    #                overlap_of_two_waveforms(hp, hp_interp, self.deltaF, self.error_version)
     
                 # Select the worst represented point.
                 arg_newbasis    = np.argmax(eies)
@@ -487,7 +440,7 @@ class PyROQ:
                     else              : raise TermError
                     hp_new    = vector_normalised(hp_new)
                     print('FIXME: Sure to gram_schimdt here?')
-                    basis_new = self.gram_schmidt(known_bases, hp_new)
+                    basis_new = gram_schmidt(known_bases, hp_new)
                     
                     # Append to basis
                     known_bases  = np.append(known_bases,  np.array([basis_new]),       axis=0)
@@ -714,10 +667,10 @@ class PyROQ:
             hc_rep    = np.dot(b,hc_emp)
 
             # Compute the representation error. This is the same measure employed to stop adding elements to the basis
-            surros_hp[i] = self.overlap_of_two_waveforms(hp, hp_rep)
-            surros_hc[i] = self.overlap_of_two_waveforms(hc, hc_rep)
+            surros_hp[i] = overlap_of_two_waveforms(hp, hp_rep, self.deltaF, self.error_version)
+            surros_hc[i] = overlap_of_two_waveforms(hc, hc_rep, self.deltaF, self.error_version)
             if term == 'qua':
-                surros_hphc[i] = self.overlap_of_two_waveforms(hphc, hphc_rep)
+                surros_hphc[i] = overlap_of_two_waveforms(hphc, hphc_rep, self.deltaF, self.error_version)
 
             # If a test case exceeds the error, let the user know. Always print typical test result every 100 steps
             np.set_printoptions(suppress=True)
