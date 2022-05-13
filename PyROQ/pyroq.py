@@ -258,11 +258,7 @@ class PyROQ:
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
             
-            if self.verbose:
-                print('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2),
-                                                                      n.ljust(len('lambda1')),
-                                                                      self.params_low[i],
-                                                                      self.params_hig[i]))
+            if self.verbose: print('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2), n.ljust(len('lambda1')), self.params_low[i], self.params_hig[i]))
 
         return 
 
@@ -340,17 +336,21 @@ class PyROQ:
         
         return np.array([ndim, inverse_V, emp_nodes])
     
-    def _roqs(self, known_bases, known_params, known_residual_modula, term):
+    def _roqs(self, known_bases, known_params, term):
 
         # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
             tol                  = self.tolerance_lin
             file_interpolant     = self.outputdir+'/ROQ_data/Linear/basis_interpolant_linear.npy'
             file_empirical_freqs = self.outputdir+'/ROQ_data/Linear/empirical_frequencies_linear.npy'
+            file_basis           = self.outputdir+'/ROQ_data/Linear/basis_linear.npy'
+            file_params          = self.outputdir+'/ROQ_data/Linear/basis_waveform_params_linear.npy'
         elif term == 'qua':
             tol                  = self.tolerance_qua
             file_interpolant     = self.outputdir+'/ROQ_data/Quadratic/basis_interpolant_quadratic.npy'
             file_empirical_freqs = self.outputdir+'/ROQ_data/Quadratic/empirical_frequencies_quadratic.npy'
+            file_basis           = self.outputdir+'/ROQ_data/Quadratic/basis_quadratic.npy'
+            file_params          = self.outputdir+'/ROQ_data/Quadratic/basis_waveform_params_quadratic.npy'
         else:
             raise TermError
 
@@ -367,6 +367,9 @@ class PyROQ:
             outliers     = paramspoints[ :training_set_size]
             
             while(len(outliers) > training_set_n_outlier):
+
+                np.save(file_basis,  known_bases)
+                np.save(file_params, known_params)
 
                 # From the basis constructed above, extract:
                 # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
@@ -390,6 +393,7 @@ class PyROQ:
                     hp_interp = np.dot(basis_interpolant,hp[emp_nodes])
                     dh        = hp - hp_interp
                     eies.append(np.real(np.vdot(dh, dh)))
+                #FIXME: which one of the errors?
     #                overlap_of_two_waveforms(hp, hp_interp, self.deltaF, self.error_version)
     
                 # Select the worst represented point.
@@ -419,18 +423,15 @@ class PyROQ:
                     # Append to basis
                     known_bases  = np.append(known_bases,  np.array([basis_new]),       axis=0)
                     known_params = np.append(known_params, np.array([new_basis_point]), axis=0)
-                    print('FIXME: track residual modula')
+                    
+                    print('FIXME: track residual modula or sigma_eim better')
                     # residual_modula = np.append(residual_modula, rm_new)
-
-        print('store basis at each iteration or just store last one even if not enough?')
 
         # Finalise and store the output.
         frequencies = self.freq[emp_nodes]
         np.save(file_interpolant,     basis_interpolant)
         np.save(file_empirical_freqs, frequencies)
         
-#        if not(flag): raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
-
         return frequencies, basis_interpolant, known_params
 
     ## Main function starting the ROQ construction.
@@ -457,7 +458,7 @@ class PyROQ:
         d['{}_pre_res'.format(run_type)]    = preselection_residual_modula
 
         # Start the series of loops in which the pre-selected basis is enriched by the outliers found on ever increasing training sets.
-        frequencies, basis_interpolant, basis_parameters = self._roqs(preselection_basis, preselection_params, preselection_residual_modula, run_type)
+        frequencies, basis_interpolant, basis_parameters = self._roqs(preselection_basis, preselection_params, run_type)
 
         # Internally store the output data for later testing.
         d['{}_interpolant'.format(run_type)] = basis_interpolant
@@ -498,7 +499,7 @@ if __name__ == '__main__':
             data[run_type]['{}_f'.format(term)]           = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_frequencies_{type}.npy'.format(type=run_type)))
             data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
             data[run_type]['{}_emp_nodes'.format(term)]   = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
-            data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/{type}_bases_waveform_params.npy'.format(type=run_type)))
+            data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
 
         # Output the basis reduction factor.
         print('\n###########\n# Results #\n###########\n')
