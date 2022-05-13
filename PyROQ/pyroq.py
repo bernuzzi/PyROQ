@@ -339,28 +339,6 @@ class PyROQ:
         inverse_V = np.linalg.pinv(V)
         
         return np.array([ndim, inverse_V, emp_nodes])
-
-    def _roq_error_from_basis(self, ndim, inverse_V, emp_nodes, known_bases, paramspoint, term):
-        
-        # Create benchmark waveform
-        hp, _ = self.paramspoint_to_wave(paramspoint)
-        if   term == 'lin': pass
-        elif term == 'qua': hp = (np.absolute(hp))**2
-        else              : raise TermError
-        
-        # Initialise the interpolant
-        interpolantA = np.zeros(len(hp))+np.zeros(len(hp))*1j
-        
-        # Compute the coefficients c_i of the interpolant written in terms of the basis.
-        Ci           = np.dot(inverse_V, hp[emp_nodes])
-        
-        # Construct the interpolant, summing over each basis element.
-        for j in np.arange(0, ndim):
-            tmp           = np.multiply(Ci[j], known_bases[j])
-            interpolantA += tmp
-        
-        # Return the goodness-of-interpolation measure
-        return overlap_of_two_waveforms(hp, interpolantA, self.deltaF, self.error_version)
     
     def _roqs(self, known_bases, known_params, known_residual_modula, term):
 
@@ -394,6 +372,7 @@ class PyROQ:
                 # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
                 # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
                 ndim, inverse_V, emp_nodes = self.empirical_nodes(len(known_bases), known_bases)
+                if(ndim>=len(self.freq)): raise Exception('Basis dimension is equal or larger than original frequency points, hence ROQ will not speedup likelihood evaluations. Try decreasing the tolerance or improving basis construction strategy.')
                 basis_interpolant          = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
                 print('FIXME: PARALLELISE ME!\n')
                 
@@ -434,7 +413,7 @@ class PyROQ:
                     elif term == 'qua': hp_new = (np.absolute(hp_new))**2
                     else              : raise TermError
                     hp_new    = vector_normalised(hp_new)
-                    print('FIXME: Sure to gram_schimdt here?')
+                    print('FIXME: Sure to gram_schimdt here? Also, normalise after Gram Schmidt?')
                     basis_new = gram_schmidt(known_bases, hp_new)
                     
                     # Append to basis
@@ -450,13 +429,6 @@ class PyROQ:
         np.save(file_interpolant,     basis_interpolant)
         np.save(file_empirical_freqs, frequencies)
         
-        print('FIXME: Implement some stopping condition for bases that are too large, e.g. comparable to the number of original freqs.')
-
-#        if self.verbose:
-#            print("Number of {} basis elements is".format(term), ndim, "and the ROQ data are saved in",file_interpolant, '\n')
-#        flag = 1
-#        break
-#
 #        if not(flag): raise Exception('Could not find a basis to correctly represent the model within the given tolerance and maximum dimension selected.\nTry increasing the allowed basis size or decreasing the tolerance.')
 
         return frequencies, basis_interpolant, known_params
