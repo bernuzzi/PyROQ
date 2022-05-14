@@ -151,7 +151,7 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         raise TermError
     
     # Start looping over test points
-    print('\n\n###########################################\n# Starting surrogate tests {} iteration #\n###########################################\n'.format(term))
+    print('\n\n##########################################\n# Starting surrogate tests {} iteration #\n##########################################\n'.format(term))
     print('Tolerance: ', tol)
     for i,paramspoint in enumerate(paramspoints):
         

@@ -20,6 +20,7 @@ to be intended as part of the default value.
 
                output               Output directory. Default: './'.
                verbose              Flag to activate verbose mode. Default: 1.
+               timing               Flag to activate timing profiling. Default: 0.
                show-plots           Flag to show produced plots. Default: 0.
                post-processing-only Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
        
@@ -174,6 +175,7 @@ def read_config(config_file):
     input_par['I/O']                           = {
                                                  'output'              : './',
                                                  'verbose'             : 1,
+                                                 'timing'              : 0,
                                                  'show-plots'          : 0,
                                                  'post-processing-only': 0,
                                                 }

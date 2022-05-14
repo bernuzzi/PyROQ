@@ -1,5 +1,5 @@
 # General python imports
-import multiprocessing as mp, numpy as np, os, random, warnings
+import multiprocessing as mp, numpy as np, os, random, time, warnings
 from optparse import OptionParser
 
 # Package internal import
@@ -27,8 +27,8 @@ class PyROQ:
                  config_pars                      ,
                  params_ranges                    ,
                  start_values               = None,
-                 distance                   = 10,   # [Mpc]. Dummy value, distance does not enter the interpolants construction
-                 additional_waveform_params = {},   # Dictionary with any parameter needed for the waveform approximant
+                 distance                   = 10  , # [Mpc]. Dummy value, distance does not enter the interpolants construction
+                 additional_waveform_params = {}  , # Dictionary with any parameter needed for the waveform approximant
                  ):
 
         self.distance                   = distance
@@ -64,7 +64,8 @@ class PyROQ:
         
         self.outputdir                  = config_pars['I/O']['output']
         self.verbose                    = config_pars['I/O']['verbose']
-        
+        self.timing                     = config_pars['I/O']['timing']
+
         # Convert to LAL identification number, if passing a LAL approximant, and choose waveform
         if(not(config_pars['Waveform_and_parametrisation']['approximant']=='teobresums-giotto') and not(config_pars['Waveform_and_parametrisation']['approximant']=='mlgw-bns')):
             self.approximant = lalsimulation.SimInspiralGetApproximantFromString(self.approximant)
@@ -74,11 +75,11 @@ class PyROQ:
             raise ValueError('Unknown approximant requested.')
 
         # Build the map between params names and indexes
-        self.map_params_indexs() # self.i2n, self.n2i, self.nparams
+        self.map_params_indexs()  # self.i2n, self.n2i, self.nparams
         
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
-        self.set_training_range()
+        self.set_training_range() # self.params_low, self.params_hig
 
     ## Parameters transformations utils
 
@@ -181,7 +182,7 @@ class PyROQ:
         # Generate len(paramspoints) random waveforms corresponding to parampoints.
         if self.parallel:
             paramspointslist = paramspoints.tolist()
-            pool = mp.Pool(processes=n_processes)
+            pool = mp.Pool(processes=self.n_processes)
             modula = [pool.apply(self._compute_new_element_residual_from_basis, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
@@ -215,7 +216,7 @@ class PyROQ:
             raise TermError
     
         # This block generates a basis of dimension n_pre_basis.
-        print('\n\n#################################################################################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n#################################################################################\n'.format(term, self.n_pre_basis_search_iter))
+        print('\n\n###################################################################################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n###################################################################################\n'.format(term, self.n_pre_basis_search_iter))
         # The -2 comes from the fact that the corner basis is composed by two elements.
         total_iters = self.n_pre_basis-2
         for k in np.arange(0, total_iters):
@@ -224,10 +225,14 @@ class PyROQ:
             paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
             
             # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
+            execution_time_new_pre_basis_element = time.time()
             basis_new, params_new, rm_new = self._search_new_basis_element(paramspoints, known_bases, term)
+            if(self.timing):
+                execution_time_new_pre_basis_element = (time.time() - execution_time_new_pre_basis_element)/60.0
+                print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, execution_time_new_pre_basis_element))
             if self.verbose:
                 np.set_printoptions(suppress=True)
-                print("Preselection iteration: {}/{}".format(k, total_iters), k+1, " -- New basis waveform with parameters:", params_new)
+                print("Preselection iteration: {}/{}".format(k+1, total_iters), " -- New basis waveform with parameters:", params_new)
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
@@ -235,7 +240,7 @@ class PyROQ:
             params          = np.append(params,          np.array([params_new]), axis=0)
             residual_modula = np.append(residual_modula, rm_new)
 
-        # Store the constructed largest basis. If its dimension is enough to stay below tolerance, the ROQ greedy algorithm will downselect this to a smaller number, the minumum required to stay below tolerance.
+        # Store the pre-selected basis.
         np.save(file_bases,  known_bases)
         np.save(file_params, params     )
 
@@ -440,7 +445,8 @@ class PyROQ:
         
         # Initialise data.
         d = {}
-        
+
+        execution_time_presel_basis = time.time()
         # Initialise basis, either using a default choice or a previously constructed one.
         if(self.start_values==None):
             # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note these are not the N-D corners of the parameter space N-cube.
@@ -451,6 +457,11 @@ class PyROQ:
             # FIXME: load a previously constructed basis.
             preselection_basis, preselection_params, preselection_residual_modula = None, None, None
             raise Exception("Start parameters selected by the user have not yet been implemented.")
+
+        if(self.timing):
+            execution_time_presel_basis = (time.time() - execution_time_presel_basis)/60.0
+            print('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))
+
 
         # Internally store the output data for later testing.
         d['{}_pre_bases'.format(run_type)]  = preselection_basis
@@ -512,7 +523,7 @@ if __name__ == '__main__':
         post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
 
         # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
-        print('\n\n#############################################\n# Testing the waveform using the parameters:#\n#############################################\n')
+        print('\n\n##############################################\n# Testing the waveform using the parameters: #\n##############################################\n')
         parampoint_test = []
         print('name    | value | index')
         for name, val in test_values.items():
