@@ -18,54 +18,53 @@ to be intended as part of the default value.
        * Parameters to be passed to the [I/O] section.                          *
        **************************************************************************
 
-               output               Output directory. Default: './'.
-               verbose              Flag to activate verbose mode. Default: 1.
-               timing               Flag to activate timing profiling. Default: 0.
-               show-plots           Flag to show produced plots. Default: 0.
-               post-processing-only Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
+               output                  Output directory. Default: './'.
+               verbose                 Flag to activate verbose mode. Default: 1.
+               timing                  Flag to activate timing profiling. Default: 0.
+               show-plots              Flag to show produced plots. Default: 0.
+               post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
        
        **************************************************************************
        * Parameters to be passed to the [Parallel] section.                     *
        **************************************************************************
 
-               parallel             Flag to activate parallelisation. Default: 0.
-               n-processes          Number of processes on which the parallelisation is carried on. Default: 4.
+               parallel                Flag to activate parallelisation. Default: 0.
+               n-processes             Number of processes on which the parallelisation is carried on. Default: 4.
        
        **************************************************************************
        * Parameters to be passed to the [Waveform_and_parametrisation] section. *
        **************************************************************************
 
-               approximant          Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns', 'IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
-               spins                Option to select spin degrees of freedom. Allowed values: ['no-spins', 'aligned', 'precessing']. Default: 'aligned'.
-               tides                Flag to activate tides training. Default: 0.
-               eccentricity         Flag to activate eccentricity training. Default: 0.
-               mc-q-par             Flag to activate parametrisation in Mchirp and mass ratio. Default: 1.
-               spin-sph             Flag to activate parametrisation in spins spherical components. Default: 0.
-               f-min                Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
-               f-max                Maximum of the frequency axis on which the interpolant will be constructed. Default: 1024.
-               seglen               Inverse of the step of the frequency axis on which the interpolant will be constructed. Default: 4.
+               approximant             Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns', 'IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
+               spins                   Option to select spin degrees of freedom. Allowed values: ['no-spins', 'aligned', 'precessing']. Default: 'aligned'.
+               tides                   Flag to activate tides training. Default: 0.
+               eccentricity            Flag to activate eccentricity training. Default: 0.
+               mc-q-par                Flag to activate parametrisation in Mchirp and mass ratio. Default: 1.
+               spin-sph                Flag to activate parametrisation in spins spherical components. Default: 0.
+               f-min                   Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
+               f-max                   Maximum of the frequency axis on which the interpolant will be constructed. Default: 1024.
+               seglen                  Inverse of the step of the frequency axis on which the interpolant will be constructed. Default: 4.
 
        **************************************************************************
        * Parameters to be passed to the [ROQ] section.                          *
        **************************************************************************
        
-               basis-lin            Flag to activate linear    basis construction. Default: 1.
-               basis-qua            Flag to activate quadratic basis construction. Default: 1.
+               basis-lin               Flag to activate linear    basis construction. Default: 1.
+               basis-qua               Flag to activate quadratic basis construction. Default: 1.
        
-               n-tests-post         Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
-               error-version        DESCRIPTION MISSING. Default: 'v1'.
+               n-tests-post            Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
+               error-version           DESCRIPTION MISSING. Default: 'v1'.
            
+               n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets.
                n-pre-basis-search-iter Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements. Default: 80.
            
-               n-basis-low-lin      Lower bound on number of linear basis elements checked to give interpolation below tolerance. Default: 40.
-               n-basis-hig-lin      Upper bound on number of linear basis elements checked to give interpolation below tolerance. Default: 80.
-               n-basis-step-lin     Number of linear basis elements incremental step to check if the interpolation satisfies the requested tolerance. Default: 10.
-               tolerance-lin        Interpolation error threshold for linear basis elements. Default: 1e-8.
-           
-               n-basis-low-qua      Same as above, for quadratic basis. Default: 10.
-               n-basis-hig-qua      Same as above, for quadratic basis. Usually 66% of linear basis one. Default: 20.
-               n-basis-step-qua     Same as above, for quadratic basis. Default: 1.
-               tolerance-qua        Same as above, for quadratic basis. Default: 1e-5.
+               n-training-set-cycles   Number of basis enrichment cycles, each using `training-set-sizes` number of training elements, and stopping until `training-set-n-outliers` are below `training-set-rel-tol` Default: 4.
+               training-set-sizes      List (in string-format) of sizes of the training set for each basis enrichment cycles. Default: '10000,100000,1000000,10000000'.
+               training-set-n-outliers List (in string-format) of number of tolerated outliers for each basis enrichment cycles. Default: '10000,100000,1000000,10000000'.Default: '20,20,1,0'.
+               training-set-rel-tol    List (in string-format) of relative tolerance (e.g. tolerance = `tolerance-lin` * `training-set-rel-tol`) of the training set for each basis enrichment cycles. Default: '10000,100000,1000000,10000000'.Default: '0.1,0.1,0.05,0.3,1.0'.
+               
+               tolerance-lin           Interpolation error threshold for linear basis elements. Default: 1e-8.
+               tolerance-qua           Same as above, for quadratic basis. Default: 1e-5.
                
        **************************************************************************
        * Parameters range and test values syntax.                               *
