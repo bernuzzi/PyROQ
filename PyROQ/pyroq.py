@@ -291,7 +291,7 @@ class PyROQ:
 
     ## Interpolant building functions
 
-    def empirical_nodes(self, known_bases, fact=100000000):
+    def empirical_nodes(self, known_bases):
         
         """
         Generate the empirical interpolation nodes from a given basis.
@@ -299,29 +299,26 @@ class PyROQ:
         See also arXiv:1712.08772v2 for a description.
         """
         
+        # Initialise. The first point is chosen to maximise the first basis vector.
         basis_len = len(known_bases)
-        # Initialise.
-        # FIXME: why do we need to multiply by `fact`?
-        emp_nodes    = np.arange(0,basis_len) * fact
-
-        # The first point is chosen to maximise the first basis vector.
-        emp_nodes[0] = np.argmax(np.absolute(known_bases[0]))
+        emp_nodes = np.array([np.argmax(np.absolute(known_bases[0]))])
         
         # The second point is chosen to maximise the difference between the interpolant (constructed from the first basis vector) and the second basis vector.
-        c1           = known_bases[1,emp_nodes[0]]/known_bases[0,1]
-        interp1      = np.multiply(c1,known_bases[0])
-        diff1        = interp1 - known_bases[1]
-        r1           = np.absolute(diff1)
-        emp_nodes[1] = np.argmax(r1)
-        
+        c1        = known_bases[1,emp_nodes[0]]/known_bases[0,1]
+        interp1   = np.multiply(c1,known_bases[0])
+        diff1     = interp1 - known_bases[1]
+        r1        = np.absolute(diff1)
+        emp_nodes = np.append(emp_nodes, np.argmax(r1))
+        # Make sure frequencies are ordered.
+        emp_nodes = sorted(emp_nodes)
+
         # Then iterate for all the other nodes.
         for k in np.arange(2,basis_len):
             
-            emp_tmp      = emp_nodes[0:k]
-            Vtmp         = np.transpose(known_bases[0:k,emp_tmp])
+            Vtmp         = np.transpose(known_bases[0:k,emp_nodes])
             inverse_Vtmp = np.linalg.pinv(Vtmp)
             e_to_interp  = known_bases[k]
-            Ci           = np.dot(inverse_Vtmp, e_to_interp[emp_tmp])
+            Ci           = np.dot(inverse_Vtmp, e_to_interp[emp_nodes])
             interpolantA = np.zeros(len(known_bases[k]))+np.zeros(len(known_bases[k]))*1j
             
             for j in np.arange(0, k):
@@ -330,15 +327,17 @@ class PyROQ:
             
             diff         = interpolantA - known_bases[k]
             r            = np.absolute(diff)
-            emp_nodes[k] = np.argmax(r)
+            emp_nodes    = np.append(emp_nodes, np.argmax(r))
             emp_nodes    = sorted(emp_nodes)
-    
+
+        # Remove repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation.
         emp_nodes = np.unique(emp_nodes)
+        
         ndim      = len(emp_nodes)
         V         = np.transpose(known_bases[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
         
-        if not(ndim==basis_len): print('Removed {} duplicate points during empirical interpolation nodes construction.\n'.format(basis_len-ndim))
+        if(self.verbose and not(ndim==basis_len)): print('Removed {} duplicate points during empirical interpolation nodes construction.\n'.format(basis_len-ndim))
         
         return np.array([ndim, inverse_V, emp_nodes])
     
