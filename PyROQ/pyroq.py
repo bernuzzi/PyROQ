@@ -147,13 +147,32 @@ class PyROQ:
             s2sphere_tmp               = p['s2s1'],p['s2s2'],p['s2s3']
             p['s2x'],p['s2y'],p['s2z'] = self.spherical_to_cartesian(s2sphere_tmp)
     
-        # We build a linear basis only for hp, since empirically the same basis accurately works to represent hc too (see [arXiv:1604.08253).
+        # We build a linear basis only for hp, since empirically the same basis accurately works to represent hc too (see [arXiv:1604.08253]).
         hp, hc = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
         return hp, hc
 
     ## Basis construction functions
 
-    def _compute_new_element_residual_from_basis(self, paramspoint, known_bases, term):
+    def add_new_element_to_basis(new_basis_param_point, known_basis, known_params, term):
+        
+        # Create new basis element.
+        hp_new, _ = self.paramspoint_to_wave(new_basis_param_point)
+        if   term == 'lin': pass
+        elif term == 'qua': hp_new = (np.absolute(hp_new))**2
+        else              : raise TermError
+        
+        # Orthogonalise and normalise the new element.
+        print('FIXME: Sure to gram_schimdt here? Also, normalise after Gram Schmidt?')
+        basis_new = gram_schmidt(known_basis, hp_new)
+        basis_new = vector_normalised(basis_new)
+
+        # Append to basis.
+        known_basis  = np.append(known_basis,  np.array([basis_new]),             axis=0)
+        known_params = np.append(known_params, np.array([new_basis_param_point]), axis=0)
+
+        return known_basis, known_params
+
+    def _compute_new_element_residual_from_basis(self, paramspoint, known_basis, term):
 
         #FIXME: this function has a large repetition with gram_schmidt
         hp, _ = self.paramspoint_to_wave(paramspoint)
@@ -162,12 +181,12 @@ class PyROQ:
         else              : raise TermError
         h_to_proj = residual
 
-        for k in np.arange(0,len(known_bases)):
-            residual -= proj(known_bases[k],h_to_proj)
+        for k in np.arange(0,len(known_basis)):
+            residual -= proj(known_basis[k],h_to_proj)
         
         return np.sqrt(np.vdot(residual, residual))
         
-    def _search_new_basis_element(self, paramspoints, known_bases, term):
+    def _search_new_basis_element(self, paramspoints, known_basis, term):
 
         """
 
@@ -183,13 +202,13 @@ class PyROQ:
         if self.parallel:
             paramspointslist = paramspoints.tolist()
             pool = mp.Pool(processes=self.n_processes)
-            modula = [pool.apply(self._compute_new_element_residual_from_basis, args=(paramspoint, known_bases, term)) for paramspoint in paramspointslist]
+            modula = [pool.apply(self._compute_new_element_residual_from_basis, args=(paramspoint, known_basis, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
             npts   = len(paramspoints)
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = np.real(self._compute_new_element_residual_from_basis(paramspoint, known_bases, term))
+                modula[i] = np.real(self._compute_new_element_residual_from_basis(paramspoint, known_basis, term))
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
@@ -200,11 +219,11 @@ class PyROQ:
         
         # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
         # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
-        basis_new = gram_schmidt(known_bases, hp)
+        basis_new = gram_schmidt(known_basis, hp)
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]])
             
-    def _construct_preselection_basis(self, known_bases, params, residual_modula, term):
+    def _construct_preselection_basis(self, known_basis, params, residual_modula, term):
         
         if term == 'lin':
             file_bases  = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases.npy'
@@ -226,7 +245,7 @@ class PyROQ:
             
             # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
             execution_time_new_pre_basis_element = time.time()
-            basis_new, params_new, rm_new = self._search_new_basis_element(paramspoints, known_bases, term)
+            basis_new, params_new, rm_new = self._search_new_basis_element(paramspoints, known_basis, term)
             if(self.timing):
                 execution_time_new_pre_basis_element = (time.time() - execution_time_new_pre_basis_element)/60.0
                 print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, execution_time_new_pre_basis_element))
@@ -236,15 +255,15 @@ class PyROQ:
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
-            known_bases     = np.append(known_bases,     np.array([basis_new]),  axis=0)
+            known_basis     = np.append(known_basis,     np.array([basis_new]),  axis=0)
             params          = np.append(params,          np.array([params_new]), axis=0)
             residual_modula = np.append(residual_modula, rm_new)
 
         # Store the pre-selected basis.
-        np.save(file_bases,  known_bases)
+        np.save(file_bases,  known_basis)
         np.save(file_params, params     )
 
-        return known_bases, params, residual_modula
+        return known_basis, params, residual_modula
     
     ## Initial basis functions
     
@@ -276,8 +295,8 @@ class PyROQ:
         elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
         else                 : raise TermError
         # FIXME: should test if it's more efficient to gram_schmidt hp2 before adding it to the basis.
-        known_bases_start = np.array([vector_normalised(hp_low)])
-        known_bases_start = np.append(known_bases_start, np.array([vector_normalised(hp_hig)]), axis=0)
+        known_basis_start = np.array([vector_normalised(hp_low)])
+        known_basis_start = np.append(known_basis_start, np.array([vector_normalised(hp_hig)]), axis=0)
         
         # Corner params
         params_ini = np.array([self.params_low])
@@ -287,11 +306,11 @@ class PyROQ:
         residual_modula_start = np.array([0.0])
         residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
 
-        return known_bases_start, params_ini, residual_modula_start
+        return known_basis_start, params_ini, residual_modula_start
 
     ## Interpolant building functions
 
-    def empirical_nodes(self, known_bases):
+    def empirical_nodes(self, known_basis):
         
         """
         Generate the empirical interpolation nodes from a given basis.
@@ -300,13 +319,13 @@ class PyROQ:
         """
         
         # Initialise. The first point is chosen to maximise the first basis vector.
-        basis_len = len(known_bases)
-        emp_nodes = np.array([np.argmax(np.absolute(known_bases[0]))])
+        basis_len = len(known_basis)
+        emp_nodes = np.array([np.argmax(np.absolute(known_basis[0]))])
         
         # The second point is chosen to maximise the difference between the interpolant (constructed from the first basis vector) and the second basis vector.
-        c1        = known_bases[1,emp_nodes[0]]/known_bases[0,1]
-        interp1   = np.multiply(c1,known_bases[0])
-        diff1     = interp1 - known_bases[1]
+        c1        = known_basis[1,emp_nodes[0]]/known_basis[0,1]
+        interp1   = np.multiply(c1,known_basis[0])
+        diff1     = interp1 - known_basis[1]
         r1        = np.absolute(diff1)
         emp_nodes = np.append(emp_nodes, np.argmax(r1))
         # Make sure frequencies are ordered.
@@ -315,17 +334,17 @@ class PyROQ:
         # Then iterate for all the other nodes.
         for k in np.arange(2,basis_len):
             
-            Vtmp         = np.transpose(known_bases[0:k,emp_nodes])
+            Vtmp         = np.transpose(known_basis[0:k,emp_nodes])
             inverse_Vtmp = np.linalg.pinv(Vtmp)
-            e_to_interp  = known_bases[k]
+            e_to_interp  = known_basis[k]
             Ci           = np.dot(inverse_Vtmp, e_to_interp[emp_nodes])
-            interpolantA = np.zeros(len(known_bases[k]))+np.zeros(len(known_bases[k]))*1j
+            interpolantA = np.zeros(len(known_basis[k]))+np.zeros(len(known_basis[k]))*1j
             
             for j in np.arange(0, k):
-                tmp           = np.multiply(Ci[j], known_bases[j])
+                tmp           = np.multiply(Ci[j], known_basis[j])
                 interpolantA += tmp
             
-            diff         = interpolantA - known_bases[k]
+            diff         = interpolantA - known_basis[k]
             r            = np.absolute(diff)
             emp_nodes    = np.append(emp_nodes, np.argmax(r))
             emp_nodes    = sorted(emp_nodes)
@@ -333,15 +352,18 @@ class PyROQ:
         # Remove repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation.
         emp_nodes = np.unique(emp_nodes)
         
+        print('should remove duplicate element also from the basis. This was a bug introduced by us, because master PyROQ only used this only in the pre-selection loop.')
+        print('BUT if you remove the basis element, than the empirical nodes won t be the same? THINK!!! Why? You still have the other element determining the difference which brought to selecting it as a emp node.')
+        
         ndim      = len(emp_nodes)
-        V         = np.transpose(known_bases[0:ndim, emp_nodes])
+        V         = np.transpose(known_basis[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
         
         if(self.verbose and not(ndim==basis_len)): print('Removed {} duplicate points during empirical interpolation nodes construction.\n'.format(basis_len-ndim))
         
         return np.array([ndim, inverse_V, emp_nodes])
     
-    def _roqs(self, known_bases, known_params, term):
+    def _roqs(self, known_basis, known_params, term):
 
         # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
@@ -373,15 +395,15 @@ class PyROQ:
             
             while(len(outliers) > training_set_n_outlier):
 
-                np.save(file_basis,  known_bases)
+                np.save(file_basis,  known_basis)
                 np.save(file_params, known_params)
 
                 # From the basis constructed above, extract:
                 # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
                 # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
-                ndim, inverse_V, emp_nodes = self.empirical_nodes(known_bases)
+                ndim, inverse_V, emp_nodes = self.empirical_nodes(known_basis)
                 if(ndim>=len(self.freq)): raise Exception('Basis dimension is equal or larger than original frequency points, hence ROQ will not speedup likelihood evaluations. Try decreasing the tolerance or improving basis construction strategy.')
-                basis_interpolant          = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
+                basis_interpolant          = np.dot(np.transpose(known_basis[0:ndim]),inverse_V)
                 print('FIXME: PARALLELISE ME!\n')
                 
                 # Initialise empirical interpolation errors and loop over test points.
@@ -403,7 +425,7 @@ class PyROQ:
     
                 # Select the worst represented point.
                 arg_newbasis    = np.argmax(eies)
-                new_basis_point = outliers[arg_newbasis]
+                new_basis_param_point = outliers[arg_newbasis]
                 
                 # Update outliers.
                 outliers = outliers[np.array(eies) > training_set_tol]
@@ -415,22 +437,10 @@ class PyROQ:
 
                 # Enrich the basis with the worst outlier.
                 if(len(outliers) > 0):
-                
-                    # Create new basis element.
-                    hp_new, _ = self.paramspoint_to_wave(new_basis_point)
-                    if   term == 'lin': pass
-                    elif term == 'qua': hp_new = (np.absolute(hp_new))**2
-                    else              : raise TermError
-                    hp_new    = vector_normalised(hp_new)
-                    print('FIXME: Sure to gram_schimdt here? Also, normalise after Gram Schmidt?')
-                    basis_new = gram_schmidt(known_bases, hp_new)
+                    known_basis, known_params = add_new_element_to_basis(new_basis_param_point, known_basis, known_params, term)
                     
-                    # Append to basis
-                    known_bases  = np.append(known_bases,  np.array([basis_new]),       axis=0)
-                    known_params = np.append(known_params, np.array([new_basis_point]), axis=0)
-                    
-                    print('FIXME: track residual modula or sigma_eim better')
-                    # residual_modula = np.append(residual_modula, rm_new)
+                print('FIXME: track residual modula or sigma_eim better')
+                # residual_modula = np.append(residual_modula, rm_new)
 
         # Finalise and store the output.
         frequencies = self.freq[emp_nodes]
@@ -446,22 +456,20 @@ class PyROQ:
         # Initialise data.
         d = {}
 
+        # Initialise basis, either using a previously constructed one or pre-selecting one from corners of the parameter space plus a user-determined number of iterations..
         execution_time_presel_basis = time.time()
-        # Initialise basis, either using a default choice or a previously constructed one.
         if(self.start_values==None):
             # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note these are not the N-D corners of the parameter space N-cube.
             initial_basis, initial_params, initial_residual_modula = self._construct_corner_basis(run_type)
-            # Run a first preselection loop, building a basis of dimension n_pre_basis
+            # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self._construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, run_type)
         else:
             # FIXME: load a previously constructed basis.
             preselection_basis, preselection_params, preselection_residual_modula = None, None, None
-            raise Exception("Start parameters selected by the user have not yet been implemented.")
-
+            raise Exception("User-input initial basis has not been implemented yet.")
         if(self.timing):
             execution_time_presel_basis = (time.time() - execution_time_presel_basis)/60.0
             print('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))
-
 
         # Internally store the output data for later testing.
         d['{}_pre_bases'.format(run_type)]  = preselection_basis
