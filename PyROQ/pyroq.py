@@ -291,7 +291,7 @@ class PyROQ:
 
     ## Interpolant building functions
 
-    def empirical_nodes(self, ndim, known_bases, fact=100000000):
+    def empirical_nodes(self, known_bases, fact=100000000):
         
         """
         Generate the empirical interpolation nodes from a given basis.
@@ -299,10 +299,11 @@ class PyROQ:
         See also arXiv:1712.08772v2 for a description.
         """
         
+        basis_len = len(known_bases)
         # Initialise.
         # FIXME: why do we need to multiply by `fact`?
-        emp_nodes    = np.arange(0,ndim) * fact
-        
+        emp_nodes    = np.arange(0,basis_len) * fact
+
         # The first point is chosen to maximise the first basis vector.
         emp_nodes[0] = np.argmax(np.absolute(known_bases[0]))
         
@@ -314,7 +315,7 @@ class PyROQ:
         emp_nodes[1] = np.argmax(r1)
         
         # Then iterate for all the other nodes.
-        for k in np.arange(2,ndim):
+        for k in np.arange(2,basis_len):
             
             emp_tmp      = emp_nodes[0:k]
             Vtmp         = np.transpose(known_bases[0:k,emp_tmp])
@@ -332,12 +333,12 @@ class PyROQ:
             emp_nodes[k] = np.argmax(r)
             emp_nodes    = sorted(emp_nodes)
     
-        u, c      = np.unique(emp_nodes, return_counts=True)
-        dup       = u[c > 1]
         emp_nodes = np.unique(emp_nodes)
         ndim      = len(emp_nodes)
         V         = np.transpose(known_bases[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
+        
+        if not(ndim==basis_len): print('Removed {} duplicate points during empirical interpolation nodes construction.\n'.format(basis_len-ndim))
         
         return np.array([ndim, inverse_V, emp_nodes])
     
@@ -379,7 +380,7 @@ class PyROQ:
                 # From the basis constructed above, extract:
                 # 1) the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated);
                 # 2) the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
-                ndim, inverse_V, emp_nodes = self.empirical_nodes(len(known_bases), known_bases)
+                ndim, inverse_V, emp_nodes = self.empirical_nodes(known_bases)
                 if(ndim>=len(self.freq)): raise Exception('Basis dimension is equal or larger than original frequency points, hence ROQ will not speedup likelihood evaluations. Try decreasing the tolerance or improving basis construction strategy.')
                 basis_interpolant          = np.dot(np.transpose(known_bases[0:ndim]),inverse_V)
                 print('FIXME: PARALLELISE ME!\n')
