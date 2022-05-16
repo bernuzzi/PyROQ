@@ -1,8 +1,23 @@
-import numpy as np, os, warnings
+import numpy as np, os, subprocess, warnings
 try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+
+def store_git_info(output):
+
+    git_info = open(os.path.join(output, 'git_info.txt'), 'w')
+    pipe1 = str(subprocess.Popen("git branch | grep \* | cut -d ' ' -f2", shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    pipe2 = str(subprocess.Popen("git log --pretty=format:'%H' -n 1 ",    shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    git_info.write('pyRing\nbranch: {}\t commit: {}\n'.format(pipe1, pipe2))
+    pipe1 = str(subprocess.Popen("git config user.name",  shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    pipe2 = str(subprocess.Popen("git config user.email", shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    git_info.write('Author: {} {}'.format(pipe1, pipe2))
+    pipe = str(subprocess.Popen("git diff",               shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    git_info.write('\n\nGit diff:\n{}'.format(pipe))
+    git_info.close()
+
+    return
 
 #Description of the package. Printed on stdout if --help option is give.
 usage="""\n\n pyroq.py --config-file config.ini\n
@@ -247,13 +262,17 @@ def read_config(config_file):
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
 
-    # Create dir structure
+    # Create dir structure.
     if not os.path.exists(input_par['I/O']['output']):
         os.makedirs(input_par['I/O']['output'])
         os.makedirs(os.path.join(input_par['I/O']['output'], 'Plots'))
         os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data'))
         os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Linear'))
         os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Quadratic'))
+
+    # Store configuration file and git info to allow for run reproducibility.
+    os.system('cp {} {}/.'.format(config_file, input_par['I/O']['output']))
+    store_git_info(input_par['I/O']['output'])
 
     # Set run types
     input_par['I/O']['run-types'] = []
