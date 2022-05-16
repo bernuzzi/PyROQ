@@ -69,6 +69,7 @@ to be intended as part of the default value.
                basis-qua               Flag to activate quadratic basis construction. Default: 1.
        
                n-tests-post            Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
+               minimum-speedup         Minimum ratio of X:=len(Original-frequency-axis)/len(ROQ-frequency-axis), implying a minimum speedup during parameter estimation. The ROQ construction is interrupted if X < `minimum-speedup`. Default: 1.0.
                error-version           DESCRIPTION MISSING. Default: 'v1'.
            
                n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets.
@@ -251,6 +252,7 @@ def read_config(config_file):
                               
                                                  'n-tests-post'            : 1000,
                                                  'error-version'           : 'v1',
+                                                 'minimum-speedup'         : 1.0,
                               
                                                 }
 
@@ -281,6 +283,7 @@ def read_config(config_file):
             raise ValueError("Length of {} list has to be equal to the number of training cycles ('n-training-set-cycles').".format(key))
 
     if(np.any(np.array(input_par['ROQ']['training-set-n-outliers']) < 0)): raise ValueError('The `training-set-n-outliers` variable cannot be negative.')
+    if(input_par['ROQ']['minimum-speedup'] < 1.0): raise ValueError('The speedup factor has to be larger than unity, otherwise the ROQ construction will not accelerate parameter estimation.')
     if not(input_par['ROQ']['n-pre-basis']>2): raise ValueError('The minimum number of basis elements has to be larger than 2, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).')
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')

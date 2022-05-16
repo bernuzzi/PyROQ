@@ -58,6 +58,7 @@ class PyROQ:
 
         self.n_tests_post               = config_pars['ROQ']['n-tests-post']
         self.error_version              = config_pars['ROQ']['error-version']
+        self.minumum_speedup            = config_pars['ROQ']['minimum-speedup']
 
         self.parallel                   = config_pars['Parallel']['parallel']
         self.n_processes                = config_pars['Parallel']['n-processes']
@@ -162,7 +163,6 @@ class PyROQ:
         else              : raise TermError
         
         # Orthogonalise and normalise the new element.
-        print('FIXME: Sure to gram_schimdt here?')
         basis_new = gram_schmidt(known_basis, hp_new)
         basis_new = vector_normalised(basis_new)
 
@@ -456,8 +456,8 @@ class PyROQ:
                     known_basis, known_params = add_new_element_to_basis(worst_represented_param_point, known_basis, known_params, term)
                     maximum_eies              = np.append(maximum_eies, rm_new)
 
-                # Check if basis construction became useless.
-                if(ndim>=len(self.freq)): raise Exception('Basis dimension is equal or larger than original frequency points, hence ROQ will not speedup likelihood evaluations. Try decreasing the tolerance or improving basis construction strategy.')
+                # Check if basis construction became pointless.
+                if((len(self.freq)/len(known_basis[:,0])) < self.minumum_speedup): raise Exception('Basis dimension is larger than the minimum speedup requested. Aborting the interpolants construction.')
 
         # Finalise and store the output.
         frequencies = self.freq[emp_nodes]
