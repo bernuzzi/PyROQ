@@ -1,4 +1,4 @@
-import numpy as np, os, subprocess, warnings
+import numpy as np, os, subprocess, sys, warnings
 try:
     import configparser
 except ImportError:
@@ -35,6 +35,7 @@ to be intended as part of the default value.
 
                output                  Output directory. Default: './'.
                verbose                 Flag to activate verbose mode. Default: 1.
+               screen-output           Flat to allow for the stdout to appear on screen. Default: 1.
                timing                  Flag to activate timing profiling. Default: 0.
                show-plots              Flag to show produced plots. Default: 0.
                post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
@@ -175,6 +176,29 @@ def read_config(config_file):
     Config = configparser.ConfigParser()
     Config.read(config_file)
 
+    try:                                directory = str(Config.get('I/O','output'))
+    except(configparser.NoOptionError): directory = './'
+
+    # Create dir structure.
+    if not os.path.exists(directory):
+        os.makedirs(directory)
+        os.makedirs(os.path.join(directory, 'Plots'))
+        os.makedirs(os.path.join(directory, 'ROQ_data'))
+        os.makedirs(os.path.join(directory, 'ROQ_data/Linear'))
+        os.makedirs(os.path.join(directory, 'ROQ_data/Quadratic'))
+
+    # Store configuration file and git info to allow for run reproducibility.
+    os.system('cp {} {}/.'.format(config_file, directory))
+    store_git_info(directory)
+
+    try:
+        if not(Config.getint('I/O','screen-output')):
+            print('Deviating the output on file, inside: `{}`.'.format(directory))
+            sys.stdout = open(os.path.join(directory,'stdout_PyROQ.txt'), 'w')
+            sys.stderr = open(os.path.join(directory,'stderr_PyROQ.txt'), 'w')
+    except(configparser.NoOptionError):
+        pass
+
     print('\nReading config file: {}'.format(config_file)+'.')
     print('With sections: '+str(Config.sections())+'.')
     print('\n----Input parameters----\nI\'ll be running with the following values:\n')
@@ -187,24 +211,25 @@ def read_config(config_file):
     input_par = {}
 
     input_par['I/O']                           = {
-                                                 'output'              : './',
-                                                 'verbose'             : 1,
-                                                 'timing'              : 0,
-                                                 'show-plots'          : 0,
-                                                 'post-processing-only': 0,
+                                                 'output'                  : './',
+                                                 'verbose'                 : 1,
+                                                 'screen-output'           : 1,
+                                                 'timing'                  : 0,
+                                                 'show-plots'              : 0,
+                                                 'post-processing-only'    : 0,
                                                 }
     input_par['Parallel']                     = {
-                                                 'parallel'            : 0,
-                                                 'n-processes'         : 4,
+                                                 'parallel'                : 0,
+                                                 'n-processes'             : 4,
                                                 }
 
     input_par['Waveform_and_parametrisation'] = {
-                                                 'approximant'         : 'teobresums-giotto',
-                                                 'spins'               :'aligned',
-                                                 'tides'               : 0,
-                                                 'eccentricity'        : 0,
-                                                 'mc-q-par'            : 1,
-                                                 'spin-sph'            : 0,
+                                                 'approximant'             : 'teobresums-giotto',
+                                                 'spins'                   :'aligned',
+                                                 'tides'                   : 0,
+                                                 'eccentricity'            : 0,
+                                                 'mc-q-par'                : 1,
+                                                 'spin-sph'                : 0,
                                                  'f-min'                   : 20,
                                                  'f-max'                   : 1024,
                                                  'seglen'                  : 4,
@@ -261,18 +286,6 @@ def read_config(config_file):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
-
-    # Create dir structure.
-    if not os.path.exists(input_par['I/O']['output']):
-        os.makedirs(input_par['I/O']['output'])
-        os.makedirs(os.path.join(input_par['I/O']['output'], 'Plots'))
-        os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data'))
-        os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Linear'))
-        os.makedirs(os.path.join(input_par['I/O']['output'], 'ROQ_data/Quadratic'))
-
-    # Store configuration file and git info to allow for run reproducibility.
-    os.system('cp {} {}/.'.format(config_file, input_par['I/O']['output']))
-    store_git_info(input_par['I/O']['output'])
 
     # Set run types
     input_par['I/O']['run-types'] = []
