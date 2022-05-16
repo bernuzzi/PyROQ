@@ -184,7 +184,7 @@ class PyROQ:
         for k in np.arange(0,len(known_basis)):
             residual -= proj(known_basis[k],h_to_proj)
         
-        return np.sqrt(np.vdot(residual, residual))
+        return np.sqrt(np.real(np.vdot(residual, residual)))
         
     def search_new_basis_element(self, paramspoints, known_basis, term):
 
@@ -208,7 +208,7 @@ class PyROQ:
             npts   = len(paramspoints)
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = np.real(self.compute_new_element_residual_from_basis(paramspoint, known_basis, term))
+                modula[i] = self.compute_new_element_residual_from_basis(paramspoint, known_basis, term)
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
