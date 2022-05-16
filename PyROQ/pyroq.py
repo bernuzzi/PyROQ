@@ -162,7 +162,7 @@ class PyROQ:
         else              : raise TermError
         
         # Orthogonalise and normalise the new element.
-        print('FIXME: Sure to gram_schimdt here? Also, normalise after Gram Schmidt?')
+        print('FIXME: Sure to gram_schimdt here?')
         basis_new = gram_schmidt(known_basis, hp_new)
         basis_new = vector_normalised(basis_new)
 
@@ -392,10 +392,6 @@ class PyROQ:
 
         # Remove repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation.
         emp_nodes = np.unique(emp_nodes)
-        
-        print('should remove duplicate element also from the basis. This was a bug introduced by us, because master PyROQ only used this only in the pre-selection loop.')
-        print('BUT if you remove the basis element, than the empirical nodes won t be the same? THINK!!! Why? You still have the other element determining the difference which brought to selecting it as a emp node.')
-        
         ndim      = len(emp_nodes)
         V         = np.transpose(known_basis[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
@@ -435,7 +431,6 @@ class PyROQ:
             # Generate the parameters of this training cycle.
             paramspoints = self.generate_params_points(npts=training_set_size)
             outliers     = paramspoints[ :training_set_size]
-            print('Also waveforms of each cycle should be stored and not re-generated at each while call, although will induce a lot of memory overhead.')
 
             while(len(outliers) > training_set_n_outlier):
 
@@ -449,12 +444,11 @@ class PyROQ:
                 
                 # Out of the remaining outliers, select the worst represented point.
                 worst_represented_param_point, maximum_eie, outliers = self.search_worst_represented_point(outliers, basis_interpolant, emp_nodes, training_set_tol, term)
-                print('FIXME: which one of the errors?')
-                # overlap_of_two_waveforms(hp, hp_interp, self.deltaF, self.error_version)
+                # FIXME: which one of the errors? overlap_of_two_waveforms(hp, hp_interp, self.deltaF, self.error_version)
 
                 # Update the user on how many outliers remain.
                 if self.verbose:
-                    print("\n{}".format(ndim), "basis elements gave", len(outliers), "outliers with surrogate error >", training_set_tol, " out of {} training points.\n".format(training_set_size))
+                    print("{}".format(ndim), "basis elements gave", len(outliers), "outliers with surrogate error >", training_set_tol, " out of {} training points.\n".format(training_set_size))
                     for xy in range(len(outliers)): print("Outlier: {}, with surrogate error {}".format(outliers[xy], eies[np.array(eies) > training_set_tol][xy]))
 
                 # Enrich the basis with the worst outlier. Also store the maximum empirical interpolation error, to monitor the improvement in the interpolation.

@@ -201,7 +201,7 @@ def read_config(config_file):
 
     print('\nReading config file: {}'.format(config_file)+'.')
     print('With sections: '+str(Config.sections())+'.')
-    print('\n----Input parameters----\nI\'ll be running with the following values:\n')
+    print('\n-------------Input parameters-------------\nI\'ll be running with the following values:\n')
 
     # ==========================================================#
     # Initialize and read from config the ROQ input parameters. #
@@ -254,7 +254,7 @@ def read_config(config_file):
                               
                                                 }
 
-    max_len_keyword = len('post-processing-only')
+    max_len_keyword = len('n-pre-basis-search-iter')
     for section in sections:
         print('[{}]\n'.format(section))
         for key in input_par[section]:
@@ -335,7 +335,8 @@ def read_config(config_file):
 
         if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError("{} upper bound is smaller than its lower bound.".format(key))
 
-    print('\n')
+
+    print('\n------------------------------------\n')
 
     test_values = {}
     for key in default_test_values:

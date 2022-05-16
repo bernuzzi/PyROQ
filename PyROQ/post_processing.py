@@ -2,6 +2,7 @@ import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns
 
 import linear_algebra
 
+plt.rcParams.update({'figure.max_open_warning': 0})
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 labels_fontsize = 16
@@ -172,7 +173,8 @@ def test_roq_error(b, emp_nodes, term, pyroq):
     
     # Start looping over test points
     print('\n\n##########################################\n# Starting surrogate tests {} iteration #\n##########################################\n'.format(term))
-    print('Tolerance: ', tol)
+    print('\nValidation set size : {}\nTolerance           : {}\n\n'.format(nsamples, tol))
+
     for i,paramspoint in enumerate(paramspoints):
         
         # Generate test waveform
