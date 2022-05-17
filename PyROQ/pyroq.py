@@ -164,7 +164,6 @@ class PyROQ:
         
         # Orthogonalise and normalise the new element.
         basis_new = gram_schmidt(known_basis, hp_new)
-        basis_new = vector_normalised(basis_new)
 
         # Append to basis.
         known_basis  = np.append(known_basis,  np.array([basis_new]),             axis=0)
@@ -297,7 +296,7 @@ class PyROQ:
         # FIXME: should test if it's more efficient to gram_schmidt hp2 before adding it to the basis.
         known_basis_start = np.array([vector_normalised(hp_low)])
         known_basis_start = np.append(known_basis_start, np.array([vector_normalised(hp_hig)]), axis=0)
-        
+
         # Corner params
         params_ini = np.array([self.params_low])
         params_ini = np.append(params_ini, np.array([self.params_hig]), axis=0)
@@ -318,9 +317,12 @@ class PyROQ:
         elif term == 'qua': hp = (np.absolute(hp))**2
         else              : raise TermError
 
+        hp = vector_normalised(hp)
+
         # Compute the empirical interpolation error.
         hp_interp = np.dot(basis_interpolant,hp[emp_nodes])
         dh        = hp - hp_interp
+        
         eie = np.real(np.vdot(dh, dh))
 
         return eie
@@ -449,12 +451,11 @@ class PyROQ:
                 # Update the user on how many outliers remain.
                 if self.verbose:
                     print("{}".format(ndim), "basis elements gave", len(outliers), "outliers with surrogate error >", training_set_tol, " out of {} training points.\n".format(training_set_size))
-                    for xy in range(len(outliers)): print("Outlier: {}, with surrogate error {}".format(outliers[xy], eies[np.array(eies) > training_set_tol][xy]))
 
                 # Enrich the basis with the worst outlier. Also store the maximum empirical interpolation error, to monitor the improvement in the interpolation.
                 if(len(outliers) > 0):
-                    known_basis, known_params = add_new_element_to_basis(worst_represented_param_point, known_basis, known_params, term)
-                    maximum_eies              = np.append(maximum_eies, rm_new)
+                    known_basis, known_params = self.add_new_element_to_basis(worst_represented_param_point, known_basis, known_params, term)
+                    maximum_eies              = np.append(maximum_eies, maximum_eie)
                     n_outliers                = np.append(n_outliers  , len(outliers))
 
                 # Check if basis construction became pointless.

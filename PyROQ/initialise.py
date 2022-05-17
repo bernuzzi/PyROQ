@@ -284,7 +284,7 @@ def read_config(config_file):
 
     if(np.any(np.array(input_par['ROQ']['training-set-n-outliers']) < 0)): raise ValueError('The `training-set-n-outliers` variable cannot be negative.')
     if(input_par['ROQ']['minimum-speedup'] < 1.0): raise ValueError('The speedup factor has to be larger than unity, otherwise the ROQ construction will not accelerate parameter estimation.')
-    if not(input_par['ROQ']['n-pre-basis']>2): raise ValueError('The minimum number of basis elements has to be larger than 2, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).')
+    if not(input_par['ROQ']['n-pre-basis']>1): raise ValueError('The minimum number of basis elements has to be larger than 1, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).')
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 

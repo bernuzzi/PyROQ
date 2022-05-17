@@ -24,7 +24,7 @@ def plot_preselection_residual_modula(pre_residual_modula, term, outputdir):
 def plot_maximum_empirical_interpolation_error(eies, term, outputdir):
 
     plt.figure()
-    plt.plot(eies)
+    plt.semilogy(eies)
     plt.xlabel('N basis elements')
     plt.ylabel('Maximum empirical interpolation error')
     plt.savefig(os.path.join(outputdir,'Plots/Empirical_interpolation_error_{}.pdf'.format(term)), bbox_inches='tight')
