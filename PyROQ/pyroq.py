@@ -418,7 +418,7 @@ class PyROQ:
         else:
             raise TermError
 
-        maximum_eies = np.array([])
+        maximum_eies, n_outliers = np.array([]), np.array([])
         # Start a loop over training cycles with varying training size, tolerance and number of allowed outliers.
         for n_cycle in range(self.n_training_set_cycles):
             
@@ -430,7 +430,7 @@ class PyROQ:
 
             # Generate the parameters of this training cycle.
             paramspoints = self.generate_params_points(npts=training_set_size)
-            outliers     = paramspoints[ :training_set_size]
+            outliers     = paramspoints[:training_set_size]
 
             while(len(outliers) > training_set_n_outlier):
 
@@ -455,6 +455,7 @@ class PyROQ:
                 if(len(outliers) > 0):
                     known_basis, known_params = add_new_element_to_basis(worst_represented_param_point, known_basis, known_params, term)
                     maximum_eies              = np.append(maximum_eies, rm_new)
+                    n_outliers                = np.append(n_outliers  , len(outliers))
 
                 # Check if basis construction became pointless.
                 if((len(self.freq)/len(known_basis[:,0])) < self.minumum_speedup): raise Exception('Basis dimension is larger than the minimum speedup requested. Aborting the interpolants construction.')
@@ -464,7 +465,7 @@ class PyROQ:
         np.save(file_interpolant,     basis_interpolant)
         np.save(file_empirical_freqs, frequencies)
         
-        return frequencies, basis_interpolant, known_params, maximum_eies
+        return frequencies, basis_interpolant, known_params, maximum_eies, n_outliers
 
     ## Main function handling the ROQ construction.
 
@@ -494,7 +495,7 @@ class PyROQ:
         d['{}_pre_res_mod'.format(term)] = preselection_residual_modula
 
         # Start the series of loops in which the pre-selected basis is enriched by the outliers found on ever increasing training sets.
-        frequencies, basis_interpolant, basis_parameters, maximum_eies = self.roqs(preselection_basis, preselection_params, term)
+        frequencies, basis_interpolant, basis_parameters, maximum_eies, n_outliers = self.roqs(preselection_basis, preselection_params, term)
 
         # Internally store the output data for later testing.
         d['{}_interpolant'.format(term)] = basis_interpolant
@@ -502,6 +503,7 @@ class PyROQ:
         d['{}_emp_nodes'.format(term)]   = np.searchsorted(self.freq, d['{}_f'.format(term)])
         d['{}_params'.format(term)]      = basis_parameters
         d['{}_max_eies'.format(term)]    = maximum_eies
+        d['{}_n_outliers'.format(term)]  = n_outliers
 
         return d
 
@@ -534,6 +536,7 @@ if __name__ == '__main__':
             # These data are not saved in output, so plot them now.
             post_processing.plot_preselection_residual_modula(data[run_type]['{}_pre_res_mod'.format(term)], term, pyroq.outputdir)
             post_processing.plot_maximum_empirical_interpolation_error(data[run_type]['{}_max_eies'.format(term)], term, pyroq.outputdir)
+            post_processing.plot_number_of_outliers(data[run_type]['{}_n_outliers'.format(term)], term, pyroq.outputdir)
 
         else:
             # Read ROQ from previous run.

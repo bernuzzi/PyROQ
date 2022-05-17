@@ -9,6 +9,8 @@ labels_fontsize = 16
 
 ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
 
+#FIXME: either specialise this plots, or define a single function for all of them
+
 def plot_preselection_residual_modula(pre_residual_modula, term, outputdir):
 
     plt.figure()
@@ -26,6 +28,16 @@ def plot_maximum_empirical_interpolation_error(eies, term, outputdir):
     plt.xlabel('N basis elements')
     plt.ylabel('Maximum empirical interpolation error')
     plt.savefig(os.path.join(outputdir,'Plots/Empirical_interpolation_error_{}.pdf'.format(term)), bbox_inches='tight')
+
+    return
+
+def plot_number_of_outliers(eies, term, outputdir):
+
+    plt.figure()
+    plt.plot(eies)
+    plt.xlabel('N basis elements')
+    plt.ylabel('Number of outliers')
+    plt.savefig(os.path.join(outputdir,'Plots/Number_of_outliers_{}.pdf'.format(term)), bbox_inches='tight')
 
     return
 
