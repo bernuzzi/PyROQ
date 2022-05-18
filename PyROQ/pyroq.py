@@ -170,7 +170,7 @@ class PyROQ:
         # Create new basis element.
         hp_new, _ = self.paramspoint_to_wave(new_basis_param_point, term)
 
-        # Orthogonalise and normalise the new element.
+        # Orthogonalise, i.e. extract the linearly independent part of the waveform, and normalise the new element, which constitutes a new basis element. Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
         basis_new = linear_algebra.gram_schmidt(known_basis, hp_new)
 
         # Append to basis.
@@ -216,13 +216,8 @@ class PyROQ:
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
-        hp, _        = self.paramspoint_to_wave(paramspoints[arg_newbasis], term)
-
-        # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
-        # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
-        basis_new = linear_algebra.gram_schmidt(known_basis, hp)
        
-        return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]])
+        return paramspoints[arg_newbasis], modula[arg_newbasis]
             
     def construct_preselection_basis(self, known_basis, params, residual_modula, term):
         
@@ -246,7 +241,7 @@ class PyROQ:
             
             # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
             execution_time_new_pre_basis_element = time.time()
-            basis_new, params_new, rm_new = self.search_new_basis_element(paramspoints, known_basis, term)
+            params_new, rm_new = self.search_new_basis_element(paramspoints, known_basis, term)
             if(self.timing):
                 execution_time_new_pre_basis_element = (time.time() - execution_time_new_pre_basis_element)/60.0
                 print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, execution_time_new_pre_basis_element))
@@ -256,9 +251,8 @@ class PyROQ:
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
-            known_basis     = np.append(known_basis,     np.array([basis_new]),  axis=0)
-            params          = np.append(params,          np.array([params_new]), axis=0)
-            residual_modula = np.append(residual_modula, rm_new)
+            known_basis, params = self.add_new_element_to_basis(params_new, known_basis, params, term)
+            residual_modula     = np.append(residual_modula, rm_new)
 
         # Store the pre-selected basis.
         np.save(file_bases,  known_basis)
