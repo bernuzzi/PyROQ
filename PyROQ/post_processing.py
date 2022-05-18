@@ -14,7 +14,7 @@ labels_fontsize = 16
 def plot_preselection_residual_modula(pre_residual_modula, term, outputdir):
 
     plt.figure()
-    plt.plot(pre_residual_modula)
+    plt.semilogy(pre_residual_modula)
     plt.xlabel('N basis elements')
     plt.ylabel('Residual modulus')
     plt.savefig(os.path.join(outputdir,'Plots/Preselection_residual_modulus_{}.pdf'.format(term)), bbox_inches='tight')

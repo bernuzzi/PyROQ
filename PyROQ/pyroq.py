@@ -183,6 +183,7 @@ class PyROQ:
 
         # Create element to be projected and initialise residual
         h_to_proj, _ = self.paramspoint_to_wave(paramspoint, term)
+        h_to_proj    = linear_algebra.normalise_vector(h_to_proj)
         residual     = h_to_proj
 
         #FIXME: this block has a large repetition with gram_schmidt, except for norm
