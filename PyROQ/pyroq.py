@@ -3,9 +3,8 @@ import multiprocessing as mp, numpy as np, os, random, time, warnings
 from optparse import OptionParser
 
 # Package internal import
-from wvfwrappers    import *
-from linear_algebra import *
-import initialise, post_processing
+from waveform_wrappers import *
+import initialise, linear_algebra, post_processing
 
 warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
@@ -163,7 +162,7 @@ class PyROQ:
         else              : raise TermError
         
         # Orthogonalise and normalise the new element.
-        basis_new = gram_schmidt(known_basis, hp_new)
+        basis_new = linear_algebra.gram_schmidt(known_basis, hp_new)
 
         # Append to basis.
         known_basis  = np.append(known_basis,  np.array([basis_new]),             axis=0)
@@ -181,7 +180,7 @@ class PyROQ:
         h_to_proj = residual
 
         for k in np.arange(0,len(known_basis)):
-            residual -= proj(known_basis[k],h_to_proj)
+            residual -= linear_algebra.proj(known_basis[k],h_to_proj)
         
         return np.sqrt(np.real(np.vdot(residual, residual)))
         
@@ -218,7 +217,7 @@ class PyROQ:
         
         # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
         # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
-        basis_new = gram_schmidt(known_basis, hp)
+        basis_new = linear_algebra.gram_schmidt(known_basis, hp)
        
         return np.array([basis_new, paramspoints[arg_newbasis], modula[arg_newbasis]])
             
@@ -294,8 +293,8 @@ class PyROQ:
         elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
         else                 : raise TermError
         # FIXME: should test if it's more efficient to gram_schmidt hp2 before adding it to the basis.
-        known_basis_start = np.array([vector_normalised(hp_low)])
-        known_basis_start = np.append(known_basis_start, np.array([vector_normalised(hp_hig)]), axis=0)
+        known_basis_start = np.array([linear_algebra.normalise_vector(hp_low)])
+        known_basis_start = np.append(known_basis_start, np.array([linear_algebra.normalise_vector(hp_hig)]), axis=0)
 
         # Corner params
         params_ini = np.array([self.params_low])
@@ -317,7 +316,7 @@ class PyROQ:
         elif term == 'qua': hp = (np.absolute(hp))**2
         else              : raise TermError
 
-        hp = vector_normalised(hp)
+        hp = linear_algebra.normalise_vector(hp)
 
         # Compute the empirical interpolation error.
         hp_interp = np.dot(basis_interpolant,hp[emp_nodes])

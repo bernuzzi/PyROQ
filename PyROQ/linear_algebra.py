@@ -9,7 +9,7 @@ def proj(u, v):
     """
     return u * np.vdot(v,u) / np.vdot(u,u)
 
-def vector_normalised(vec):
+def normalise_vector(vec):
 
     return vec/np.sqrt(np.vdot(vec,vec))
 
@@ -19,7 +19,7 @@ def gram_schmidt(bases, vec):
     """
     for i in np.arange(0,len(bases)):
         vec = vec - proj(bases[i], vec)
-    return vector_normalised(vec) # normalized new basis
+    return normalise_vector(vec) # normalized new basis
 
 def overlap_of_two_waveforms(wf1, wf2, deltaF, error_version):
     """
@@ -28,8 +28,8 @@ def overlap_of_two_waveforms(wf1, wf2, deltaF, error_version):
     
     # From the forked master version of the public PyROQ: https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L40
     if(error_version=='v1'):
-        wf1norm = vector_normalised(wf1)
-        wf2norm = vector_normalised(wf2)
+        wf1norm = normalise_vector(wf1)
+        wf2norm = normalise_vector(wf2)
         measure = (1-np.real(np.vdot(wf1norm, wf2norm)))*deltaF
     # From the PyROQ paper: https://arxiv.org/abs/2009.13812
     elif(error_version=='v2'):
