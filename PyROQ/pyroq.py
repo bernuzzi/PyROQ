@@ -2,24 +2,21 @@
 import multiprocessing as mp, numpy as np, os, random, time, warnings
 from optparse import OptionParser
 
-# Package internal import
+# Package internal imports
 from waveform_wrappers import *
 import initialise, linear_algebra, post_processing
 
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
-np.set_printoptions(linewidth=np.inf)
 TermError    = ValueError("Unknown basis term requested.")
 VersionError = ValueError("Unknown version requested.")
+warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+np.set_printoptions(linewidth=np.inf)
 np.random.seed(150914)
 
 class PyROQ:
     """
-    PyROQ Class
+        PyROQ Class
     
-    * Works with a list of very basic waveform wrappers provided in wvfwrappers.py
-    
-    * The parameter space is *defined* by the keywords of 'params_ranges' 
-
+        * Works with a list of waveform wrappers provided in `waveform_wrappers.py`.
     """
 
     def __init__(self,
@@ -110,8 +107,7 @@ class PyROQ:
     def map_params_indexs(self):
         
         """
-        Build a map between the parameters names and the indexes of
-        the parameter arrays, and its inverse
+            Build a map between the parameters names and the indexes of the parameter arrays, and its inverse.
         """
         names = self.params_ranges.keys()
         self.nparams = len(names)
@@ -123,8 +119,7 @@ class PyROQ:
     def update_waveform_params(self, paramspoint):
         
         """
-        Update the waveform parameters (dictionary) with those in
-        paramspoint (np array)
+            Update the waveform parameters (dictionary) with those in paramspoint (np.array).
         """
         p = {}
         for i,k in self.i2n.items():
@@ -135,7 +130,7 @@ class PyROQ:
     def generate_params_points(self, npts, round_to_digits=6):
         
         """
-        Uniformly sample the parameter arrays
+            Uniformly sample the parameter arrays
         """
         paramspoints = np.random.uniform(self.params_low,
                                          self.params_hig,
@@ -146,8 +141,8 @@ class PyROQ:
     def paramspoint_to_wave(self, paramspoint, term):
         
         """
-        Generate a waveform given a paramspoint
-        By default, if paramspoint contains the spherical spin, then updates the cartesian accordingly.
+            Generate a waveform given a paramspoint
+            By default, if paramspoint contains the spherical spin, then updates the cartesian accordingly.
         """
         p = self.update_waveform_params(paramspoint)
 
@@ -200,13 +195,11 @@ class PyROQ:
     def search_new_basis_element(self, paramspoints, known_basis, term):
 
         """
-
            Given an array of new random points in the parameter space (paramspoints) and the known basis elements, this function searches and constructs a new basis element. The new element is constructed by:
            
            1) Projecting the waveforms corresponding to parampoints on the known basis;
            2) Selecting the waveform with the largest residual (modulus) after projection;
            3) Computing the normalised residual projection of the selected waveform on the known basis.
-           
         """
 
         # Generate len(paramspoints) random waveforms corresponding to parampoints.
@@ -277,7 +270,7 @@ class PyROQ:
     
     def set_training_range(self):
         """
-        Initialize parameter ranges and basis.
+            Initialize parameter ranges and basis.
         """
         if self.verbose:
             print('\n\n######################\n# Initialising basis #\n######################\n')
@@ -355,9 +348,9 @@ class PyROQ:
     def empirical_nodes(self, known_basis):
         
         """
-        Generate the empirical interpolation nodes from a given basis.
-        Follows the algorithm detailed in Ref. Phys. Rev. X 4, 031006, according to PRD 104, 063031 (2021).
-        See also arXiv:1712.08772v2 for a description.
+            Generate the empirical interpolation nodes from a given basis.
+            Follows the algorithm detailed in Ref. Phys. Rev. X 4, 031006, according to PRD 104, 063031 (2021).
+            See also arXiv:1712.08772v2 for a description.
         """
         
         # Initialise. The first point is chosen to maximise the first basis vector.
