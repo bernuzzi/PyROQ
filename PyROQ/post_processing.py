@@ -43,7 +43,7 @@ def plot_number_of_outliers(eies, term, outputdir):
 
 def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, paramspoint_to_wave):
     
-    hp, hc = paramspoint_to_wave(paramspoint)
+    hp, hc = paramspoint_to_wave(paramspoint, 'lin')
     
     if   term == 'lin':
         pass
@@ -190,7 +190,7 @@ def test_roq_error(b, emp_nodes, term, pyroq):
     for i,paramspoint in enumerate(paramspoints):
         
         # Generate test waveform
-        hp, hc = pyroq.paramspoint_to_wave(paramspoint)
+        hp, hc = pyroq.paramspoint_to_wave(paramspoint, 'lin')
         
         # Compute quadratic terms and interpolant representations
         if term == 'qua':

@@ -75,33 +75,40 @@ class PyROQ:
             raise ValueError('Unknown approximant requested.')
 
         # Build the map between params names and indexes
-        self.map_params_indexs()  # self.i2n, self.n2i, self.nparams
+        self.map_params_indexs()  # Declares: self.i2n, self.n2i, self.nparams
         
         # Initial basis
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
-        self.set_training_range() # self.params_low, self.params_hig
+        self.set_training_range() # Declares: self.params_low, self.params_hig
 
     ## Parameters transformations utils
 
     def spherical_to_cartesian(self, sph):
+        
         x = sph[0]*np.sin(sph[1])*np.cos(sph[2])
         y = sph[0]*np.sin(sph[1])*np.sin(sph[2])
         z = sph[0]*np.cos(sph[1])
+        
         return [x,y,z]
 
     def get_m1m2_from_mcq(self, mc,q):
+        
         m2 = mc * q ** (-0.6) * (1+q)**0.2
         m1 = m2 * q
+        
         return np.array([m1,m2])
 
     def mass_range(self, mc_low, mc_high, q_low, q_high):
+        
         mmin = self.get_m1m2_from_mcq(mc_low,q_high)[1]
         mmax = self.get_m1m2_from_mcq(mc_high,q_high)[0]
+        
         return [mmin, mmax]
 
     ## Parameters handling functions
 
     def map_params_indexs(self):
+        
         """
         Build a map between the parameters names and the indexes of
         the parameter arrays, and its inverse
@@ -110,9 +117,11 @@ class PyROQ:
         self.nparams = len(names)
         self.n2i = dict(zip(names,range(self.nparams)))
         self.i2n = {i: n for n, i in self.n2i.items()}
+        
         return
 
     def update_waveform_params(self, paramspoint):
+        
         """
         Update the waveform parameters (dictionary) with those in
         paramspoint (np array)
@@ -124,15 +133,18 @@ class PyROQ:
         return p
          
     def generate_params_points(self, npts, round_to_digits=6):
+        
         """
         Uniformly sample the parameter arrays
         """
         paramspoints = np.random.uniform(self.params_low,
                                          self.params_hig,
                                          size=(npts, self.nparams))
+                                         
         return paramspoints.round(decimals=round_to_digits)
     
-    def paramspoint_to_wave(self, paramspoint):
+    def paramspoint_to_wave(self, paramspoint, term):
+        
         """
         Generate a waveform given a paramspoint
         By default, if paramspoint contains the spherical spin, then updates the cartesian accordingly.
@@ -149,6 +161,11 @@ class PyROQ:
     
         # We build a linear basis only for hp, since empirically the same basis accurately works to represent hc too (see [arXiv:1604.08253]).
         hp, hc = self.wvf.generate_waveform(p, self.deltaF, self.f_min, self.f_max, self.distance)
+        
+        if   term == 'lin': pass
+        elif term == 'qua': hp, hc = (np.absolute(hp))**2, (np.absolute(hc))**2
+        else              : raise TermError
+        
         return hp, hc
 
     ## Basis construction functions
@@ -156,11 +173,8 @@ class PyROQ:
     def add_new_element_to_basis(self, new_basis_param_point, known_basis, known_params, term):
         
         # Create new basis element.
-        hp_new, _ = self.paramspoint_to_wave(new_basis_param_point)
-        if   term == 'lin': pass
-        elif term == 'qua': hp_new = (np.absolute(hp_new))**2
-        else              : raise TermError
-        
+        hp_new, _ = self.paramspoint_to_wave(new_basis_param_point, term)
+
         # Orthogonalise and normalise the new element.
         basis_new = linear_algebra.gram_schmidt(known_basis, hp_new)
 
@@ -170,15 +184,14 @@ class PyROQ:
 
         return known_basis, known_params
 
-    def compute_new_element_residual_from_basis(self, paramspoint, known_basis, term):
+    def compute_new_element_residual_modulus_from_basis(self, paramspoint, known_basis, term):
 
-        #FIXME: this function has a large repetition with gram_schmidt
-        hp, _ = self.paramspoint_to_wave(paramspoint)
-        if   term == 'lin': residual = hp
-        elif term == 'qua': residual = (np.absolute(hp))**2
-        else              : raise TermError
-        h_to_proj = residual
+        # Create element to be projected and initialise residual
+        h_to_proj, _ = self.paramspoint_to_wave(paramspoint, term)
+        residual     = h_to_proj
 
+        #FIXME: this block has a large repetition with gram_schmidt, except for norm
+        # Subtract the projection on the basis from the residual
         for k in np.arange(0,len(known_basis)):
             residual -= linear_algebra.proj(known_basis[k],h_to_proj)
         
@@ -200,21 +213,18 @@ class PyROQ:
         if self.parallel:
             paramspointslist = paramspoints.tolist()
             pool = mp.Pool(processes=self.n_processes)
-            modula = [pool.apply(self.compute_new_element_residual_from_basis, args=(paramspoint, known_basis, term)) for paramspoint in paramspointslist]
+            modula = [pool.apply(self.compute_new_element_residual_modulus_from_basis, args=(paramspoint, known_basis, term)) for paramspoint in paramspointslist]
             pool.close()
         else:
             npts   = len(paramspoints)
             modula = np.zeros(npts)
             for i,paramspoint in enumerate(paramspoints):
-                modula[i] = self.compute_new_element_residual_from_basis(paramspoint, known_basis, term)
+                modula[i] = self.compute_new_element_residual_modulus_from_basis(paramspoint, known_basis, term)
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
-        hp, _        = self.paramspoint_to_wave(paramspoints[arg_newbasis])
-        if   term == 'lin': pass
-        elif term == 'qua': hp = (np.absolute(hp))**2
-        else              : raise TermError
-        
+        hp, _        = self.paramspoint_to_wave(paramspoints[arg_newbasis], term)
+
         # Extract the linearly independent part of the worst represented waveform, which constitutes a new basis element.
         # Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
         basis_new = linear_algebra.gram_schmidt(known_basis, hp)
@@ -284,25 +294,19 @@ class PyROQ:
 
         return 
 
-    def construct_corner_basis(self, run_type):
+    def construct_corner_basis(self, term):
 
         # Corner waveforms
-        self.hp_low, _ = self.paramspoint_to_wave(self.params_low)
-        self.hp_hig, _ = self.paramspoint_to_wave(self.params_hig)
-        if  (run_type=='lin'): hp_low, hp_hig = self.hp_low, self.hp_hig
-        elif(run_type=='qua'): hp_low, hp_hig = (np.absolute(self.hp_low))**2, (np.absolute(self.hp_hig))**2
-        else                 : raise TermError
-        # FIXME: should test if it's more efficient to gram_schmidt hp2 before adding it to the basis.
-        known_basis_start = np.array([linear_algebra.normalise_vector(hp_low)])
-        known_basis_start = np.append(known_basis_start, np.array([linear_algebra.normalise_vector(hp_hig)]), axis=0)
-
-        # Corner params
-        params_ini = np.array([self.params_low])
-        params_ini = np.append(params_ini, np.array([self.params_hig]), axis=0)
+        hp_low, _ = self.paramspoint_to_wave(self.params_low, term)
         
-        # Corner residuals
+        # Initialise the base with the lowest corner
+        known_basis_start     = np.array([linear_algebra.normalise_vector(hp_low)])
+        params_ini            = np.array([self.params_low])
         residual_modula_start = np.array([0.0])
-        residual_modula_start = np.append(residual_modula_start, np.array([0.0]))
+
+        # Add the highest corner
+        known_basis_start, params_ini = self.add_new_element_to_basis(self.params_hig, known_basis_start, params_ini, term)
+        residual_modula_start         = np.append(residual_modula_start, np.array([0.0]))
 
         return known_basis_start, params_ini, residual_modula_start
 
@@ -311,12 +315,8 @@ class PyROQ:
     def compute_empirical_interpolation_error(self, training_point, basis_interpolant, emp_nodes, term):
 
         # Create benchmark waveform.
-        hp, _ = self.paramspoint_to_wave(training_point)
-        if   term == 'lin': pass
-        elif term == 'qua': hp = (np.absolute(hp))**2
-        else              : raise TermError
-
-        hp = linear_algebra.normalise_vector(hp)
+        hp, _ = self.paramspoint_to_wave(training_point, term)
+        hp    = linear_algebra.normalise_vector(hp)
 
         # Compute the empirical interpolation error.
         hp_interp = np.dot(basis_interpolant,hp[emp_nodes])
