@@ -239,12 +239,10 @@ class PyROQ:
             # Generate n_pre_basis_search_iter random points.
             paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
             
+            if(self.timing): execution_time_new_pre_basis_element = time.time()
             # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
-            execution_time_new_pre_basis_element = time.time()
             params_new, rm_new = self.search_new_basis_element(paramspoints, known_basis, term)
-            if(self.timing):
-                execution_time_new_pre_basis_element = (time.time() - execution_time_new_pre_basis_element)/60.0
-                print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, execution_time_new_pre_basis_element))
+            if(self.timing): print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, (time.time() - execution_time_new_pre_basis_element)/60.0))
             if self.verbose:
                 np.set_printoptions(suppress=True)
                 print("Preselection iteration: {}/{}".format(k+1, total_iters), " -- New basis waveform with parameters:", params_new)

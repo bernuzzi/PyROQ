@@ -7,7 +7,7 @@ def proj(u, v):
     Calculating the projection of complex vector v on complex vector u.
     Note: this algorithm assumes u isn't zero.
     """
-    return u * np.vdot(v,u) / np.vdot(u,u)
+    return u * np.vdot(v,u)
 
 def normalise_vector(vec):
 
@@ -19,7 +19,7 @@ def gram_schmidt(bases, vec):
     """
     for i in np.arange(0,len(bases)):
         vec = vec - proj(bases[i], vec)
-    return normalise_vector(vec) # normalized new basis
+    return normalise_vector(vec)
 
 def overlap_of_two_waveforms(wf1, wf2, deltaF, error_version):
     """
