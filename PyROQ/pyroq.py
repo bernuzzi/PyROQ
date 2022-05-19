@@ -6,9 +6,9 @@ from optparse import OptionParser
 from waveform_wrappers import *
 import initialise, linear_algebra, post_processing
 
-TermError    = ValueError("Unknown basis term requested.")
-VersionError = ValueError("Unknown version requested.")
-warnings.filterwarnings("ignore", category=np.VisibleDeprecationWarning)
+TermError    = ValueError('Unknown basis term requested.')
+VersionError = ValueError('Unknown version requested.')
+warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
 np.random.seed(150914)
 
@@ -42,6 +42,8 @@ class PyROQ:
         self.f_max                      = config_pars['Waveform_and_parametrisation']['f-max']
         self.deltaF                     = 1./config_pars['Waveform_and_parametrisation']['seglen']
         
+        self.tolerance_pre_basis_lin    = config_pars['ROQ']['tolerance-pre-basis-lin']
+        self.tolerance_pre_basis_qua    = config_pars['ROQ']['tolerance-pre-basis-qua']
         self.n_pre_basis_search_iter    = config_pars['ROQ']['n-pre-basis-search-iter']
         self.n_pre_basis                = config_pars['ROQ']['n-pre-basis']
 
@@ -223,19 +225,21 @@ class PyROQ:
     def construct_preselection_basis(self, known_basis, params, residual_modula, term):
         
         if term == 'lin':
-            file_bases  = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases_waveform_params.npy'
+            file_bases    = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases.npy'
+            file_params   = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases_waveform_params.npy'
+            tolerance_pre = self.tolerance_pre_basis_lin
         elif term=='qua':
-            file_bases  = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases_waveform_params.npy'
+            file_bases    = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases.npy'
+            file_params   = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases_waveform_params.npy'
+            tolerance_pre = self.tolerance_pre_basis_qua
         else:
             raise TermError
     
         # This block generates a basis of dimension n_pre_basis.
-        print('\n\n###################################################################################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n###################################################################################\n'.format(term, self.n_pre_basis_search_iter))
-        # The -2 comes from the fact that the corner basis is composed by two elements.
-        total_iters = self.n_pre_basis-2
-        for k in np.arange(0, total_iters):
+        print('\n\n###################################################################################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n###################################################################################\n\nTolerance          : {}\nMaximum iterations : {}\n\n'.format(term, self.n_pre_basis_search_iter, tolerance_pre, self.n_pre_basis-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
+
+        k = 0
+        while(residual_modula[-1] > tolerance_pre):
             
             # Generate n_pre_basis_search_iter random points.
             paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
@@ -246,13 +250,17 @@ class PyROQ:
             if(self.timing): print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, (time.time() - execution_time_new_pre_basis_element)/60.0))
             if self.verbose:
                 np.set_printoptions(suppress=True)
-                print("Preselection iteration: {}/{}".format(k+1, total_iters), " -- New basis waveform with parameters:", params_new)
+                print('Pre-selection iteration: ', k+1, ' -- Largest projection error: ', rm_new)
                 np.set_printoptions(suppress=False)
 
             # The worst represented waveform becomes the new basis element.
             known_basis, params = self.add_new_element_to_basis(params_new, known_basis, params, term)
             residual_modula     = np.append(residual_modula, rm_new)
 
+            # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
+            if((self.n_pre_basis > 2) and (len(known_basis[:,0]) >= self.n_pre_basis)): break
+            else                                                                      : k = k+1
+                
         # Store the pre-selected basis.
         np.save(file_bases,  known_basis)
         np.save(file_params, params     )
@@ -288,11 +296,11 @@ class PyROQ:
         # Initialise the base with the lowest corner
         known_basis_start     = np.array([linear_algebra.normalise_vector(hp_low)])
         params_ini            = np.array([self.params_low])
-        residual_modula_start = np.array([0.0])
+        residual_modula_start = np.array([1.0])
 
         # Add the highest corner
         known_basis_start, params_ini = self.add_new_element_to_basis(self.params_hig, known_basis_start, params_ini, term)
-        residual_modula_start         = np.append(residual_modula_start, np.array([0.0]))
+        residual_modula_start         = np.append(residual_modula_start, np.array([1.0]))
 
         return known_basis_start, params_ini, residual_modula_start
 
@@ -435,7 +443,7 @@ class PyROQ:
 
                 # Update the user on how many outliers remain.
                 if self.verbose:
-                    print("{}".format(ndim), "basis elements gave", len(outliers), "outliers with surrogate error >", training_set_tol, " out of {} training points.\n".format(training_set_size))
+                    print('{}'.format(ndim), 'basis elements gave', len(outliers), 'outliers with surrogate error >', training_set_tol, ' out of {} training points.\n'.format(training_set_size))
 
                 # Enrich the basis with the worst outlier. Also store the maximum empirical interpolation error, to monitor the improvement in the interpolation.
                 if(len(outliers) > 0):
@@ -470,7 +478,7 @@ class PyROQ:
         else:
             # FIXME: load a previously constructed basis.
             preselection_basis, preselection_params, preselection_residual_modula = None, None, None
-            raise Exception("User-input initial basis has not been implemented yet.")
+            raise Exception('User-input initial basis has not been implemented yet.')
         if(self.timing):
             execution_time_presel_basis = (time.time() - execution_time_presel_basis)/60.0
             print('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))

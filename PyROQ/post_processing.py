@@ -215,13 +215,13 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         # If a test case exceeds the error, let the user know. Always print typical test result every 100 steps
         np.set_printoptions(suppress=True)
         if pyroq.verbose:
-            if (surros_hp[i] > tol): print("h_+     above tolerance: Iter: ", i, "Surrogate value: ", surros_hp[i], "Parameters: ", paramspoints[i])
-            if (surros_hc[i] > tol): print("h_x     above tolerance: Iter: ", i, "Surrogate value: ", surros_hc[i], "Parameters: ", paramspoints[i])
+            if (surros_hp[i] > tol): print('h_+     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hp[i], 'Parameters: ', paramspoints[i])
+            if (surros_hc[i] > tol): print('h_x     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hc[i], 'Parameters: ', paramspoints[i])
 #                if ((term == 'qua') and (surros_hphc[i] > tol)):
 #                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
             if i%100==0:
-                print("h_+     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hp[i])
-                print("h_x     rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hc[i])
+                print('h_+     rolling check (every 100 steps): Iter: ',             i, 'Surrogate value: ', surros_hp[i])
+                print('h_x     rolling check (every 100 steps): Iter: ',             i, 'Surrogate value: ', surros_hc[i])
 #                    if (term == 'qua'):
 #                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
         np.set_printoptions(suppress=False)

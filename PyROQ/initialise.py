@@ -10,10 +10,10 @@ def store_git_info(output):
     pipe1 = str(subprocess.Popen("git branch | grep \* | cut -d ' ' -f2", shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     pipe2 = str(subprocess.Popen("git log --pretty=format:'%H' -n 1 ",    shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     git_info.write('pyRing\nbranch: {}\t commit: {}\n'.format(pipe1, pipe2))
-    pipe1 = str(subprocess.Popen("git config user.name",  shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
-    pipe2 = str(subprocess.Popen("git config user.email", shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    pipe1 = str(subprocess.Popen('git config user.name',  shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    pipe2 = str(subprocess.Popen('git config user.email', shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     git_info.write('Author: {} {}'.format(pipe1, pipe2))
-    pipe = str(subprocess.Popen("git diff",               shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
+    pipe = str(subprocess.Popen('git diff',               shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     git_info.write('\n\nGit diff:\n{}'.format(pipe))
     git_info.close()
 
@@ -72,7 +72,9 @@ to be intended as part of the default value.
                minimum-speedup         Minimum ratio of X:=len(Original-frequency-axis)/len(ROQ-frequency-axis), implying a minimum speedup during parameter estimation. The ROQ construction is interrupted if X < `minimum-speedup`. Default: 1.0.
                error-version           DESCRIPTION MISSING. Default: 'v1'.
            
-               n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets.
+               tolerance-pre-basis-lin Basis projection error threshold for linear basis elements. Default: 1e-8.
+               tolerance-pre-basis-qua Same as above, for quadratic basis. Default: 1e-10.
+               n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
                n-pre-basis-search-iter Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements. Default: 80.
            
                n-training-set-cycles   Number of basis enrichment cycles, each using `training-set-sizes` number of training elements, and stopping until `training-set-n-outliers` are below `training-set-rel-tol` Default: 4.
@@ -81,7 +83,7 @@ to be intended as part of the default value.
                training-set-rel-tol    List (in string-format) of relative tolerance (e.g. tolerance = `tolerance-lin` * `training-set-rel-tol`) of the training set for each basis enrichment cycles. Default: '10000,100000,1000000,10000000'.Default: '0.1,0.1,0.05,0.3,1.0'.
                
                tolerance-lin           Interpolation error threshold for linear basis elements. Default: 1e-8.
-               tolerance-qua           Same as above, for quadratic basis. Default: 1e-5.
+               tolerance-qua           Same as above, for quadratic basis. Default: 1e-10.
                
        **************************************************************************
        * Parameters range and test values syntax.                               *
@@ -111,10 +113,10 @@ to be intended as part of the default value.
                iota              : inclination
                phiref            : reference phase
                
+               distance          : distance [Mpc] (dummy value fixed at 10Mpc, unused in ROQ construction)
+               
       Waveform wrappers must work with these keywords.
       Parameter ranges can be set using: par-X=value, where X can be ['min', 'max'] and par is any of the above names.
-
-      FIXME description of distance [Mpc]
 
     """
 
@@ -239,6 +241,8 @@ def read_config(config_file):
                                                  'basis-lin': 1,
                                                  'basis-qua': 1,
 
+                                                 'tolerance-pre-basis-lin' : 1e-8,
+                                                 'tolerance-pre-basis-qua' : 1e-10,
                                                  'n-pre-basis'             : 80,
                                                  'n-pre-basis-search-iter' : 80,
                                                  
@@ -273,14 +277,14 @@ def read_config(config_file):
                     for x in range(len(input_par[section][key])): input_par[section][key][x] = float(input_par[section][key][x])
                 else:
                     for x in range(len(input_par[section][key])): input_par[section][key][x] = int(input_par[section][key][x])
-            print("{name} : {value} {leg}".format(name=key.ljust(max_len_keyword), value=input_par[section][key], leg=leg))
+            print('{name} : {value} {leg}'.format(name=key.ljust(max_len_keyword), value=input_par[section][key], leg=leg))
         print('\n')
 
     # Sanity checks
     list_keys = ['training-set-sizes', 'training-set-n-outliers', 'training-set-rel-tol']
     for list_key in list_keys:
         if not(len(input_par['ROQ'][list_key])==input_par['ROQ']['n-training-set-cycles']):
-            raise ValueError("Length of {} list has to be equal to the number of training cycles ('n-training-set-cycles').".format(key))
+            raise ValueError('Length of {} list has to be equal to the number of training cycles (`n-training-set-cycles`).'.format(key))
 
     if(np.any(np.array(input_par['ROQ']['training-set-n-outliers']) < 0)): raise ValueError('The `training-set-n-outliers` variable cannot be negative.')
     if(input_par['ROQ']['minimum-speedup'] < 1.0): raise ValueError('The speedup factor has to be larger than unity, otherwise the ROQ construction will not accelerate parameter estimation.')
@@ -331,12 +335,12 @@ def read_config(config_file):
         keytype = type(default_params_ranges[key][0])
         try:
             params_ranges[key]=[keytype(Config.get('Training_range',key+'-min')), keytype(Config.get('Training_range',key+'-max'))]
-            print("{name} : [{min},{max}]".format(          name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
+            print('{name} : [{min},{max}]'.format(          name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
         except (KeyError, configparser.NoOptionError, TypeError):
             params_ranges[key]=default_params_ranges[key]
-            print("{name} : [{min},{max}] (default)".format(name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
+            print('{name} : [{min},{max}] (default)'.format(name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
 
-        if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError("{} upper bound is smaller than its lower bound.".format(key))
+        if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError('{} upper bound is smaller than its lower bound.'.format(key))
 
 
     print('\n------------------------------------\n')
@@ -379,6 +383,6 @@ def read_config(config_file):
             test_values[key]=default_test_values[key]
         if key in params_ranges.keys():
             if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
-                warnings.warn("Chosen test value for {} outside training range.".format(key))
+                warnings.warn('Chosen test value for {} outside training range.'.format(key))
 
     return input_par, params_ranges, test_values
