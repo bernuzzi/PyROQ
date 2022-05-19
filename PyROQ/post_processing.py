@@ -191,32 +191,34 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         
         # Generate test waveform
         hp, hc = pyroq.paramspoint_to_wave(paramspoint, 'lin')
-        
+
         # Compute quadratic terms and interpolant representations
         if term == 'qua':
             hphc     = np.real(hp * np.conj(hc))
+            hphc     = linear_algebra.normalise_vector(hphc, pyroq.deltaF)
             hphc_emp = hphc[emp_nodes]
             hphc_rep = np.dot(b,hphc_emp)
+
+            hp, hc   = (np.absolute(hp))**2, (np.absolute(hc))**2
         
-            hp       = (np.absolute(hp))**2
-            hc       = (np.absolute(hc))**2
+        hp, hc = linear_algebra.normalise_vector(hp, pyroq.deltaF), linear_algebra.normalise_vector(hc, pyroq.deltaF)
 
         hp_emp    = hp[emp_nodes]
         hp_rep    = np.dot(b,hp_emp)
         hc_emp    = hc[emp_nodes]
         hc_rep    = np.dot(b,hc_emp)
 
-        # Compute the representation error. This is the same measure employed to stop adding elements to the basis
-        surros_hp[i] = linear_algebra.overlap_of_two_waveforms(hp, hp_rep, pyroq.deltaF, pyroq.error_version)
-        surros_hc[i] = linear_algebra.overlap_of_two_waveforms(hc, hc_rep, pyroq.deltaF, pyroq.error_version)
+        # Compute the representation error. This is the same measure employed to stop adding elements to the basis.
+        surros_hp[i] = 1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF)
+        surros_hc[i] = 1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF)
         if term == 'qua':
-            surros_hphc[i] = linear_algebra.overlap_of_two_waveforms(hphc, hphc_rep, pyroq.deltaF, pyroq.error_version)
+            surros_hphc[i] = 1 - linear_algebra.scalar_product(hphc, hphc_rep, pyroq.deltaF)
 
-        # If a test case exceeds the error, let the user know. Always print typical test result every 100 steps
+        # If a test case exceeds the error, let the user know. The tolerance is stricter by 0.5 on (1-<h|h_ROQ>) compared to the one set in the run on <dh|dh>, because <dh|dh> = 2(1-<h|h_ROQ>), where dh = h - h_ROQ. Also, print typical test result every 100 steps.
         np.set_printoptions(suppress=True)
         if pyroq.verbose:
-            if (surros_hp[i] > tol): print('h_+     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hp[i], 'Parameters: ', paramspoints[i])
-            if (surros_hc[i] > tol): print('h_x     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hc[i], 'Parameters: ', paramspoints[i])
+            if (surros_hp[i] > tol*0.5): print('h_+     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hp[i], 'Parameters: ', paramspoints[i])
+            if (surros_hc[i] > tol*0.5): print('h_x     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hc[i], 'Parameters: ', paramspoints[i])
 #                if ((term == 'qua') and (surros_hphc[i] > tol)):
 #                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
             if i%100==0:
