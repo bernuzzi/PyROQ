@@ -171,7 +171,7 @@ class PyROQ:
         hp_new, _ = self.paramspoint_to_wave(new_basis_param_point, term)
 
         # Orthogonalise, i.e. extract the linearly independent part of the waveform, and normalise the new element, which constitutes a new basis element. Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
-        basis_new = linear_algebra.gram_schmidt(known_basis, hp_new)
+        basis_new = linear_algebra.gram_schmidt(known_basis, hp_new, self.deltaF)
 
         # Append to basis.
         known_basis  = np.append(known_basis,  np.array([basis_new]),             axis=0)
@@ -181,17 +181,17 @@ class PyROQ:
 
     def compute_new_element_residual_modulus_from_basis(self, paramspoint, known_basis, term):
 
-        # Create element to be projected and initialise residual
+        # Create and normalise element to be projected and initialise residual
         h_to_proj, _ = self.paramspoint_to_wave(paramspoint, term)
-        h_to_proj    = linear_algebra.normalise_vector(h_to_proj)
+        h_to_proj    = linear_algebra.normalise_vector(h_to_proj, self.deltaF)
         residual     = h_to_proj
 
-        #FIXME: this block has a large repetition with gram_schmidt, except for norm
-        # Subtract the projection on the basis from the residual
+        #FIXME: this block has a large repetition with `gram_schmidt`, except for norm.
+        # Subtract the projection on the basis from the residual.
         for k in np.arange(0,len(known_basis)):
-            residual -= linear_algebra.proj(known_basis[k],h_to_proj)
+            residual -= linear_algebra.projection(known_basis[k],h_to_proj)
         
-        return np.sqrt(np.real(np.vdot(residual, residual)))
+        return linear_algebra.scalar_product(residual, residual, self.deltaF)
         
     def search_new_basis_element(self, paramspoints, known_basis, term):
 
@@ -223,11 +223,11 @@ class PyROQ:
     def construct_preselection_basis(self, known_basis, params, residual_modula, term):
         
         if term == 'lin':
-            file_bases  = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Linear/preselection_linear_bases_waveform_params.npy'
+            file_basis  = self.outputdir+'/ROQ_data/Linear/preselection_linear_basis.npy'
+            file_params = self.outputdir+'/ROQ_data/Linear/preselection_linear_basis_waveform_params.npy'
         elif term=='qua':
-            file_bases  = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases.npy'
-            file_params = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_bases_waveform_params.npy'
+            file_basis  = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_basis.npy'
+            file_params = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_basis_waveform_params.npy'
         else:
             raise TermError
     
@@ -254,7 +254,7 @@ class PyROQ:
             residual_modula     = np.append(residual_modula, rm_new)
 
         # Store the pre-selected basis.
-        np.save(file_bases,  known_basis)
+        np.save(file_basis,  known_basis)
         np.save(file_params, params     )
 
         return known_basis, params, residual_modula
@@ -282,15 +282,14 @@ class PyROQ:
 
     def construct_corner_basis(self, term):
 
-        # Corner waveforms
         hp_low, _ = self.paramspoint_to_wave(self.params_low, term)
         
-        # Initialise the base with the lowest corner
-        known_basis_start     = np.array([linear_algebra.normalise_vector(hp_low)])
+        # Initialise the base with the lowest corner.
+        known_basis_start     = np.array([linear_algebra.normalise_vector(hp_low, self.deltaF)])
         params_ini            = np.array([self.params_low])
         residual_modula_start = np.array([0.0])
 
-        # Add the highest corner
+        # Add the highest corner.
         known_basis_start, params_ini = self.add_new_element_to_basis(self.params_hig, known_basis_start, params_ini, term)
         residual_modula_start         = np.append(residual_modula_start, np.array([0.0]))
 
@@ -300,17 +299,15 @@ class PyROQ:
 
     def compute_empirical_interpolation_error(self, training_point, basis_interpolant, emp_nodes, term):
 
-        # Create benchmark waveform.
+        # Create and normalise benchmark waveform.
         hp, _ = self.paramspoint_to_wave(training_point, term)
-        hp    = linear_algebra.normalise_vector(hp)
+        hp    = linear_algebra.normalise_vector(hp, self.deltaF)
 
         # Compute the empirical interpolation error.
         hp_interp = np.dot(basis_interpolant,hp[emp_nodes])
         dh        = hp - hp_interp
-        
-        eie = np.real(np.vdot(dh, dh))
 
-        return eie
+        return linear_algebra.scalar_product(dh, dh, self.deltaF)
 
     def search_worst_represented_point(self, outliers, basis_interpolant, emp_nodes, training_set_tol, term):
         
@@ -320,7 +317,6 @@ class PyROQ:
             pool = mp.Pool(processes=self.n_processes)
             eies = [pool.apply(self.compute_empirical_interpolation_error, args=(training_point, basis_interpolant, emp_nodes, term)) for training_point in outliers]
             pool.close()
-            
         else:
             eies = []
             for training_point in outliers:
@@ -476,7 +472,7 @@ class PyROQ:
             print('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))
 
         # Internally store the output data for later testing.
-        d['{}_pre_bases'.format(term)]   = preselection_basis
+        d['{}_pre_basis'.format(term)]   = preselection_basis
         d['{}_pre_params'.format(term)]  = preselection_params
         d['{}_pre_res_mod'.format(term)] = preselection_residual_modula
 
@@ -516,7 +512,7 @@ if __name__ == '__main__':
 
         term = run_type[0:3]
         if not(config_pars['I/O']['post-processing-only']):
-            # Create the bases and save ROQ.
+            # Create the basis and save ROQ.
             data[run_type] = pyroq.run(term)
         
             # These data are not saved in output, so plot them now.

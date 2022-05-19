@@ -2,34 +2,42 @@ import numpy as np
     
 ## General linear algebra routines
 
-def proj(u, v):
-    """
-    Calculating the projection of complex vector v on complex vector u.
-    Note: this algorithm assumes u isn't zero.
-    """
+def scalar_product(vec1, vec2, df, weights=1.):
+
+    vec1 = vec1 * 1./np.sqrt(weights)
+    vec2 = vec2 * 1./np.sqrt(weights)
+
+    return 4.*df*np.real(np.vdot(vec1,vec2))
+
+def normalise_vector(vec, df):
+
+    return vec/np.sqrt(scalar_product(vec, vec, df))
+
+def projection(u, v):
+    
     return u * np.vdot(v,u)
 
-def normalise_vector(vec):
-
-    return vec/np.sqrt(np.vdot(vec,vec))
-
-def gram_schmidt(bases, vec):
+def gram_schmidt(basis, vec, df):
+    
     """
-    Calculating the normalized residual (= a new basis term) of a vector vec from known bases.
+        Calculating the normalized residual (= a new basis term) of a vector vec from the known basis.
     """
-    for i in np.arange(0,len(bases)):
-        vec = vec - proj(bases[i], vec)
-    return normalise_vector(vec)
+    
+    for i in np.arange(0,len(basis)):
+        vec = vec - projection(basis[i], vec)
+    
+    return normalise_vector(vec, df)
 
 def overlap_of_two_waveforms(wf1, wf2, deltaF, error_version):
+    
     """
         Calculating overlap (FIXME: change to a more representative name) of two waveforms.
     """
     
     # From the forked master version of the public PyROQ: https://github.com/qihongcat/PyROQ/blob/cb6350751dcff303957ace5ac83e6ff6e265a9c7/Code/PyROQ/pyroq.py#L40
     if(error_version=='v1'):
-        wf1norm = normalise_vector(wf1)
-        wf2norm = normalise_vector(wf2)
+        wf1norm = normalise_vector(wf1, deltaF)
+        wf2norm = normalise_vector(wf2, deltaF)
         measure = (1-np.real(np.vdot(wf1norm, wf2norm)))*deltaF
     # From the PyROQ paper: https://arxiv.org/abs/2009.13812
     elif(error_version=='v2'):
