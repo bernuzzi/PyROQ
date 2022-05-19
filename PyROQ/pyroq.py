@@ -1,6 +1,7 @@
 # General python imports
 import multiprocessing as mp, numpy as np, os, random, time, warnings
 from optparse import OptionParser
+from itertools import repeat
 
 # Package internal imports
 from waveform_wrappers import *
@@ -11,6 +12,10 @@ VersionError = ValueError('Unknown version requested.')
 warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 np.set_printoptions(linewidth=np.inf)
 np.random.seed(150914)
+
+# Util needed to parallelise functions belonging to classes.
+def eval_func_tuple(f_args):
+    return f_args[0](*f_args[1:])
 
 class PyROQ:
     """
@@ -208,8 +213,8 @@ class PyROQ:
         # Generate len(paramspoints) random waveforms corresponding to parampoints.
         if self.parallel:
             paramspointslist = paramspoints.tolist()
-            pool = mp.Pool(processes=self.n_processes)
-            modula = [pool.apply(self.compute_new_element_residual_modulus_from_basis, args=(paramspoint, known_basis, term)) for paramspoint in paramspointslist]
+            pool             = mp.Pool(processes=self.n_processes-1)
+            modula           = list(pool.map(eval_func_tuple, zip(repeat(self.compute_new_element_residual_modulus_from_basis), paramspointslist, repeat(known_basis), repeat(term))))
             pool.close()
         else:
             npts   = len(paramspoints)
@@ -322,8 +327,8 @@ class PyROQ:
         execution_time_search_worst_point = time.time()
         # Loop over test points.
         if self.parallel:
-            pool = mp.Pool(processes=self.n_processes)
-            eies = [pool.apply(self.compute_empirical_interpolation_error, args=(training_point, basis_interpolant, emp_nodes, term)) for training_point in outliers]
+            pool = mp.Pool(processes=self.n_processes-1)
+            eies = list(pool.map(eval_func_tuple, zip(repeat(self.compute_empirical_interpolation_error), outliers, repeat(basis_interpolant), repeat(emp_nodes), repeat(term))))
             pool.close()
         else:
             eies = []
@@ -435,7 +440,6 @@ class PyROQ:
                 
                 # Out of the remaining outliers, select the worst represented point.
                 worst_represented_param_point, maximum_eie, outliers = self.search_worst_represented_point(outliers, basis_interpolant, emp_nodes, training_set_tol, term)
-                # FIXME: which one of the errors? overlap_of_two_waveforms(hp, hp_interp, self.deltaF, self.error_version)
 
                 # Update the user on how many outliers remain.
                 if self.verbose:
