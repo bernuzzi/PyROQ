@@ -1,8 +1,14 @@
+## -*- coding: utf8 -*-
+#!/usr/bin/env python
+
 import numpy as np, os, subprocess, sys, warnings
 try:
     import configparser
 except ImportError:
     import ConfigParser as configparser
+
+import logging
+logger = logging.getLogger(__name__)
 
 def store_git_info(output):
 
@@ -20,7 +26,7 @@ def store_git_info(output):
     return
 
 #Description of the package. Printed on stdout if --help option is give.
-usage="""\n\n pyroq.py --config-file config.ini\n
+usage="""\n\n python -m PyROQ --config-file config.ini\n
 Package description FIXME.
 
 Options syntax: type, default values and sections of the configuration
@@ -39,12 +45,13 @@ to be intended as part of the default value.
                timing                  Flag to activate timing profiling. Default: 0.
                show-plots              Flag to show produced plots. Default: 0.
                post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
+               random-seed             Initial seed for pseudo-random number generators. Default: 0.
        
        **************************************************************************
        * Parameters to be passed to the [Parallel] section.                     *
        **************************************************************************
 
-               parallel                Flag to activate parallelisation. Default: 0.
+               parallel                Flag to activate parallelisation. Allowed values: [0, 1, 2] corrsponding to [serial, multiprocessing, MPI]. Default: 0.
                n-processes             Number of processes on which the parallelisation is carried on. Default: 4.
        
        **************************************************************************
@@ -196,15 +203,16 @@ def read_config(config_file):
 
     try:
         if not(Config.getint('I/O','screen-output')):
-            print('Deviating the output on file, inside: `{}`.'.format(directory))
+            logger.info('Deviating the output on file, inside: `{}`.'.format(directory))
             sys.stdout = open(os.path.join(directory,'stdout_PyROQ.txt'), 'w')
             sys.stderr = open(os.path.join(directory,'stderr_PyROQ.txt'), 'w')
     except(configparser.NoOptionError):
         pass
 
-    print('\nReading config file: {}'.format(config_file)+'.')
-    print('With sections: '+str(Config.sections())+'.')
-    print('\n-------------Input parameters-------------\nI\'ll be running with the following values:\n')
+    logger.info('Reading config file: {}'.format(config_file)+'.')
+    logger.info('With sections: '+str(Config.sections())+'.')
+    logger.info('Input parameters')
+    logger.info('I\'ll be running with the following values:')
 
     # ==========================================================#
     # Initialize and read from config the ROQ input parameters. #
@@ -220,6 +228,7 @@ def read_config(config_file):
                                                  'timing'                  : 0,
                                                  'show-plots'              : 0,
                                                  'post-processing-only'    : 0,
+                                                 'random-seed'             : 0,
                                                 }
     input_par['Parallel']                     = {
                                                  'parallel'                : 0,
@@ -262,7 +271,7 @@ def read_config(config_file):
 
     max_len_keyword = len('n-pre-basis-search-iter')
     for section in sections:
-        print('[{}]\n'.format(section))
+        logger.info('[{}]'.format(section))
         for key in input_par[section]:
             try:
                 keytype = type(input_par[section][key])
@@ -277,8 +286,7 @@ def read_config(config_file):
                     for x in range(len(input_par[section][key])): input_par[section][key][x] = float(input_par[section][key][x])
                 else:
                     for x in range(len(input_par[section][key])): input_par[section][key][x] = int(input_par[section][key][x])
-            print('{name} : {value} {leg}'.format(name=key.ljust(max_len_keyword), value=input_par[section][key], leg=leg))
-        print('\n')
+            logger.info('{name} : {value} {leg}'.format(name=key.ljust(max_len_keyword), value=input_par[section][key], leg=leg))
 
     # Sanity checks
     list_keys = ['training-set-sizes', 'training-set-n-outliers', 'training-set-rel-tol']
@@ -304,7 +312,7 @@ def read_config(config_file):
     # ====================================#
 
     params_ranges = {}
-    print('[Training_range]\n')
+    logger.info('[Training_range]')
     for key in default_params_ranges:
         
         if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
@@ -335,15 +343,12 @@ def read_config(config_file):
         keytype = type(default_params_ranges[key][0])
         try:
             params_ranges[key]=[keytype(Config.get('Training_range',key+'-min')), keytype(Config.get('Training_range',key+'-max'))]
-            print('{name} : [{min},{max}]'.format(          name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
+            logger.info('{name} : [{min},{max}]'.format(          name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
         except (KeyError, configparser.NoOptionError, TypeError):
             params_ranges[key]=default_params_ranges[key]
-            print('{name} : [{min},{max}] (default)'.format(name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
+            logger.info('{name} : [{min},{max}] (default)'.format(name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
 
         if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError('{} upper bound is smaller than its lower bound.'.format(key))
-
-
-    print('\n------------------------------------\n')
 
     test_values = {}
     for key in default_test_values:

@@ -1,3 +1,6 @@
+## -*- coding: utf8 -*-
+#!/usr/bin/env python
+
 import numpy as np, warnings
 
 # Waveform approximants
@@ -57,9 +60,11 @@ try:
             self.approximant = approximant
 
             #FIXME: for LAL waveforms, additional_waveform_params is currently ignored
-            self.waveform_params = lal.CreateDict()
-                
+#            self.waveform_params = lal.CreateDict()
+
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
+            
+            waveform_params = lal.CreateDict()
 
             # Update baseline waveform_params with p
             # This is redundant and incomplete, see
@@ -68,10 +73,10 @@ try:
         
             if 'lambda1' in p.keys():
                 if p['lambda1'] is not None:
-                    lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(self.waveform_params, p['lambda1'])
+                    lalsimulation.SimInspiralWaveformParamsInsertTidalLambda1(waveform_params, p['lambda1'])
             if 'lambda2' in p.keys():
                 if p['lambda2'] is not None:
-                    lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(self.waveform_params, p['lambda2'])
+                    lalsimulation.SimInspiralWaveformParamsInsertTidalLambda2(waveform_params, p['lambda2'])
 
             if 'ecc' not in p.keys():
                 p['ecc'] = 0.
@@ -94,7 +99,7 @@ try:
                                                                       f_min,
                                                                       f_max,
                                                                       0,
-                                                                      self.waveform_params,
+                                                                      waveform_params,
                                                                       self.approximant)
             hp = plus.data.data
             hc = cross.data.data

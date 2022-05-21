@@ -1,11 +1,17 @@
-import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns
+## -*- coding: utf8 -*-
+#!/usr/bin/env python
 
-import linear_algebra
+import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns
+import logging
+
+from . import linear_algebra
 
 plt.rcParams.update({'figure.max_open_warning': 0})
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
 labels_fontsize = 16
+
+logger = logging.getLogger(__name__)
 
 ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
 
@@ -184,8 +190,9 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         raise TermError
     
     # Start looping over test points
-    print('\n\n##########################################\n# Starting surrogate tests {} iteration #\n##########################################\n'.format(term))
-    print('\nValidation set size : {}\nTolerance           : {}\n\n'.format(nsamples, tol))
+    logger.info('Starting surrogate tests {} iteration'.format(term))
+    logger.info('Validation set size : {}'.format(nsamples))
+    logger.info('Tolerance           : {}'.format(tol))
 
     for i,paramspoint in enumerate(paramspoints):
         
@@ -216,17 +223,17 @@ def test_roq_error(b, emp_nodes, term, pyroq):
 
         # If a test case exceeds the error, let the user know. The tolerance is stricter by 0.5 on (1-<h|h_ROQ>) compared to the one set in the run on <dh|dh>, because <dh|dh> = 2(1-<h|h_ROQ>), where dh = h - h_ROQ. Also, print typical test result every 100 steps.
         np.set_printoptions(suppress=True)
-        if pyroq.verbose:
-            if (surros_hp[i] > tol*0.5): print('h_+     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hp[i], 'Parameters: ', paramspoints[i])
-            if (surros_hc[i] > tol*0.5): print('h_x     above tolerance: Iter: ', i, 'Surrogate value: ', surros_hc[i], 'Parameters: ', paramspoints[i])
+        if (surros_hp[i] > tol*0.5):
+            logger.info('h_+     above tolerance: Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hp[i])+' Parameters: {}'.format(paramspoints[i]))
+        if (surros_hc[i] > tol*0.5):
+            logger.info('h_x     above tolerance: Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hc[i])+' Parameters: {}'.format(paramspoints[i]))
 #                if ((term == 'qua') and (surros_hphc[i] > tol)):
 #                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
-            if i%100==0:
-                print('h_+     rolling check (every 100 steps): Iter: ',             i, 'Surrogate value: ', surros_hp[i])
-                print('h_x     rolling check (every 100 steps): Iter: ',             i, 'Surrogate value: ', surros_hc[i])
+        if i%100==0:
+            logger.info('h_+     rolling check (every 100 steps): Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hp[i]))
+            logger.info('h_x     rolling check (every 100 steps): Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hc[i]))
 #                    if (term == 'qua'):
 #                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
-        np.set_printoptions(suppress=False)
 
     # Plot the test results
     plt.figure(figsize=(8,5))

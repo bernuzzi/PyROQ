@@ -4,9 +4,17 @@ Please cite the [PyROQ paper](https://arxiv.org/abs/2009.13812) if you use this 
 
 # Usage
 
-Starting from the `PyROQ_repo_directory/PyROQ` location, the simples example can be run by:
+Starting from the `PyROQ_repo_directory/PyROQ` location, install the package using the command 
 
-`python pyroq.py --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini`
+    python setup.py install
+
+Then `PyROQ` is  install. A simple example can be run by:
+
+    python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+    
+The full list  of options can be printed using:
+
+    python -m PyROQ --help
 
 # Development history
 
@@ -30,3 +38,9 @@ GC (gregorio.carullo@uni-jena.de) 05/2022:
   * (Almost) maximally streamline code and move logically separated functions to specific files.
   * Parallelise linear and quadratic, add more parallelisation steps where possible.
   * Improve post-processing and input storage (git info, config file, stdout/stderr).
+  
+MB (matteo.breschi@uni-jena.de) 05/2022:
+  
+  * Introduce logger
+  * Implement MPI-based parallelisation and unify pool usage
+  * Extend setup.py, improve packaging and include main functionalities

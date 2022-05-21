@@ -1,22 +1,25 @@
+## -*- coding: utf8 -*-
+#!/usr/bin/env python
+
 # General python imports
-import multiprocessing as mp, numpy as np, os, random, time, warnings
-from optparse import OptionParser
+import numpy as np, os, sys, random, time, warnings
 from itertools import repeat
 
 # Package internal imports
-from waveform_wrappers import *
-import initialise, linear_algebra, post_processing
+from .waveform_wrappers import *
+from .parallel import eval_func_tuple
+from . import initialise, linear_algebra, post_processing
 
+# Initialize logger
+import logging
+logger = logging.getLogger(__name__)
+
+# Inizialize error handlers
 TermError    = ValueError('Unknown basis term requested.')
 VersionError = ValueError('Unknown version requested.')
 warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
-np.set_printoptions(linewidth=np.inf)
-np.random.seed(150914)
 
-# Util needed to parallelise functions belonging to classes.
-def eval_func_tuple(f_args):
-    return f_args[0](*f_args[1:])
-
+# ROQ main
 class PyROQ:
     """
         PyROQ Class
@@ -30,6 +33,7 @@ class PyROQ:
                  start_values               = None,
                  distance                   = 10  , # [Mpc]. Dummy value, distance does not enter the interpolants construction
                  additional_waveform_params = {}  , # Dictionary with any parameter needed for the waveform approximant
+                 pool                       = None, # Parallel processing pool
                  ):
 
         self.distance                   = distance
@@ -67,8 +71,11 @@ class PyROQ:
         self.n_processes                = config_pars['Parallel']['n-processes']
         
         self.outputdir                  = config_pars['I/O']['output']
-        self.verbose                    = config_pars['I/O']['verbose']
         self.timing                     = config_pars['I/O']['timing']
+        
+        # Set global mal function
+        global Pool
+        Pool = pool
 
         # Convert to LAL identification number, if passing a LAL approximant, and choose waveform
         if(not(config_pars['Waveform_and_parametrisation']['approximant']=='teobresums-giotto') and not(config_pars['Waveform_and_parametrisation']['approximant']=='mlgw-bns')):
@@ -211,16 +218,10 @@ class PyROQ:
         """
 
         # Generate len(paramspoints) random waveforms corresponding to parampoints.
-        if self.parallel:
-            paramspointslist = paramspoints.tolist()
-            pool             = mp.Pool(processes=self.n_processes-1)
-            modula           = list(pool.map(eval_func_tuple, zip(repeat(self.compute_new_element_residual_modulus_from_basis), paramspointslist, repeat(known_basis), repeat(term))))
-            pool.close()
-        else:
-            npts   = len(paramspoints)
-            modula = np.zeros(npts)
-            for i,paramspoint in enumerate(paramspoints):
-                modula[i] = self.compute_new_element_residual_modulus_from_basis(paramspoint, known_basis, term)
+        modula           = list(Pool.map(eval_func_tuple, zip(repeat(self.compute_new_element_residual_modulus_from_basis),
+                                                              paramspoints,
+                                                              repeat(known_basis),
+                                                              repeat(term))))
 
         # Select the worst represented waveform (in terms of the previous known basis).
         arg_newbasis = np.argmax(modula) 
@@ -241,7 +242,9 @@ class PyROQ:
             raise TermError
     
         # This block generates a basis of dimension n_pre_basis.
-        print('\n\n###################################################################################\n# Starting preselection {} iteration (with {} random points at each iteration) #\n###################################################################################\n\nTolerance          : {}\nMaximum iterations : {}\n\n'.format(term, self.n_pre_basis_search_iter, tolerance_pre, self.n_pre_basis-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
+        logger.info('Starting preselection {} iteration (with {} random points at each iteration)'.format(term, self.n_pre_basis_search_iter))
+        logger.info('Tolerance          : {}'.format(tolerance_pre))
+        logger.info('Maximum iterations : {}'.format(self.n_pre_basis-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
 
         k = 0
         while(residual_modula[-1] > tolerance_pre):
@@ -252,11 +255,8 @@ class PyROQ:
             if(self.timing): execution_time_new_pre_basis_element = time.time()
             # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
             params_new, rm_new = self.search_new_basis_element(paramspoints, known_basis, term)
-            if(self.timing): print('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, (time.time() - execution_time_new_pre_basis_element)/60.0))
-            if self.verbose:
-                np.set_printoptions(suppress=True)
-                print('Pre-selection iteration: ', k+1, ' -- Largest projection error: ', rm_new)
-                np.set_printoptions(suppress=False)
+            if(self.timing): logger.info('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, (time.time() - execution_time_new_pre_basis_element)/60.0))
+            logger.info('Pre-selection iteration: {}'.format(k+1) + ' -- Largest projection error: {}'.format(rm_new))
 
             # The worst represented waveform becomes the new basis element.
             known_basis, params = self.add_new_element_to_basis(params_new, known_basis, params, term)
@@ -278,10 +278,10 @@ class PyROQ:
         """
             Initialize parameter ranges and basis.
         """
-        if self.verbose:
-            print('\n\n######################\n# Initialising basis #\n######################\n')
-            print('nparams = {}\n'.format(self.nparams))
-            print('index | name    | ( min - max )           ')
+        
+        logger.info('Initialising basis')
+        logger.info('nparams = {}'.format(self.nparams))
+        logger.info('index | name    | ( min - max )           ')
 
         self.params_low, self.params_hig = [], []
         # Set bounds
@@ -289,7 +289,7 @@ class PyROQ:
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
             
-            if self.verbose: print('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2), n.ljust(len('lambda1')), self.params_low[i], self.params_hig[i]))
+            logger.info('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2), n.ljust(len('lambda1')), self.params_low[i], self.params_hig[i]))
 
         return 
 
@@ -326,17 +326,15 @@ class PyROQ:
         
         execution_time_search_worst_point = time.time()
         # Loop over test points.
-        if self.parallel:
-            pool = mp.Pool(processes=self.n_processes-1)
-            eies = list(pool.map(eval_func_tuple, zip(repeat(self.compute_empirical_interpolation_error), outliers, repeat(basis_interpolant), repeat(emp_nodes), repeat(term))))
-            pool.close()
-        else:
-            eies = []
-            for training_point in outliers:
-                eies.append(self.compute_empirical_interpolation_error(training_point, basis_interpolant, emp_nodes, term))
+        eies = list(Pool.map(eval_func_tuple, zip(repeat(self.compute_empirical_interpolation_error),
+                                                  outliers,
+                                                  repeat(basis_interpolant),
+                                                  repeat(emp_nodes),
+                                                  repeat(term))))
+                                                  
         if(self.timing):
             execution_time_search_worst_point = (time.time() - execution_time_search_worst_point)/60.0
-            print('Timing: worst point search, computing {} interpolation errors with parallel={} [minutes]: {}'.format(len(outliers), self.parallel, execution_time_search_worst_point))
+            logger.info('Timing: worst point search, computing {} interpolation errors with parallel={} [minutes]: {}'.format(len(outliers), self.parallel, execution_time_search_worst_point))
 
         # Select the worst represented point.
         arg_worst                     = np.argmax(eies)
@@ -392,7 +390,7 @@ class PyROQ:
         V         = np.transpose(known_basis[0:ndim, emp_nodes])
         inverse_V = np.linalg.pinv(V)
         
-        if(self.verbose and not(ndim==basis_len)): print('Removed {} duplicate points during empirical interpolation nodes construction.\n'.format(basis_len-ndim))
+        if not(ndim==basis_len): logger.info('Removed {} duplicate points during empirical interpolation nodes construction.'.format(basis_len-ndim))
         
         return np.array([ndim, inverse_V, emp_nodes])
     
@@ -422,7 +420,10 @@ class PyROQ:
             training_set_n_outlier = self.training_set_n_outliers[n_cycle]
             training_set_tol       = self.training_set_rel_tol[n_cycle] * tol
         
-            print('\n################################\n# Starting {}/{} enrichment loop #\n################################\n\nTraining set size  : {}\nTolerance          : {}\nTolerated outliers : {}\n\n'.format(n_cycle+1, self.n_training_set_cycles, training_set_size, training_set_tol, training_set_n_outlier))
+            logger.info('Starting {}/{} enrichment loop'.format(n_cycle+1, self.n_training_set_cycles))
+            logger.info('Training set size  : {}'.format(training_set_size))
+            logger.info('Tolerance          : {}'.format(training_set_tol))
+            logger.info('Tolerated outliers : {}'.format(training_set_n_outlier))
 
             # Generate the parameters of this training cycle.
             paramspoints = self.generate_params_points(npts=training_set_size)
@@ -442,8 +443,7 @@ class PyROQ:
                 worst_represented_param_point, maximum_eie, outliers = self.search_worst_represented_point(outliers, basis_interpolant, emp_nodes, training_set_tol, term)
 
                 # Update the user on how many outliers remain.
-                if self.verbose:
-                    print('{}'.format(ndim), 'basis elements gave', len(outliers), 'outliers with surrogate error >', training_set_tol, ' out of {} training points.\n'.format(training_set_size))
+                logger.info('{}'.format(ndim)+' basis elements gave {} outliers with surrogate error > {} out of {} training points.'.format(len(outliers), training_set_tol, training_set_size))
 
                 # Enrich the basis with the worst outlier. Also store the maximum empirical interpolation error, to monitor the improvement in the interpolation.
                 if(len(outliers) > 0):
@@ -481,7 +481,7 @@ class PyROQ:
             raise Exception('User-input initial basis has not been implemented yet.')
         if(self.timing):
             execution_time_presel_basis = (time.time() - execution_time_presel_basis)/60.0
-            print('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))
+            logger.info('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))
 
         # Internally store the output data for later testing.
         d['{}_pre_basis'.format(term)]   = preselection_basis
@@ -500,66 +500,3 @@ class PyROQ:
         d['{}_n_outliers'.format(term)]  = n_outliers
 
         return d
-
-if __name__ == '__main__':
-
-    # Initialise and read config.
-    parser      = OptionParser(initialise.usage)
-    parser.add_option('--config-file', type='string', metavar = 'config_file', default = None)
-    (opts,args) = parser.parse_args()
-    config_file = opts.config_file
-
-    config_pars, params_ranges, test_values = initialise.read_config(config_file)
-
-    # Point(s) of the parameter space on which to initialise the basis. If not passed by the user, defaults to upper/lower corner of the parameter space.
-    start_values = None
-
-    # Initialise ROQ parameters and structures.
-    pyroq = PyROQ(config_pars, params_ranges, start_values=start_values)
-    freq  = pyroq.freq
-
-    data = {}
-
-    for run_type in config_pars['I/O']['run-types']:
-
-        term = run_type[0:3]
-        if not(config_pars['I/O']['post-processing-only']):
-            # Create the basis and save ROQ.
-            data[run_type] = pyroq.run(term)
-        
-            # These data are not saved in output, so plot them now.
-            post_processing.plot_preselection_residual_modula(data[run_type]['{}_pre_res_mod'.format(term)], term, pyroq.outputdir)
-            post_processing.plot_maximum_empirical_interpolation_error(data[run_type]['{}_max_eies'.format(term)], term, pyroq.outputdir)
-            post_processing.plot_number_of_outliers(data[run_type]['{}_n_outliers'.format(term)], term, pyroq.outputdir)
-
-        else:
-            # Read ROQ from previous run.
-            data[run_type]                                = {}
-            data[run_type]['{}_f'.format(term)]           = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_frequencies_{type}.npy'.format(type=run_type)))
-            data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
-            data[run_type]['{}_emp_nodes'.format(term)]   = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
-            data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
-
-        # Output the basis reduction factor.
-        print('\n###########\n# Results #\n###########\n')
-        print('{} basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(run_type, len(freq), len(data[run_type]['{}_f'.format(term)]), len(freq)/len(data[run_type]['{}_f'.format(term)])))
-
-        # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
-        post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n)
-
-        # Surrogate tests.
-        post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
-
-        # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
-        print('\n\n##############################################\n# Testing the waveform using the parameters: #\n##############################################\n')
-        parampoint_test = []
-        print('name    | value | index')
-        for name, val in test_values.items():
-            print('{} | {}   | {} '.format(name.ljust(len('lambda1')), val, pyroq.n2i[name]))
-            parampoint_test.append(val)
-        parampoint_test = np.array(parampoint_test)
-
-        post_processing.plot_representation_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term, pyroq.outputdir, freq, pyroq.paramspoint_to_wave)
-
-    # Show plots, if requested.
-    if(config_pars['I/O']['show-plots']): plt.show()

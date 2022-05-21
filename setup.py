@@ -9,5 +9,5 @@ setup(
     author_email='',
     url = 'https://github.com/bernuzzi/PyROQ',
     packages = find_packages(),
-    requires = ['h5py', 'numpy', 'matplotlib'],
+    requires = ['h5py', 'numpy', 'matplotlib']
 )
