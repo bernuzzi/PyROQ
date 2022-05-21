@@ -4,7 +4,7 @@ Please cite the [PyROQ paper](https://arxiv.org/abs/2009.13812) if you use this 
 
 # Usage
 
-Starting from the `PyROQ_repo_directory/PyROQ` location, 
+Starting from the `PyROQ` location, 
 the package can be installed using the command:
 
     python setup.py install
