@@ -13,9 +13,18 @@ Once  `PyROQ` is  installed, a simple example can be run by:
 
     python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
     
-The full list  of options can be printed using:
+If MPI-based parallelisation is requested, the command can be modified as follows:
+    
+    mpiexec -n [n-tasks] python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+    
+Where `[n-tasks]`  corresponds to the requested number of parallel tasks. Moreover, the config file should specify the related flag `parallel=2` for MPI-based parallelisation.  
+The user can see the full list  of options typing:
 
     python -m PyROQ --help
+        
+# Dependencies
+
+The package depends on standard Python libraries, except for: `numpy` for numeric computation, `h5py` for data storing and `matplotlib` for plotting. Moreover, if MPI-based parallelisation is requested, the package has an additional dependency on `mpi4py`.
 
 # Development history
 
