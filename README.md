@@ -4,11 +4,12 @@ Please cite the [PyROQ paper](https://arxiv.org/abs/2009.13812) if you use this 
 
 # Usage
 
-Starting from the `PyROQ_repo_directory/PyROQ` location, install the package using the command 
+Starting from the `PyROQ_repo_directory/PyROQ` location, 
+the package can be installed using the command:
 
     python setup.py install
 
-Then `PyROQ` is  install. A simple example can be run by:
+Once  `PyROQ` is  installed, a simple example can be run by:
 
     python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
     
