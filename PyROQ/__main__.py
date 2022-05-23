@@ -50,7 +50,7 @@ if __name__ == '__main__':
 
     # Initialise and read config.
     parser      = OptionParser(initialise.usage)
-    parser.add_option('--config-file',  type='string',          metavar = 'config_file',    default = None)
+    parser.add_option('--config-file',  type   = 'string',      metavar = 'config_file',    default = None)
     parser.add_option('--debug',        action = 'store_true',  metavar = 'debug',          default = False)
     (opts,args) = parser.parse_args()
     config_file = opts.config_file

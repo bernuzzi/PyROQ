@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='PyROQ',
-    version='0.1.26 (refactored)',
+    version='Jena',
     description='Builds ROQ data for gravitational waves',
     author='Hong Qi et al.',
     author_email='',

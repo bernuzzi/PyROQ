@@ -40,8 +40,7 @@ to be intended as part of the default value.
        **************************************************************************
 
                output                  Output directory. Default: './'.
-               verbose                 Flag to activate verbose mode. Default: 1.
-               screen-output           Flat to allow for the stdout to appear on screen. Default: 1.
+               verbose                 Option to regulate logger verbose mode. Available options: [0,1, ???]. Default: 1.
                timing                  Flag to activate timing profiling. Default: 0.
                show-plots              Flag to show produced plots. Default: 0.
                post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
@@ -201,14 +200,6 @@ def read_config(config_file):
     os.system('cp {} {}/.'.format(config_file, directory))
     store_git_info(directory)
 
-    try:
-        if not(Config.getint('I/O','screen-output')):
-            logger.info('Deviating the output on file, inside: `{}`.'.format(directory))
-            sys.stdout = open(os.path.join(directory,'stdout_PyROQ.txt'), 'w')
-            sys.stderr = open(os.path.join(directory,'stderr_PyROQ.txt'), 'w')
-    except(configparser.NoOptionError):
-        pass
-
     logger.info('Reading config file: {}'.format(config_file)+'.')
     logger.info('With sections: '+str(Config.sections())+'.')
     logger.info('Input parameters')
@@ -224,7 +215,6 @@ def read_config(config_file):
     input_par['I/O']                           = {
                                                  'output'                  : './',
                                                  'verbose'                 : 1,
-                                                 'screen-output'           : 1,
                                                  'timing'                  : 0,
                                                  'show-plots'              : 0,
                                                  'post-processing-only'    : 0,
