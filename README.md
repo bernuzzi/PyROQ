@@ -11,7 +11,7 @@ the package can be installed using the command:
 
 Once  `PyROQ` is  installed, a simple example can be run by:
 
-    python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+    python -m PyROQ --config-file PyROQ/config_files/test_config_IMRPv2_GW150914_LVK.ini
     
 If MPI-based parallelisation is requested, the command can be modified as follows:
     
