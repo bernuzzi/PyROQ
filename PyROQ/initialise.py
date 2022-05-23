@@ -149,6 +149,8 @@ default_params_ranges = {
     'ecc'     : [0.0, 0.0]     ,
     'iota'    : [0.0, np.pi]   ,
     'phiref'  : [0.0, 2*np.pi] ,
+    'nrpmw-tcoll' : [0,3000]    ,
+    'nrpmw-df2'   : [-1e-5,1e-5],
 }
 
 default_test_values = {
@@ -171,8 +173,10 @@ default_test_values = {
         'lambda1' : 1000.0 ,
         'lambda2' : 1000.0 ,
         'ecc'     : 0.0    ,
-        'iota'    : 1.9    ,
-        'phiref'  : 0.6    ,
+        'iota'    : 1.9      ,
+        'phiref'  : 0.6      ,
+        'nrpmw-tcoll' : 1000 ,
+        'nrpmw-df2'   : 0.   ,
 }
 
 def read_config(config_file):
@@ -329,6 +333,8 @@ def read_config(config_file):
         if((key=='s2y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
         if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
         if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
+        if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+        if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
 
         keytype = type(default_params_ranges[key][0])
         try:
@@ -359,6 +365,8 @@ def read_config(config_file):
         if((key=='s2x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
         if((key=='s2y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
         if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
+        if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+        if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
     
         keytype = type(default_test_values[key])
         try:
@@ -374,6 +382,8 @@ def read_config(config_file):
             if((key=='s2y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
             if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
             if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
+            if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+            if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
             
             test_values[key]=default_test_values[key]
         if key in params_ranges.keys():
