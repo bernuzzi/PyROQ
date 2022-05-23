@@ -114,7 +114,7 @@ try:
         WfWrapper[a] = LALWf
 
 except ModuleNotFoundError:
-    print('LAL module not found.')
+    print('\nWarning: LALSimulation module not found.\n')
 
     # Set the constants, they might be needed
     # https://lscsoft.docs.ligo.org/lalsuite/lal/group___l_a_l_constants__h.html
@@ -269,7 +269,7 @@ try:
         WfWrapper[a] = WfTEOBResumS
 
 except ModuleNotFoundError:
-    print('\nWarning: TEOBResumS module not found.')
+    print('\nWarning: TEOBResumS module not found.\n')
 
 # MLGW-BNS
 # --------
@@ -357,6 +357,4 @@ try:
         WfWrapper[a] = WfMLGW
 
 except ModuleNotFoundError:
-    print('mlgw-bns module not found')
-
-
+    print('\nWarning: mlgw-bns module not found.\n')

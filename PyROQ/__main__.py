@@ -70,16 +70,16 @@ if __name__ == '__main__':
     
     # Get parallel processing pool
     if (int(config_pars['Parallel']['parallel'])==0):
-        logger.info('Initialising serial pool')
+        logger.info('Initialising serial pool.\n')
         from .parallel import initialize_serial_pool
         Pool = initialize_serial_pool()
     elif (int(config_pars['Parallel']['parallel'])==1):
-        logger.info('Initialising multiprocessing processsing pool')
+        logger.info('Initialising multiprocessing processsing pool.\n')
         from .parallel import initialize_mp_pool, close_pool_mp
         Pool = initialize_mp_pool(int(config_pars['Parallel']['n-processes']))
         close_pool = close_pool_mp
     elif (int(config_pars['Parallel']['parallel'])==2):
-        logger.info('Initialising MPI-based processing pool')
+        logger.info('Initialising MPI-based processing pool.\n')
         from .parallel import initialize_mpi_pool, close_pool_mpi
         Pool = initialize_mpi_pool()
         close_pool = close_pool_mpi
@@ -88,12 +88,12 @@ if __name__ == '__main__':
 
     # Set random seed
     if (int(config_pars['Parallel']['parallel'])<2):
-        logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
+        logger.info('Setting random seed to {}\n'.format(config_pars['I/O']['random-seed']))
         np.random.seed(int(config_pars['I/O']['random-seed']))
     else:
         # Avoid generation of identical random numbers in different processes
         if Pool.is_master():
-            logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
+            logger.info('Setting random seed to {}\n'.format(config_pars['I/O']['random-seed']))
             np.random.seed(int(config_pars['I/O']['random-seed']))
         else:
             np.random.seed(int(config_pars['I/O']['random-seed'])+Pool.rank)
