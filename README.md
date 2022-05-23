@@ -2,7 +2,7 @@
 This repository implements a streamlined version of the PyROQ code, branched in March 2022 from the [main repository](https://github.com/qihongcat/PyROQ).
 Please cite the [PyROQ paper](https://arxiv.org/abs/2009.13812) if you use this code in your research. 
 
-# Usage
+# Installation and usage
 
 Starting from the `PyROQ` location, 
 the package can be installed using the command:
@@ -21,6 +21,10 @@ Where `[n-tasks]`  corresponds to the requested number of parallel tasks. Moreov
 The user can see the full list  of options typing:
 
     python -m PyROQ --help
+        
+# Output
+
+??? (logger, plots, data).
         
 # Dependencies
 
