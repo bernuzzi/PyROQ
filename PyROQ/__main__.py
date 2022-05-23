@@ -110,13 +110,6 @@ if __name__ == '__main__':
         # Point(s) of the parameter space on which to initialise the basis.
         # If not passed by the user, defaults to upper/lower corner of the parameter space.
         start_values = None
-        
-#        # Set random seed
-#        if config_pars['I/O']['random-seed']:
-#            logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
-#            np.random.seed(int(config_pars['I/O']['random-seed']))
-#        else:
-#            np.random.seed(0)
 
         # Initialise ROQ parameters and structures.
         from . import pyroq as roq

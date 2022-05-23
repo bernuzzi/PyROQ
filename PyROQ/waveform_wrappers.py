@@ -6,6 +6,8 @@ import numpy as np, warnings
 # Waveform approximants
 # =====================
 
+__non_lal_approx_names__ = ['teobresums-giotto', 'mlgw-bns']
+
 WfWrapper = {} # collect all the wvf wrappers
 
 # Example of waveform wrapper for PyROQ
@@ -260,7 +262,7 @@ try:
                 f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(self.waveform_params)
                 # Adapt len to PyROQ frequency axis conventions
                 hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
-                
+
             return hp, hc
     
     # Add a wrapper for each approximant
@@ -314,17 +316,17 @@ try:
                 raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
             if((abs(s2x) > 1e-6) or (abs(s2y) > 1e-6)):
                 raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
-               
+            
             lambda1,lambda2 = 0.,0.
             if 'lambda1' in p.keys():
                lambda1 = p['lambda1']
             if 'lambda2' in p.keys():
-               lambda2 = p['lambda2']   
+               lambda2 = p['lambda2']
             if((abs(lambda1) < 5.) or (abs(lambda2) < 5.)):
                 raise ValueError("lambdas>5 but ({},{}) were passed.".format(lambda1, lambda2))
             if((abs(lambda1) > 5000.) or (abs(lambda2) > 5000.)):
                 raise ValueError("lambdas<5000 but ({},{}) were passed.".format(lambda1, lambda2))
-            
+
             if 'ecc' not in p.keys():
                 p['ecc'] = 0.
             if(abs(p['ecc']) > 1e-12):
@@ -335,7 +337,7 @@ try:
                q               = 1./q
                s1z,s2z         = s2z,s1z
                lambda1,lambda2 = lambda2,lambda1
-               
+
             # Call it
             model       = Model.default() # FIXME: here you can use self.approximant to call any MLGW-BNS Model
             frequencies = np.arange(f_min, f_max, step=deltaF)
@@ -357,3 +359,5 @@ try:
 
 except ModuleNotFoundError:
     print('mlgw-bns module not found')
+
+

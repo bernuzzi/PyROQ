@@ -73,13 +73,15 @@ class PyROQ:
         self.outputdir                  = config_pars['I/O']['output']
         self.timing                     = config_pars['I/O']['timing']
         
-        # Set global mal function
+        # Set global pool object
         global Pool
         Pool = pool
 
         # Convert to LAL identification number, if passing a LAL approximant, and choose waveform
-        if(not(config_pars['Waveform_and_parametrisation']['approximant']=='teobresums-giotto') and not(config_pars['Waveform_and_parametrisation']['approximant']=='mlgw-bns')):
+        from .waveform_wrappers import __non_lal_approx_names__
+        if(not(config_pars['Waveform_and_parametrisation']['approximant'] in __non_lal_approx_names__)):
             self.approximant = lalsimulation.SimInspiralGetApproximantFromString(self.approximant)
+        
         if self.approximant in WfWrapper.keys():
             self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
         else:

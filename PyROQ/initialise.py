@@ -15,7 +15,7 @@ def store_git_info(output):
     git_info = open(os.path.join(output, 'git_info.txt'), 'w')
     pipe1 = str(subprocess.Popen("git branch | grep \* | cut -d ' ' -f2", shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     pipe2 = str(subprocess.Popen("git log --pretty=format:'%H' -n 1 ",    shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
-    git_info.write('pyRing\nbranch: {}\t commit: {}\n'.format(pipe1, pipe2))
+    git_info.write('PyROQ\nbranch: {}\t commit: {}\n'.format(pipe1, pipe2))
     pipe1 = str(subprocess.Popen('git config user.name',  shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     pipe2 = str(subprocess.Popen('git config user.email', shell=True, stdout=subprocess.PIPE).stdout.read())[2:-1]
     git_info.write('Author: {} {}'.format(pipe1, pipe2))

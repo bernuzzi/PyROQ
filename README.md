@@ -9,18 +9,24 @@ the package can be installed using the command:
 
     python setup.py install
 
-Once  `PyROQ` is  installed, a simple example can be run by:
+Once  `PyROQ` is  installed, it is possible to construct an ROQ approximant through a configuration file and running the main routine of the package:
 
-    python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
-    
-If MPI-based parallelisation is requested, the command can be modified as follows:
-    
-    mpiexec -n [n-tasks] python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
-    
-Where `[n-tasks]`  corresponds to the requested number of parallel tasks. Moreover, the config file should specify the related flag `parallel=2` for MPI-based parallelisation.  
-The user can see the full list  of options typing:
+    python -m PyROQ --config-file config.ini
+
+The user can see the full list  of options at:
 
     python -m PyROQ --help
+
+A simple example can be run by:
+
+    python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+
+The debugging mode can be activated including the `--debug` flag.
+For MPI-based parallelisation, the command can be modified as follows:
+    
+    mpiexec -n NTASKS python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+    
+Where `NTASKS`  corresponds to the requested number of parallel tasks. Moreover, the config file should specify the related flag `parallel=2` for MPI-based parallelisation.  
         
 # Dependencies
 
