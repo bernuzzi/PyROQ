@@ -2,7 +2,7 @@
 This repository implements a streamlined version of the PyROQ code, branched in March 2022 from the [main repository](https://github.com/qihongcat/PyROQ).
 Please cite the [PyROQ paper](https://arxiv.org/abs/2009.13812) if you use this code in your research. 
 
-# Usage
+# Installation and usage
 
 Starting from the `PyROQ` location, 
 the package can be installed using the command:
@@ -11,7 +11,7 @@ the package can be installed using the command:
 
 Once  `PyROQ` is  installed, a simple example can be run by:
 
-    python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+    python -m PyROQ --config-file PyROQ/config_files/test_config_IMRPv2_GW150914_LVK.ini
     
 If MPI-based parallelisation is requested, the command can be modified as follows:
     
@@ -21,6 +21,10 @@ Where `[n-tasks]`  corresponds to the requested number of parallel tasks. Moreov
 The user can see the full list  of options typing:
 
     python -m PyROQ --help
+        
+# Output
+
+??? (logger, plots, data).
         
 # Dependencies
 
