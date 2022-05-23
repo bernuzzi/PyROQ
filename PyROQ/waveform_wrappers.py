@@ -62,7 +62,6 @@ try:
             self.approximant = approximant
 
             #FIXME: for LAL waveforms, additional_waveform_params is currently ignored
-#            self.waveform_params = lal.CreateDict()
 
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
             
