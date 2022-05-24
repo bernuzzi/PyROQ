@@ -85,7 +85,7 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
     plt.ylabel('$\mathrm{\Re[h_+]}$', fontsize=labels_fontsize)
     plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
     plt.legend(loc='best')
-    plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparison_hp_real_{}.pdf'.format(term)), bbox_inches='tight')
+    plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hp_real_{}.pdf'.format(term)), bbox_inches='tight')
 
     plt.figure(figsize=(8,5))
     if term == 'lin':
@@ -99,7 +99,7 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
     plt.ylabel('$\mathrm{\Re[h_{\\times}]}$', fontsize=labels_fontsize)
     plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
     plt.legend(loc='best')
-    plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparison_hc_real_{}.pdf'.format(term)), bbox_inches='tight')
+    plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
     if term == 'lin':
         plt.figure(figsize=(8,5))
@@ -110,7 +110,7 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
         plt.ylabel('$\Im[h_+]$', fontsize=labels_fontsize)
         plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
-        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
+        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hp_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
         plt.plot(freq, np.imag(hc),     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
@@ -120,7 +120,7 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
         plt.ylabel('$\Im[h_{\\times}]$', fontsize=labels_fontsize)
         plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
-        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
+        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
     else:
         plt.figure(figsize=(8,5))
@@ -131,7 +131,7 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
         plt.ylabel('$\Re[h_+ \, {h}^*_{\\times}]$', fontsize=labels_fontsize)
         plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
         plt.legend(loc='best')
-        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
+        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
 
         plt.figure(figsize=(8,5))
         plt.plot(   freq,            rep_error_hphc,            color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
@@ -253,7 +253,7 @@ def test_roq_error(b, emp_nodes, term, pyroq):
 
     return
 
-def histogram_basis_params(params_basis, outputdir, i2n):
+def histogram_basis_params(params_basis, outputdir, i2n, term):
 
     p = {}
     for i,k in i2n.items():
@@ -264,5 +264,5 @@ def histogram_basis_params(params_basis, outputdir, i2n):
         plt.figure()
         sns.displot(p[k], color='darkred')
         plt.xlabel(k, fontsize=labels_fontsize)
-        plt.savefig(os.path.join(outputdir,'Plots/Basis_parameters_{}.pdf'.format(k)), bbox_inches='tight')
+        plt.savefig(os.path.join(outputdir,'Plots/Basis_parameters/Basis_parameters_{}_{}.pdf'.format(term, k)), bbox_inches='tight')
         plt.close()

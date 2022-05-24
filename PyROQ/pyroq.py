@@ -254,26 +254,27 @@ class PyROQ:
         logger.info('Maximum iterations : {}'.format(self.n_pre_basis-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
         logger.info('')
 
-        k = 0
-        while(residual_modula[-1] > tolerance_pre):
-            
-            # Generate n_pre_basis_search_iter random points.
-            paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
-            
-            if(self.timing): execution_time_new_pre_basis_element = time.time()
-            # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
-            params_new, rm_new = self.search_new_basis_element(paramspoints, known_basis, term)
-            if(self.timing): logger.info('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, (time.time() - execution_time_new_pre_basis_element)/60.0))
-            logger.info('Pre-selection iteration: {}'.format(k+1) + ' -- Largest projection error: {}'.format(rm_new))
-
-            # The worst represented waveform becomes the new basis element.
-            known_basis, params = self.add_new_element_to_basis(params_new, known_basis, params, term)
-            residual_modula     = np.append(residual_modula, rm_new)
-
-            # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
-            if((self.n_pre_basis > 2) and (len(known_basis[:,0]) >= self.n_pre_basis)): break
-            else                                                                      : k = k+1
+        if not(self.n_pre_basis==2):
+            k = 0
+            while(residual_modula[-1] > tolerance_pre):
                 
+                # Generate n_pre_basis_search_iter random points.
+                paramspoints = self.generate_params_points(self.n_pre_basis_search_iter)
+                
+                if(self.timing): execution_time_new_pre_basis_element = time.time()
+                # From the n_pre_basis_search_iter randomly generated points, select the worst represented waveform corresponding to that point (i.e. with the largest residuals after basis projection).
+                params_new, rm_new = self.search_new_basis_element(paramspoints, known_basis, term)
+                if(self.timing): logger.info('Timing: pre-selection basis {} iteration, generating {} waveforms with parallel={} [minutes]: {}'.format(k+1, self.n_pre_basis_search_iter, self.parallel, (time.time() - execution_time_new_pre_basis_element)/60.0))
+                logger.info('Pre-selection iteration: {}'.format(k+1) + ' -- Largest projection error: {}'.format(rm_new))
+
+                # The worst represented waveform becomes the new basis element.
+                known_basis, params = self.add_new_element_to_basis(params_new, known_basis, params, term)
+                residual_modula     = np.append(residual_modula, rm_new)
+
+                # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
+                if(len(known_basis[:,0]) >= self.n_pre_basis): break
+                else                                         : k = k+1
+
         # Store the pre-selected basis.
         np.save(file_basis,  known_basis)
         np.save(file_params, params     )

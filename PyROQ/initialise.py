@@ -192,6 +192,8 @@ def read_config(config_file):
     if not os.path.exists(directory):
         os.makedirs(directory)
         os.makedirs(os.path.join(directory, 'Plots'))
+        os.makedirs(os.path.join(directory, 'Plots/Basis_parameters'))
+        os.makedirs(os.path.join(directory, 'Plots/Waveform_comparisons'))
         os.makedirs(os.path.join(directory, 'ROQ_data'))
         os.makedirs(os.path.join(directory, 'ROQ_data/Linear'))
         os.makedirs(os.path.join(directory, 'ROQ_data/Quadratic'))

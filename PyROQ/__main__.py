@@ -149,7 +149,7 @@ if __name__ == '__main__':
             logger.info('')
 
             # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
-            post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n)
+            post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n, term)
 
             # Validation tests.
             post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
