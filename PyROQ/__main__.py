@@ -139,13 +139,19 @@ if __name__ == '__main__':
                 data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
 
             # Output the basis reduction factor.
-            logger.info('Results')
+            logger.info('')
+            logger.info('')
+            logger.info('#########################')
+            logger.info('# \u001b[\u001b[38;5;39mResults {} iteration\u001b[0m #'.format(term))
+            logger.info('#########################')
+            logger.info('')
             logger.info('{} basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(run_type, len(freq), len(data[run_type]['{}_f'.format(term)]), len(freq)/len(data[run_type]['{}_f'.format(term)])))
+            logger.info('')
 
             # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
             post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n)
 
-            # Surrogate tests.
+            # Validation tests.
             post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
 
             # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.

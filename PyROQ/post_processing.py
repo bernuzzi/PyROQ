@@ -171,10 +171,10 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
 def test_roq_error(b, emp_nodes, term, pyroq):
     
     # Initialise structures
-    nsamples  = pyroq.n_tests_post
-    ndim      = len(emp_nodes)
-    surros_hp = np.zeros(nsamples)
-    surros_hc = np.zeros(nsamples)
+    nsamples = pyroq.n_tests_post
+    ndim     = len(emp_nodes)
+    eie_hp   = np.zeros(nsamples)
+    eie_hc   = np.zeros(nsamples)
     
     # Draw random test points
     paramspoints = pyroq.generate_params_points(npts=nsamples)
@@ -184,15 +184,19 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         tol = pyroq.tolerance_lin
         pass
     elif term == 'qua':
-        surros_hphc = np.zeros(nsamples)
-        tol = pyroq.tolerance_qua
+        eie_hphc = np.zeros(nsamples)
+        tol      = pyroq.tolerance_qua
     else:
         raise TermError
     
     # Start looping over test points
-    logger.info('Starting surrogate tests {} iteration'.format(term))
+    logger.info('###########################################')
+    logger.info('# \u001b[\u001b[38;5;39mStarting validation tests {} iteration\u001b[0m #'.format(term))
+    logger.info('###########################################')
+    logger.info('')
     logger.info('Validation set size : {}'.format(nsamples))
     logger.info('Tolerance           : {}'.format(tol))
+    logger.info('')
 
     for i,paramspoint in enumerate(paramspoints):
         
@@ -216,35 +220,36 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         hc_rep    = np.dot(b,hc_emp)
 
         # Compute the representation error. This is the same measure employed to stop adding elements to the basis.
-        surros_hp[i] = 1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF)
-        surros_hc[i] = 1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF)
+        eie_hp[i] = 2. * (1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF))
+        eie_hc[i] = 2. * (1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF))
         if term == 'qua':
-            surros_hphc[i] = 1 - linear_algebra.scalar_product(hphc, hphc_rep, pyroq.deltaF)
+            eie_hphc[i] = 2. * (1 - linear_algebra.scalar_product(hphc, hphc_rep, pyroq.deltaF))
 
-        # If a test case exceeds the error, let the user know. The tolerance is stricter by 0.5 on (1-<h|h_ROQ>) compared to the one set in the run on <dh|dh>, because <dh|dh> = 2(1-<h|h_ROQ>), where dh = h - h_ROQ. Also, print typical test result every 100 steps.
-        np.set_printoptions(suppress=True)
-        if (surros_hp[i] > tol*0.5):
-            logger.info('h_+     above tolerance: Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hp[i])+' Parameters: {}'.format(paramspoints[i]))
-        if (surros_hc[i] > tol*0.5):
-            logger.info('h_x     above tolerance: Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hc[i])+' Parameters: {}'.format(paramspoints[i]))
-#                if ((term == 'qua') and (surros_hphc[i] > tol)):
-#                    print("h_+ h_x above tolerance: Iter: ", i, "Surrogate value: ", surros_hphc[i], "Parameters: ", paramspoints[i])
-        if i%100==0:
-            logger.info('h_+     rolling check (every 100 steps): Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hp[i]))
-            logger.info('h_x     rolling check (every 100 steps): Iter: {}'.format(i)+' Surrogate value: {}'.format(surros_hc[i]))
+        # If a test case exceeds the error, let the user know. Using <dh|dh> = 2(1-<h|h_ROQ>), where dh = h - h_ROQ. Also, print typical test result every 100 steps.
+#        np.set_printoptions(suppress=True)
+#        if (eie_hp[i] > tol):
+#            logger.info('h_+     above tolerance: Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hp[i])+' Parameters: {}'.format(paramspoints[i]))
+#        if (eie_hc[i] > tol):
+#            logger.info('h_x     above tolerance: Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hc[i])+' Parameters: {}'.format(paramspoints[i]))
+#                if ((term == 'qua') and (eie_hphc[i] > tol)):
+#                    print("h_+ h_x above tolerance: Iter: ", i, "Interpolation error: ", eie_hphc[i], "Parameters: ", paramspoints[i])
+#        if i%100==0:
+#            logger.info('h_+     rolling check (every 100 steps): Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hp[i]))
+#            logger.info('h_x     rolling check (every 100 steps): Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hc[i]))
 #                    if (term == 'qua'):
-#                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Surrogate value: ", surros_hphc[i])
+#                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Interpolation error: ", eie_hphc[i])
 
     # Plot the test results
     plt.figure(figsize=(8,5))
-    plt.semilogy(surros_hp, 'x', color='darkred',    label='$\Re[h_+]$')
-#        plt.semilogy(surros_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
-#        if term == 'qua':
-#            plt.semilogy(surros_hphc,'o', label='h_+ * conj(h_x)')
+    plt.semilogy(eie_hp, 'x', color='darkred',    label='$\Re[h_+]$')
+    plt.semilogy(eie_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
+#    if term == 'qua':
+#        plt.semilogy(eie_hphc,'o', label='h_+ * conj(h_x)')
+    plt.axhline(tol, label='$\mathrm{Tolerance}$', c='k', ls='dashed', lw=0.9)
     plt.xlabel('$\mathrm{Number \,\, of \,\, Random \,\, Test \,\, Points}$', fontsize=labels_fontsize)
-    plt.ylabel('$\mathrm{Surrogate \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+    plt.ylabel('$\mathrm{Interpolation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
     plt.legend(loc='best')
-    plt.savefig(os.path.join(pyroq.outputdir,'Plots/Surrogate_errors_random_test_points_{}.pdf'.format(term)), bbox_inches='tight')
+    plt.savefig(os.path.join(pyroq.outputdir,'Plots/Interpolation_errors_random_test_points_{}.pdf'.format(term)), bbox_inches='tight')
 
     return
 
