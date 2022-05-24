@@ -244,9 +244,15 @@ class PyROQ:
             raise TermError
     
         # This block generates a basis of dimension n_pre_basis.
-        logger.info('Starting preselection {} iteration (with {} random points at each iteration)'.format(term, self.n_pre_basis_search_iter))
+        logger.info('')
+        logger.info('#############################')
+        logger.info('# \u001b[38;5;\u001b[38;5;39mStarting {} preselection\u001b[0m #'.format(term))
+        logger.info('#############################')
+        logger.info('')
+        logger.info('N points per iter  : {}'.format(self.n_pre_basis_search_iter))
         logger.info('Tolerance          : {}'.format(tolerance_pre))
         logger.info('Maximum iterations : {}'.format(self.n_pre_basis-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
+        logger.info('')
 
         k = 0
         while(residual_modula[-1] > tolerance_pre):
@@ -281,8 +287,12 @@ class PyROQ:
             Initialize parameter ranges and basis.
         """
         
-        logger.info('Initialising basis')
+        logger.info('######################')
+        logger.info('# \u001b[\u001b[38;5;39mInitialising basis\u001b[0m #')
+        logger.info('######################')
+        logger.info('')
         logger.info('nparams = {}'.format(self.nparams))
+        logger.info('')
         logger.info('index | name    | ( min - max )           ')
 
         self.params_low, self.params_hig = [], []
@@ -292,7 +302,8 @@ class PyROQ:
             self.params_hig.append(self.params_ranges[n][1])
             
             logger.info('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2), n.ljust(len('lambda1')), self.params_low[i], self.params_hig[i]))
-
+        logger.info('')
+        
         return 
 
     def construct_corner_basis(self, term):
@@ -422,10 +433,16 @@ class PyROQ:
             training_set_n_outlier = self.training_set_n_outliers[n_cycle]
             training_set_tol       = self.training_set_rel_tol[n_cycle] * tol
         
-            logger.info('Starting {}/{} enrichment loop'.format(n_cycle+1, self.n_training_set_cycles))
+            logger.info('')
+            logger.info('')
+            logger.info('################################')
+            logger.info('# \u001b[\u001b[38;5;39mStarting {}/{} enrichment loop\u001b[0m #'.format(n_cycle+1, self.n_training_set_cycles))
+            logger.info('################################')
+            logger.info('')
             logger.info('Training set size  : {}'.format(training_set_size))
             logger.info('Tolerance          : {}'.format(training_set_tol))
             logger.info('Tolerated outliers : {}'.format(training_set_n_outlier))
+            logger.info('')
 
             # Generate the parameters of this training cycle.
             paramspoints = self.generate_params_points(npts=training_set_size)
@@ -445,7 +462,8 @@ class PyROQ:
                 worst_represented_param_point, maximum_eie, outliers = self.search_worst_represented_point(outliers, basis_interpolant, emp_nodes, training_set_tol, term)
 
                 # Update the user on how many outliers remain.
-                logger.info('{}'.format(ndim)+' basis elements gave {} outliers with surrogate error > {} out of {} training points.'.format(len(outliers), training_set_tol, training_set_size))
+                logger.info('{}'.format(ndim)+' basis elements gave {} outliers with interpolation error > {} out of {} training points.'.format(len(outliers), training_set_tol, training_set_size))
+                logger.info('Largest interpolation error: {}'.format(maximum_eie))
 
                 # Enrich the basis with the worst outlier. Also store the maximum empirical interpolation error, to monitor the improvement in the interpolation.
                 if(len(outliers) > 0):

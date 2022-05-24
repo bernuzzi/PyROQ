@@ -23,7 +23,7 @@ A simple example can be run by:
     python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
 
 The debugging mode can be activated including the `--debug` flag.
-For MPI-based parallelisation, the command can be modified as follows:
+For MPI-based parallelisation, the command should be modified as follows:
     
     mpiexec -n NTASKS python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
     
@@ -32,7 +32,13 @@ Moreover, the config file should specify the related flag `parallel=2` for MPI-b
         
 # Output
 
-??? (logger, plots, data).
+The run directory will automatically contain a copy of the configuration file, git information and the screen output, stored under `PyROQ.log`.
+Preselection basis and related parameters, together with the enriched basis, its related parameters, the basis interpolant and empirical nodes are stored at each step of the enrichment loop under the `ROQ_data` directory.
+Several diagnostic plots (basis parameters, outliers and error evolution, test waveform comparison and validation tests) are stored under the `Plots` directory.
+
+# Algorithm description
+
+MISSING
         
 # Dependencies
 

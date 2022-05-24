@@ -44,7 +44,7 @@ to be intended as part of the default value.
                timing                  Flag to activate timing profiling. Default: 0.
                show-plots              Flag to show produced plots. Default: 0.
                post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
-               random-seed             Initial seed for pseudo-random number generators. Default: 0.
+               random-seed             Initial seed for pseudo-random number generators. Default: 170817.
        
        **************************************************************************
        * Parameters to be passed to the [Parallel] section.                     *
@@ -222,7 +222,7 @@ def read_config(config_file):
                                                  'timing'                  : 0,
                                                  'show-plots'              : 0,
                                                  'post-processing-only'    : 0,
-                                                 'random-seed'             : 0,
+                                                 'random-seed'             : 170817,
                                                 }
     input_par['Parallel']                     = {
                                                  'parallel'                : 0,
@@ -236,9 +236,9 @@ def read_config(config_file):
                                                  'eccentricity'            : 0,
                                                  'mc-q-par'                : 1,
                                                  'spin-sph'                : 0,
-                                                 'f-min'                   : 20,
-                                                 'f-max'                   : 1024,
-                                                 'seglen'                  : 4,
+                                                 'f-min'                   : 20.0,
+                                                 'f-max'                   : 2048.0,
+                                                 'seglen'                  : 128,
                                                 }
     input_par['ROQ']                          = {
                                                  'basis-lin': 1,

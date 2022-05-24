@@ -70,16 +70,16 @@ if __name__ == '__main__':
     
     # Get parallel processing pool
     if (int(config_pars['Parallel']['parallel'])==0):
-        logger.info('Initialising serial pool')
+        logger.info('Initialising serial pool.\n')
         from .parallel import initialize_serial_pool
         Pool = initialize_serial_pool()
     elif (int(config_pars['Parallel']['parallel'])==1):
-        logger.info('Initialising multiprocessing processsing pool')
+        logger.info('Initialising multiprocessing processsing pool.\n')
         from .parallel import initialize_mp_pool, close_pool_mp
         Pool = initialize_mp_pool(int(config_pars['Parallel']['n-processes']))
         close_pool = close_pool_mp
     elif (int(config_pars['Parallel']['parallel'])==2):
-        logger.info('Initialising MPI-based processing pool')
+        logger.info('Initialising MPI-based processing pool.\n')
         from .parallel import initialize_mpi_pool, close_pool_mpi
         Pool = initialize_mpi_pool()
         close_pool = close_pool_mpi
@@ -88,12 +88,12 @@ if __name__ == '__main__':
 
     # Set random seed
     if (int(config_pars['Parallel']['parallel'])<2):
-        logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
+        logger.info('Setting random seed to {}\n'.format(config_pars['I/O']['random-seed']))
         np.random.seed(int(config_pars['I/O']['random-seed']))
     else:
         # Avoid generation of identical random numbers in different processes
         if Pool.is_master():
-            logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
+            logger.info('Setting random seed to {}\n'.format(config_pars['I/O']['random-seed']))
             np.random.seed(int(config_pars['I/O']['random-seed']))
         else:
             np.random.seed(int(config_pars['I/O']['random-seed'])+Pool.rank)
@@ -139,13 +139,19 @@ if __name__ == '__main__':
                 data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
 
             # Output the basis reduction factor.
-            logger.info('Results')
+            logger.info('')
+            logger.info('')
+            logger.info('#########################')
+            logger.info('# \u001b[\u001b[38;5;39mResults {} iteration\u001b[0m #'.format(term))
+            logger.info('#########################')
+            logger.info('')
             logger.info('{} basis reduction factor: (Original freqs [{}]) / (New freqs [{}]) = {}'.format(run_type, len(freq), len(data[run_type]['{}_f'.format(term)]), len(freq)/len(data[run_type]['{}_f'.format(term)])))
+            logger.info('')
 
             # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
             post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n)
 
-            # Surrogate tests.
+            # Validation tests.
             post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
 
             # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
