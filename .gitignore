@@ -3,3 +3,5 @@ dist
 PyROQ.egg-info
 build
 .DS_Store
+config_files/seglen_computation.py
+config_files/PE_config_GW170817.sub
