@@ -27,10 +27,10 @@ def compute_mismatch_of_all_terms(paramspoint, b, emp_nodes, term, pyroq):
 
     # Compute quadratic terms and interpolant representations
     if term == 'qua':
-        hphc     = np.real(hp * np.conj(hc))
-        hphc     = linear_algebra.normalise_vector(hphc, pyroq.deltaF)
-        hphc_emp = hphc[emp_nodes]
-        hphc_rep = np.dot(b,hphc_emp)
+#        hphc     = np.real(hp * np.conj(hc))
+#        hphc     = linear_algebra.normalise_vector(hphc, pyroq.deltaF)
+#        hphc_emp = hphc[emp_nodes]
+#        hphc_rep = np.dot(b,hphc_emp)
 
         hp, hc   = (np.absolute(hp))**2, (np.absolute(hc))**2
     
@@ -88,7 +88,7 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
     if   term == 'lin':
         pass
     elif term == 'qua':
-        hphc = np.real(hp * np.conj(hc))
+#        hphc = np.real(hp * np.conj(hc))
         hp   = (np.absolute(hp))**2
         hc   = (np.absolute(hc))**2
     else              :
@@ -101,11 +101,11 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
     diff_hc        = hc_rep - hc
     rep_error_hp   = diff_hp/np.sqrt(np.vdot(hp,hp))
     rep_error_hc   = diff_hc/np.sqrt(np.vdot(hc,hc))
-    if term == 'qua':
-        hphc_emp       = hphc[emp_nodes]
-        hphc_rep       = np.dot(b,hphc_emp)
-        diff_hphc      = hphc_rep - hphc
-        rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
+#    if term == 'qua':
+#        hphc_emp       = hphc[emp_nodes]
+#        hphc_rep       = np.dot(b,hphc_emp)
+#        diff_hphc      = hphc_rep - hphc
+#        rep_error_hphc = diff_hphc/np.sqrt(np.vdot(hphc,hphc))
 
     plt.figure(figsize=(8,5))
     if term == 'lin':
@@ -156,25 +156,25 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
         plt.legend(loc='best')
         plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hc_imag_{}.pdf'.format(term)), bbox_inches='tight')
 
-    else:
-        plt.figure(figsize=(8,5))
-        plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
-        plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
-        plt.scatter(freq[emp_nodes], hphc[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\Re[h_+ \, {h}^*_{\\times}]$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hphc_real_{}.pdf'.format(term)), bbox_inches='tight')
+#    else:
+#        plt.figure(figsize=(8,5))
+#        plt.plot(freq, hphc,     color='orangered', lw=1.3, alpha=0.8, ls='-',  label='$\mathrm{Full}$')
+#        plt.plot(freq, hphc_rep, color='black',     lw=0.8, alpha=1.0, ls='--', label='$\mathrm{ROQ}$' )
+#        plt.scatter(freq[emp_nodes], hphc[emp_nodes], marker='o', c='dodgerblue', s=10, label='$\mathrm{Empirical \,\, nodes}$')
+#        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+#        plt.ylabel('$\Re[h_+ \, {h}^*_{\\times}]$', fontsize=labels_fontsize)
+#        plt.title('$\mathrm{Waveform \,\, comparison \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+#        plt.legend(loc='best')
+#        plt.savefig(os.path.join(outputdir,'Plots/Waveform_comparisons/Waveform_comparison_hphc.pdf'), bbox_inches='tight')
 
-        plt.figure(figsize=(8,5))
-        plt.plot(   freq,            rep_error_hphc,            color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
-        plt.scatter(freq[emp_nodes], rep_error_hphc[emp_nodes], color='dodgerblue', marker='o', s=10,          label='$\mathrm{Empirical \,\, nodes}$')
-        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
-        plt.ylabel('$\mathrm{Fractional Representation Error}$', fontsize=labels_fontsize)
-        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
-        plt.legend(loc='best')
-        plt.savefig(os.path.join(outputdir,'Plots/Representation_error_hp_{}.pdf'.format(term)), bbox_inches='tight')
+#        plt.figure(figsize=(8,5))
+#        plt.plot(   freq,            rep_error_hphc,            color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+ \, {h}^*_{\\times}]$')
+#        plt.scatter(freq[emp_nodes], rep_error_hphc[emp_nodes], color='dodgerblue', marker='o', s=10,          label='$\mathrm{Empirical \,\, nodes}$')
+#        plt.xlabel('$\mathrm{Frequency}$', fontsize=labels_fontsize)
+#        plt.ylabel('$\mathrm{Fractional Representation Error}$', fontsize=labels_fontsize)
+#        plt.title('$\mathrm{Representation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)
+#        plt.legend(loc='best')
+#        plt.savefig(os.path.join(outputdir,'Plots/Representation_error_hphc.pdf'), bbox_inches='tight')
 
     plt.figure(figsize=(8,5))
     plt.plot(freq, np.real(rep_error_hp), color='dodgerblue', lw=1.3, alpha=1.0, ls='-', label='$\Re[h_+]$')
