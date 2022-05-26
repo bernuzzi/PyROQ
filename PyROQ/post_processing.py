@@ -1,11 +1,16 @@
 ## -*- coding: utf8 -*-
 #!/usr/bin/env python
 
+# General python imports
 import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns
 import logging
+from itertools import repeat
 
-from . import linear_algebra
+# Package internal imports
+from .         import linear_algebra
+from .parallel import eval_func_tuple
 
+# Global plotting settings
 plt.rcParams.update({'figure.max_open_warning': 0})
 matplotlib.rcParams['mathtext.fontset'] = 'stix'
 matplotlib.rcParams['font.family'] = 'STIXGeneral'
@@ -14,6 +19,35 @@ labels_fontsize = 16
 logger = logging.getLogger(__name__)
 
 ## Functions to test the performance of the waveform representation, using the interpolant built from the selected basis.
+
+def compute_mismatch_of_all_terms(paramspoint, b, emp_nodes, term, pyroq):
+    
+    # Generate test waveform
+    hp, hc = pyroq.paramspoint_to_wave(paramspoint, 'lin')
+
+    # Compute quadratic terms and interpolant representations
+    if term == 'qua':
+        hphc     = np.real(hp * np.conj(hc))
+        hphc     = linear_algebra.normalise_vector(hphc, pyroq.deltaF)
+        hphc_emp = hphc[emp_nodes]
+        hphc_rep = np.dot(b,hphc_emp)
+
+        hp, hc   = (np.absolute(hp))**2, (np.absolute(hc))**2
+    
+    hp, hc = linear_algebra.normalise_vector(hp, pyroq.deltaF), linear_algebra.normalise_vector(hc, pyroq.deltaF)
+
+    hp_emp    = hp[emp_nodes]
+    hp_rep    = np.dot(b,hp_emp)
+    hc_emp    = hc[emp_nodes]
+    hc_rep    = np.dot(b,hc_emp)
+
+    # Compute the representation error. This is the same measure employed to stop adding elements to the basis.
+    eie_hp = 2. * (1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF))
+    eie_hc = 2. * (1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF))
+#        if term == 'qua':
+#            eie_hphc = 2. * (1 - linear_algebra.scalar_product(hphc, hphc_rep, pyroq.deltaF))
+
+    return eie_hp, eie_hc
 
 #FIXME: either specialise this plots, or define a single function for all of them
 
@@ -168,13 +202,12 @@ def plot_representation_error(b, emp_nodes, paramspoint, term, outputdir, freq, 
 
     return
 
-def test_roq_error(b, emp_nodes, term, pyroq):
+def test_roq_error(b, emp_nodes, term, pyroq, Pool):
     
     # Initialise structures
     nsamples = pyroq.n_tests_post
-    ndim     = len(emp_nodes)
-    eie_hp   = np.zeros(nsamples)
-    eie_hc   = np.zeros(nsamples)
+    eies_hp   = np.zeros(nsamples)
+    eies_hc   = np.zeros(nsamples)
     
     # Draw random test points
     paramspoints = pyroq.generate_params_points(npts=nsamples)
@@ -184,7 +217,8 @@ def test_roq_error(b, emp_nodes, term, pyroq):
         tol = pyroq.tolerance_lin
         pass
     elif term == 'qua':
-        eie_hphc = np.zeros(nsamples)
+        # FIXME: currently unused
+        eies_hphc = np.zeros(nsamples)
         tol      = pyroq.tolerance_qua
     else:
         raise TermError
@@ -198,53 +232,35 @@ def test_roq_error(b, emp_nodes, term, pyroq):
     logger.info('Tolerance           : {}'.format(tol))
     logger.info('')
 
-    for i,paramspoint in enumerate(paramspoints):
-        
-        # Generate test waveform
-        hp, hc = pyroq.paramspoint_to_wave(paramspoint, 'lin')
+    xy = Pool.map(eval_func_tuple, zip(repeat(compute_mismatch_of_all_terms),
+                                                          paramspoints,
+                                                          repeat(b),
+                                                          repeat(emp_nodes),
+                                                          repeat(term),
+                                                          repeat(pyroq)
+                                                          ))
 
-        # Compute quadratic terms and interpolant representations
-        if term == 'qua':
-            hphc     = np.real(hp * np.conj(hc))
-            hphc     = linear_algebra.normalise_vector(hphc, pyroq.deltaF)
-            hphc_emp = hphc[emp_nodes]
-            hphc_rep = np.dot(b,hphc_emp)
-
-            hp, hc   = (np.absolute(hp))**2, (np.absolute(hc))**2
-        
-        hp, hc = linear_algebra.normalise_vector(hp, pyroq.deltaF), linear_algebra.normalise_vector(hc, pyroq.deltaF)
-
-        hp_emp    = hp[emp_nodes]
-        hp_rep    = np.dot(b,hp_emp)
-        hc_emp    = hc[emp_nodes]
-        hc_rep    = np.dot(b,hc_emp)
-
-        # Compute the representation error. This is the same measure employed to stop adding elements to the basis.
-        eie_hp[i] = 2. * (1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF))
-        eie_hc[i] = 2. * (1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF))
-        if term == 'qua':
-            eie_hphc[i] = 2. * (1 - linear_algebra.scalar_product(hphc, hphc_rep, pyroq.deltaF))
+    eies_hp = [x[0] for x in xy]
+    eies_hc = [x[1] for x in xy]
 
         # If a test case exceeds the error, let the user know. Using <dh|dh> = 2(1-<h|h_ROQ>), where dh = h - h_ROQ. Also, print typical test result every 100 steps.
 #        np.set_printoptions(suppress=True)
-#        if (eie_hp[i] > tol):
-#            logger.info('h_+     above tolerance: Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hp[i])+' Parameters: {}'.format(paramspoints[i]))
+#        if (eies_hp[i] > tol):
+#            logger.info('h_+     above tolerance: Iter: {}'.format(i)+' Interpolation error: {}'.format(eies_hp[i])+' Parameters: {}'.format(paramspoints[i]))
 #        if (eie_hc[i] > tol):
 #            logger.info('h_x     above tolerance: Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hc[i])+' Parameters: {}'.format(paramspoints[i]))
-#                if ((term == 'qua') and (eie_hphc[i] > tol)):
-#                    print("h_+ h_x above tolerance: Iter: ", i, "Interpolation error: ", eie_hphc[i], "Parameters: ", paramspoints[i])
+#                if ((term == 'qua') and (eies_hphc[i] > tol)):
+#                    print("h_+ h_x above tolerance: Iter: ", i, "Interpolation error: ", eies_hphc[i], "Parameters: ", paramspoints[i])
 #        if i%100==0:
-#            logger.info('h_+     rolling check (every 100 steps): Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hp[i]))
+#            logger.info('h_+     rolling check (every 100 steps): Iter: {}'.format(i)+' Interpolation error: {}'.format(eies_hp[i]))
 #            logger.info('h_x     rolling check (every 100 steps): Iter: {}'.format(i)+' Interpolation error: {}'.format(eie_hc[i]))
 #                    if (term == 'qua'):
-#                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Interpolation error: ", eie_hphc[i])
+#                        print("h_+ h_x rolling check (every 100 steps): Iter: ",             i, "Interpolation error: ", eies_hphc[i])
 
     # Plot the test results
     plt.figure(figsize=(8,5))
-    plt.semilogy(eie_hp, 'x', color='darkred',    label='$\Re[h_+]$')
-    plt.semilogy(eie_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
-#    if term == 'qua':
-#        plt.semilogy(eie_hphc,'o', label='h_+ * conj(h_x)')
+    plt.semilogy(eies_hp, 'x', color='darkred',    label='$\Re[h_+]$')
+    plt.semilogy(eies_hc, 'x', color='dodgerblue', label='$\Re[h_{\\times}]$')
     plt.axhline(tol, label='$\mathrm{Tolerance}$', c='k', ls='dashed', lw=0.9)
     plt.xlabel('$\mathrm{Number \,\, of \,\, Random \,\, Test \,\, Points}$', fontsize=labels_fontsize)
     plt.ylabel('$\mathrm{Interpolation \,\, Error \,\, (%s \,\, basis)}$'%(term), fontsize=labels_fontsize)

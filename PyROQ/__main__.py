@@ -4,7 +4,6 @@
 # General python imports
 import multiprocessing as mp, numpy as np, os, sys, random, time, warnings
 from optparse import OptionParser
-from itertools import repeat
 
 # Package internal imports
 from . import initialise, post_processing
@@ -70,33 +69,36 @@ if __name__ == '__main__':
     
     # Get parallel processing pool
     if (int(config_pars['Parallel']['parallel'])==0):
-        logger.info('Initialising serial pool.\n')
+        logger.info('Initialising serial pool.')
         from .parallel import initialize_serial_pool
         Pool = initialize_serial_pool()
     elif (int(config_pars['Parallel']['parallel'])==1):
-        logger.info('Initialising multiprocessing processsing pool.\n')
+        logger.info('Initialising multiprocessing processsing pool.')
         from .parallel import initialize_mp_pool, close_pool_mp
         Pool = initialize_mp_pool(int(config_pars['Parallel']['n-processes']))
         close_pool = close_pool_mp
     elif (int(config_pars['Parallel']['parallel'])==2):
-        logger.info('Initialising MPI-based processing pool.\n')
+        logger.info('Initialising MPI-based processing pool.')
         from .parallel import initialize_mpi_pool, close_pool_mpi
         Pool = initialize_mpi_pool()
         close_pool = close_pool_mpi
     else:
         raise ValueError("Unable to initialise parallelisation method. Use parallel=0 for serial, parallel=1 for multiprocessing or parallel=2 for MPI.")
+    logger.info('')
 
     # Set random seed
     if (int(config_pars['Parallel']['parallel'])<2):
-        logger.info('Setting random seed to {}\n'.format(config_pars['I/O']['random-seed']))
+        logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
         np.random.seed(int(config_pars['I/O']['random-seed']))
     else:
         # Avoid generation of identical random numbers in different processes
         if Pool.is_master():
-            logger.info('Setting random seed to {}\n'.format(config_pars['I/O']['random-seed']))
             np.random.seed(int(config_pars['I/O']['random-seed']))
+            logger.info('Setting random seed to {}'.format(config_pars['I/O']['random-seed']))
         else:
             np.random.seed(int(config_pars['I/O']['random-seed'])+Pool.rank)
+            logger.info('Setting random seed to {}'.format(int(config_pars['I/O']['random-seed'])+Pool.rank))
+    logger.info('')
 
     # Open pool
     with Pool as pool:
@@ -152,7 +154,7 @@ if __name__ == '__main__':
             post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n, term)
 
             # Validation tests.
-            post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq)
+            post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq, pool)
 
             # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
             logger.info('Testing the waveform using the parameters:')
