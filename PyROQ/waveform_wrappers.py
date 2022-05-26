@@ -45,6 +45,7 @@ try:
 
     # Add the approximants that can be called
     approximants = []
+    approximants.append(lalsimulation.IMRPhenomD)
     approximants.append(lalsimulation.IMRPhenomPv2)
     approximants.append(lalsimulation.IMRPhenomPv3)
     approximants.append(lalsimulation.IMRPhenomPv3HM)
