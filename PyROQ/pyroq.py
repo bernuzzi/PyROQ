@@ -364,7 +364,7 @@ class PyROQ:
         """
             Generate the empirical interpolation nodes from a given basis.
             Follows the algorithm detailed in Ref. Phys. Rev. X 4, 031006, Sec.III.B and Appendix B.
-            See also arXiv:1712.08772v2 for a description.
+            See also arXiv:1210.0577 Appendix A.2 for a discretised version and arXiv:1712.08772v2 for a description.
         """
         
         # Initialise. The first point is chosen to maximise the first basis vector.
