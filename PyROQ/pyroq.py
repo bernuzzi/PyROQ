@@ -198,15 +198,18 @@ class PyROQ:
     def compute_new_element_residual_modulus_from_basis(self, paramspoint, known_basis, term):
 
         # Create and normalise element to be projected and initialise residual
-        h_to_proj, _ = self.paramspoint_to_wave(paramspoint, term)
-        h_to_proj    = linear_algebra.normalise_vector(h_to_proj, self.deltaF)
-        residual     = h_to_proj
-
-        #FIXME: this block has a large repetition with `gram_schmidt`, except for norm.
-        # Subtract the projection on the basis from the residual.
-        for k in np.arange(0,len(known_basis)):
-            residual -= linear_algebra.projection(known_basis[k],h_to_proj)
+        h_to_proj, _      = self.paramspoint_to_wave(paramspoint, term)
+        h_to_proj         = linear_algebra.normalise_vector(h_to_proj, self.deltaF)
         
+        # Compute the normalised projection of the element onto the basis.
+        basis_combination = np.zeros(len(h_to_proj),dtype=complex)
+        for k in np.arange(0,len(known_basis)):
+            basis_combination += linear_algebra.projection(known_basis[k],h_to_proj)
+        basis_combination = linear_algebra.normalise_vector(basis_combination, self.deltaF)
+
+        # Evaluate the residual.
+        residual = h_to_proj - basis_combination
+
         return linear_algebra.scalar_product(residual, residual, self.deltaF)
         
     def search_new_basis_element(self, paramspoints, known_basis, term):
