@@ -282,3 +282,11 @@ def histogram_basis_params(params_basis, outputdir, i2n, term):
         plt.xlabel(k, fontsize=labels_fontsize)
         plt.savefig(os.path.join(outputdir,'Plots/Basis_parameters/Basis_parameters_{}_{}.pdf'.format(term, k)), bbox_inches='tight')
         plt.close()
+
+def histogram_basis_params(frequencies, outputdir, term):
+    
+    plt.figure()
+    sns.displot(frequencies, color='darkred')
+    plt.xlabel('$\mathrm{f\,[Hz]}$', fontsize=labels_fontsize)
+    plt.savefig(os.path.join(outputdir,'Plots/Basis_parameters/Frequencies_{}.pdf'.format(term)), bbox_inches='tight')
+    plt.close()
