@@ -20,6 +20,7 @@ VersionError = ValueError('Unknown version requested.')
 warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
 debug=1
+if(debug): os.makedirs('Debug')
 
 # ROQ main
 class PyROQ:
@@ -426,14 +427,14 @@ class PyROQ:
                 plt.plot(np.real(known_basis[k]), label='basis element')
                 plt.xlim([0,150])
                 plt.legend()
-                plt.savefig('comparison_{}.png'.format(k))
+                plt.savefig('Debug/comparison_{}.png'.format(k))
 
                 plt.figure()
                 plt.plot(np.real(r),    label='interpolant')
                 plt.plot(np.argmax(r), np.real(r[np.argmax(r)]), 'ro')
                 plt.xlim([0,150])
                 plt.legend()
-                plt.savefig('residuals_{}.png'.format(k))
+                plt.savefig('Debug/residuals_{}.png'.format(k))
 
         # There should be no repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation. Check for them as a consistency check, since previous PyROQ implementations had them.
         if not(len(np.unique(emp_nodes))==len(emp_nodes)): raise ValueError("Repeated empirical interpolation node. The implementation of the algorithm is not correct?")
