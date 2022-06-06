@@ -41,7 +41,8 @@ def compute_mismatch_of_all_terms(paramspoint, b, emp_nodes, term, pyroq):
     hc_emp    = hc[emp_nodes]
     hc_rep    = np.dot(b,hc_emp)
 
-    # Compute the representation error. This is the same measure employed to stop adding elements to the basis.
+    # Compute the representation error. This is related to the same measure employed to stop adding elements to the basis.
+
     eie_hp = 2. * (1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF))
     eie_hc = 2. * (1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF))
 #        if term == 'qua':
@@ -219,7 +220,7 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
     elif term == 'qua':
         # FIXME: currently unused
         eies_hphc = np.zeros(nsamples)
-        tol      = pyroq.tolerance_qua
+        tol       = pyroq.tolerance_qua
     else:
         raise TermError
     

@@ -175,7 +175,7 @@ default_test_values = {
         'phiref'  : 0.6    ,
 }
 
-def read_config(config_file, logger):
+def read_config(config_file, directory, logger):
 
     if not config_file:
         parser.print_help()
@@ -184,19 +184,6 @@ def read_config(config_file, logger):
         parser.error('Config file {} not found.'.format(config_file))
     Config = configparser.ConfigParser()
     Config.read(config_file)
-
-    try:                                directory = str(Config.get('I/O','output'))
-    except(configparser.NoOptionError): directory = './'
-
-    # Create dir structure.
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-        os.makedirs(os.path.join(directory, 'Plots'))
-        os.makedirs(os.path.join(directory, 'Plots/Basis_parameters'))
-        os.makedirs(os.path.join(directory, 'Plots/Waveform_comparisons'))
-        os.makedirs(os.path.join(directory, 'ROQ_data'))
-        os.makedirs(os.path.join(directory, 'ROQ_data/Linear'))
-        os.makedirs(os.path.join(directory, 'ROQ_data/Quadratic'))
 
     # Store configuration file and git info to allow for run reproducibility.
     os.system('cp {} {}/.'.format(config_file, directory))

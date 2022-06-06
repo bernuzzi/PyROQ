@@ -68,6 +68,16 @@ if __name__ == '__main__':
     try:                                verbose_tmp   = int(Config.get('I/O','verbose'))
     except(configparser.NoOptionError): verbose_tmp   = 1
     
+    # Create dir structure.
+    if not os.path.exists(directory_tmp):
+        os.makedirs(directory_tmp)
+        os.makedirs(os.path.join(directory_tmp, 'Plots'))
+        os.makedirs(os.path.join(directory_tmp, 'Plots/Basis_parameters'))
+        os.makedirs(os.path.join(directory_tmp, 'Plots/Waveform_comparisons'))
+        os.makedirs(os.path.join(directory_tmp, 'ROQ_data'))
+        os.makedirs(os.path.join(directory_tmp, 'ROQ_data/Linear'))
+        os.makedirs(os.path.join(directory_tmp, 'ROQ_data/Quadratic'))
+
     # set logger(s)
     if debug_tmp:
         logger = set_logger(label='PyROQ',
@@ -79,7 +89,7 @@ if __name__ == '__main__':
                             outdir=directory_tmp,
                             verbose=bool(verbose_tmp),)
     
-    config_pars, params_ranges, test_values = initialise.read_config(config_file, logger)
+    config_pars, params_ranges, test_values = initialise.read_config(config_file, directory_tmp, logger)
 
     logger.info('')
     # Get parallel processing pool
