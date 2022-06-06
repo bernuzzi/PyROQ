@@ -41,6 +41,7 @@ to be intended as part of the default value.
 
                output                  Output directory. Default: './'.
                verbose                 Option to regulate logger verbose mode. Available options: [0,1, ???]. Default: 1.
+               debug                   Flag to activate debugging additional checks. Default: 0.
                timing                  Flag to activate timing profiling. Default: 0.
                show-plots              Flag to show produced plots. Default: 0.
                post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
@@ -219,6 +220,7 @@ def read_config(config_file):
     input_par['I/O']                           = {
                                                  'output'                  : './',
                                                  'verbose'                 : 1,
+                                                 'debug'                   : 0,
                                                  'timing'                  : 0,
                                                  'show-plots'              : 0,
                                                  'post-processing-only'    : 0,
@@ -303,6 +305,9 @@ def read_config(config_file):
     input_par['I/O']['run-types'] = []
     if(input_par['ROQ']['basis-lin']): input_par['I/O']['run-types'].append('linear')
     if(input_par['ROQ']['basis-qua']): input_par['I/O']['run-types'].append('quadratic')
+
+    if((input_par['I/O']['debug']) and not os.path.exists(os.path.join(directory, 'Debug'))):
+        os.makedirs(os.path.join(directory, 'Debug'))
 
     # ====================================#
     # Read training range and test point. #
