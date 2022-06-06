@@ -19,6 +19,8 @@ TermError    = ValueError('Unknown basis term requested.')
 VersionError = ValueError('Unknown version requested.')
 warnings.filterwarnings('ignore', category=np.VisibleDeprecationWarning)
 
+debug=1
+
 # ROQ main
 class PyROQ:
     """
@@ -379,7 +381,7 @@ class PyROQ:
             start_idx    = 1
         else:
             start_idx    = basis_len-1
-                
+
         # Iterate the above for all the other nodes.
         for k in np.arange(start_idx, basis_len):
             
@@ -387,6 +389,13 @@ class PyROQ:
             # This choice of coefficients ensures rescaling of the first basis element, such that the interpolant I_1 (I_1[i] = c1*known_basis[0,i]) computed at the first empirical interpolation node (I_1[emp_nodes[0]] = c1*known_basis[0, emp_nodes[0]]), is exactly equal to the second element computed at that point (known_basis[1,emp_nodes[0]]).
             Vtmp         = np.transpose(known_basis[0:k,emp_nodes])
             inverse_Vtmp = np.linalg.pinv(Vtmp)
+            
+            if(debug):
+                print(Vtmp.shape)
+                id = np.dot(Vtmp, inverse_Vtmp)
+                id_minus_id = id - np.identity(len(Vtmp[0]))
+                print('maximum inversion error', np.max(np.absolute(id_minus_id)))
+
             C            = np.dot(inverse_Vtmp, known_basis[k,emp_nodes])
 
             # Build the interpolant.
@@ -397,7 +406,27 @@ class PyROQ:
             
             emp_nodes    = np.append(emp_nodes, np.argmax(r))
             emp_nodes    = sorted(emp_nodes)
-        
+
+            if(debug):
+                import matplotlib.pyplot as plt
+
+                plt.figure()
+                plt.plot(np.real(interpolant),    label='interpolant')
+                plt.plot(np.real(known_basis[k]), label='basis element')
+                plt.xlim([0,150])
+                plt.legend()
+                plt.savefig('comparison_{}.png'.format(k))
+
+                plt.figure()
+                plt.plot(np.real(r),    label='interpolant')
+                plt.plot(np.argmax(r), np.real(r[np.argmax(r)]), 'ro')
+                plt.xlim([0,150])
+                plt.legend()
+                plt.savefig('residuals_{}.png'.format(k))
+
+                print('emp nodes:', emp_nodes)
+                print('new emp node:', np.argmax(r))
+
         # There should be no repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation. Check for them as a consistency check, since previous PyROQ implementations had them.
         if not(len(np.unique(emp_nodes))==len(emp_nodes)): raise ValueError("Repeated empirical interpolation node. The implementation of the algorithm is not correct?")
 
@@ -425,7 +454,7 @@ class PyROQ:
         else:
             raise TermError
 
-        maximum_eies, n_outliers = np.array([]), np.array([])
+        maximum_eies, n_outliers, emp_nodes = np.array([]), np.array([]), np.array([])
         # Start a loop over training cycles with varying training size, tolerance and number of allowed outliers.
         for n_cycle in range(self.n_training_set_cycles):
             
@@ -447,16 +476,19 @@ class PyROQ:
             # Generate the parameters of this training cycle.
             paramspoints = self.generate_params_points(npts=training_set_size)
             outliers     = paramspoints[:training_set_size]
-            emp_nodes    = np.array([])
+            
+            
+            # From the basis constructed above, extract: the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated); the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
             
             while(len(outliers) > training_set_n_outlier):
 
                 # Store the current basis and parameters at each step, as a backup.
                 np.save(file_basis,  known_basis)
                 np.save(file_params, known_params)
-
-                # From the basis constructed above, extract: the empirical interpolation nodes (i.e. the subset of frequencies on which the ROQ rule is evaluated); the basis interpolant, which allows to construct an arbitrary waveform at an arbitrary frequency point from the constructed basis.
-                basis_interpolant, emp_nodes = self.interpolant_and_empirical_nodes(known_basis, emp_nodes)
+                
+                # If no outliers were found at the previous iteration, hence no new basis elements have been added, there is no new empirical point to be constructed.
+                if not(len(emp_nodes)==len(known_basis)):
+                    basis_interpolant, emp_nodes = self.interpolant_and_empirical_nodes(known_basis, emp_nodes)
 
                 # Out of the remaining outliers, select the worst represented point.
                 worst_represented_param_point, maximum_eie, outliers = self.search_worst_represented_point(outliers, basis_interpolant, emp_nodes, training_set_tol, term)
@@ -466,7 +498,7 @@ class PyROQ:
                 logger.info('Largest interpolation error: {}'.format(maximum_eie))
 
                 # Enrich the basis with the worst outlier. Also store the maximum empirical interpolation error, to monitor the improvement in the interpolation.
-                if(len(outliers) > 0):
+                if(len(outliers) > training_set_n_outlier):
                     known_basis, known_params = self.add_new_element_to_basis(worst_represented_param_point, known_basis, known_params, term)
                     maximum_eies              = np.append(maximum_eies, maximum_eie)
                     n_outliers                = np.append(n_outliers  , len(outliers))
