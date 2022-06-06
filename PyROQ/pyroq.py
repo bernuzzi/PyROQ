@@ -391,7 +391,6 @@ class PyROQ:
             inverse_Vtmp = np.linalg.pinv(Vtmp)
             
             if(debug):
-                print(Vtmp.shape)
                 id = np.dot(Vtmp, inverse_Vtmp)
                 id_minus_id = id - np.identity(len(Vtmp[0]))
                 print('maximum inversion error', np.max(np.absolute(id_minus_id)))
@@ -425,7 +424,6 @@ class PyROQ:
                 plt.savefig('residuals_{}.png'.format(k))
 
                 print('emp nodes:', emp_nodes)
-                print('new emp node:', np.argmax(r))
 
         # There should be no repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation. Check for them as a consistency check, since previous PyROQ implementations had them.
         if not(len(np.unique(emp_nodes))==len(emp_nodes)): raise ValueError("Repeated empirical interpolation node. The implementation of the algorithm is not correct?")
