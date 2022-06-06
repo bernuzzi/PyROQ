@@ -71,6 +71,8 @@ to be intended as part of the default value.
        * Parameters to be passed to the [ROQ] section.                          *
        **************************************************************************
        
+               gram-schmidt            Flag to activate gram-schmidt orthonormalisation on a new basis element. Default: 1.
+       
                basis-lin               Flag to activate linear    basis construction. Default: 1.
                basis-qua               Flag to activate quadratic basis construction. Default: 1.
        
@@ -239,8 +241,11 @@ def read_config(config_file):
                                                  'seglen'                  : 128,
                                                 }
     input_par['ROQ']                          = {
-                                                 'basis-lin': 1,
-                                                 'basis-qua': 1,
+        
+                                                 'gram-schmidt'            : 1,
+                                                 
+                                                 'basis-lin'               : 1,
+                                                 'basis-qua'               : 1,
 
                                                  'tolerance-pre-basis-lin' : 1e-8,
                                                  'tolerance-pre-basis-qua' : 1e-10,

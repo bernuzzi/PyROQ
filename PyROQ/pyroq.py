@@ -53,6 +53,8 @@ class PyROQ:
         self.f_max                      = config_pars['Waveform_and_parametrisation']['f-max']
         self.deltaF                     = 1./config_pars['Waveform_and_parametrisation']['seglen']
         
+        self.gram_schmidt               = config_pars['ROQ']['gram-schmidt']
+        
         self.tolerance_pre_basis_lin    = config_pars['ROQ']['tolerance-pre-basis-lin']
         self.tolerance_pre_basis_qua    = config_pars['ROQ']['tolerance-pre-basis-qua']
         self.n_pre_basis_search_iter    = config_pars['ROQ']['n-pre-basis-search-iter']
@@ -188,9 +190,10 @@ class PyROQ:
         # Create new basis element.
         hp_new, _ = self.paramspoint_to_wave(new_basis_param_point, term)
 
-        # Orthogonalise, i.e. extract the linearly independent part of the waveform, and normalise the new element, which constitutes a new basis element. Note: the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
-        basis_new = linear_algebra.gram_schmidt(known_basis, hp_new, self.deltaF)
-
+        # Orthogonalise, i.e. extract the linearly independent part of the waveform, and normalise the new element, which constitutes a new basis element. Note: when gram-schidtting, the new basis element is not a 'waveform', since subtraction of two waveforms does not generate a waveform.
+        if(self.gram_schmidt): basis_new = linear_algebra.gram_schmidt(known_basis, hp_new, self.deltaF)
+        else:                  basis_new = linear_algebra.normalise_vector(hp_new, self.deltaF)
+        
         # Append to basis.
         known_basis  = np.append(known_basis,  np.array([basis_new]),             axis=0)
         known_params = np.append(known_params, np.array([new_basis_param_point]), axis=0)
@@ -390,23 +393,32 @@ class PyROQ:
             Vtmp         = np.transpose(known_basis[0:k,emp_nodes])
             inverse_Vtmp = np.linalg.pinv(Vtmp)
             
+            C = np.dot(inverse_Vtmp, known_basis[k,emp_nodes])
+
+            # Build the interpolant.
+            interpolant = np.dot(np.transpose(known_basis[0:k,:]), C)
+            
+            # Compute the new empirical interpolation node and make sure frequencies are ordered.
+            # Ideally, the points are unique, but numerical error in matrix inversion can result in duplicates, especially for long segment lenghts.
+            r = np.absolute(interpolant - known_basis[k])
+            if(np.argmax(r) in emp_nodes): logger.info("WARNING: Duplicate empirical frequency point found. This won't prevent the construction of the basis, but is a sign of ill-conditioning of the basis matrix inversion. Probably implies sub-optimality in basis construction.")
+            # Quick and dirty fix: manually set to zero residuals at previous nodes, to avoid selecting duplicate points.
+            # FIXME: fix the matrix inversion.
+            for previous_node in emp_nodes: r[previous_node] = 0.0
+            new_emp_node = np.argmax(r)
+
+            emp_nodes = np.append(emp_nodes, new_emp_node)
+            emp_nodes = sorted(emp_nodes)
+
             if(debug):
+                
                 id = np.dot(Vtmp, inverse_Vtmp)
                 id_minus_id = id - np.identity(len(Vtmp[0]))
                 print('maximum inversion error', np.max(np.absolute(id_minus_id)))
 
-            C            = np.dot(inverse_Vtmp, known_basis[k,emp_nodes])
-
-            # Build the interpolant.
-            interpolant  = np.dot(np.transpose(known_basis[0:k,:]), C)
-            
-            # Compute the new empirical interpolation node and make sure frequencies are ordered.
-            r            = np.absolute(interpolant - known_basis[k])
-            
-            emp_nodes    = np.append(emp_nodes, np.argmax(r))
-            emp_nodes    = sorted(emp_nodes)
-
-            if(debug):
+                print('new emp node:', new_emp_node)
+                print('emp nodes:',    emp_nodes)
+                
                 import matplotlib.pyplot as plt
 
                 plt.figure()
@@ -422,8 +434,6 @@ class PyROQ:
                 plt.xlim([0,150])
                 plt.legend()
                 plt.savefig('residuals_{}.png'.format(k))
-
-                print('emp nodes:', emp_nodes)
 
         # There should be no repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation. Check for them as a consistency check, since previous PyROQ implementations had them.
         if not(len(np.unique(emp_nodes))==len(emp_nodes)): raise ValueError("Repeated empirical interpolation node. The implementation of the algorithm is not correct?")
