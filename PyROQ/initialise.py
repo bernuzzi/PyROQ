@@ -202,9 +202,14 @@ def read_config(config_file, logger):
     os.system('cp {} {}/.'.format(config_file, directory))
     store_git_info(directory)
 
+    logger.info('')
     logger.info('Reading config file: {}'.format(config_file)+'.')
     logger.info('With sections: '+str(Config.sections())+'.')
-    logger.info('Input parameters')
+    logger.info('')
+    logger.info('####################')
+    logger.info('# \u001b[\u001b[38;5;39mInput parameters\u001b[0m #')
+    logger.info('####################')
+    logger.info('')
     logger.info('I\'ll be running with the following values:')
 
     # ==========================================================#
@@ -267,7 +272,9 @@ def read_config(config_file, logger):
 
     max_len_keyword = len('n-pre-basis-search-iter')
     for section in sections:
-        logger.info('[{}]'.format(section))
+        logger.info('')
+        logger.info('[\u001b[\u001b[38;5;39m{}\u001b[0m]'.format(section))
+        logger.info('')
         for key in input_par[section]:
             try:
                 keytype = type(input_par[section][key])
@@ -311,7 +318,10 @@ def read_config(config_file, logger):
     # ====================================#
 
     params_ranges = {}
-    logger.info('[Training_range]')
+    logger.info('')
+    logger.info('[\u001b[\u001b[38;5;39mTraining_range\u001b[0m]')
+    logger.info('')
+
     for key in default_params_ranges:
         
         if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
@@ -387,6 +397,8 @@ def read_config(config_file, logger):
             test_values[key]=default_test_values[key]
         if key in params_ranges.keys():
             if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
-                warnings.warn('Chosen test value for {} outside training range.'.format(key))
+                logger.info('WARNING: Chosen test value for {} outside training range.'.format(key))
+
+    logger.info('')
 
     return input_par, params_ranges, test_values

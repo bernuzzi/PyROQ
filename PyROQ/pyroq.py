@@ -97,7 +97,7 @@ class PyROQ:
         self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
         self.set_training_range() # Declares: self.params_low, self.params_hig
 
-        logger.info('Initial number of frequency points: {}'.format(int((self.f_max-self.f_min)*self.deltaF)))
+        logger.info('Initial number of frequency points: {}'.format(int((self.f_max-self.f_min)*(1./self.deltaF))))
 
     ## Parameters transformations utils
 

@@ -80,7 +80,8 @@ if __name__ == '__main__':
                             verbose=bool(verbose_tmp),)
     
     config_pars, params_ranges, test_values = initialise.read_config(config_file, logger)
-    
+
+    logger.info('')
     # Get parallel processing pool
     if (int(config_pars['Parallel']['parallel'])==0):
         logger.info('Initialising serial pool.')
