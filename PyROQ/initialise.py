@@ -7,9 +7,6 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-import logging
-logger = logging.getLogger(__name__)
-
 def store_git_info(output):
 
     git_info = open(os.path.join(output, 'git_info.txt'), 'w')
@@ -178,7 +175,7 @@ default_test_values = {
         'phiref'  : 0.6    ,
 }
 
-def read_config(config_file):
+def read_config(config_file, logger):
 
     if not config_file:
         parser.print_help()

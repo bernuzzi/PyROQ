@@ -5,6 +5,11 @@
 import multiprocessing as mp, numpy as np, os, sys, random, time, warnings
 from optparse import OptionParser
 
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
+
 # Package internal imports
 from . import initialise, post_processing
 
@@ -50,22 +55,31 @@ if __name__ == '__main__':
     # Initialise and read config.
     parser      = OptionParser(initialise.usage)
     parser.add_option('--config-file',  type   = 'string',      metavar = 'config_file',    default = None)
-    parser.add_option('--debug',        action = 'store_true',  metavar = 'debug',          default = False)
     (opts,args) = parser.parse_args()
     config_file = opts.config_file
     
-    config_pars, params_ranges, test_values = initialise.read_config(config_file)
+    # FIXME: Manual and ugly. Assumes default values.
+    Config = configparser.ConfigParser()
+    Config.read(config_file)
+    try:                                debug_tmp     = int(Config.get('I/O','debug'))
+    except(configparser.NoOptionError): debug_tmp     = 0
+    try:                                directory_tmp = str(Config.get('I/O','output'))
+    except(configparser.NoOptionError): directory_tmp = './'
+    try:                                verbose_tmp   = int(Config.get('I/O','verbose'))
+    except(configparser.NoOptionError): verbose_tmp   = 1
     
     # set logger(s)
-    if opts.debug:
-        logger =    set_logger(label='PyROQ',
-                               level='DEBUG',
-                               outdir=config_pars['I/O']['output'],
-                               verbose=bool(config_pars['I/O']['verbose']),)
+    if debug_tmp:
+        logger = set_logger(label='PyROQ',
+                            level='DEBUG',
+                            outdir=directory_tmp,
+                            verbose=bool(verbose_tmp),)
     else:
-        logger =    set_logger(label='PyROQ',
-                               outdir=config_pars['I/O']['output'],
-                               verbose=bool(config_pars['I/O']['verbose']),)
+        logger = set_logger(label='PyROQ',
+                            outdir=directory_tmp,
+                            verbose=bool(verbose_tmp),)
+    
+    config_pars, params_ranges, test_values = initialise.read_config(config_file, logger)
     
     # Get parallel processing pool
     if (int(config_pars['Parallel']['parallel'])==0):
