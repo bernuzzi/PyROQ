@@ -242,12 +242,12 @@ class PyROQ:
     def construct_preselection_basis(self, known_basis, params, residual_modula, term):
         
         if term == 'lin':
-            file_basis    = self.outputdir+'/ROQ_data/Linear/preselection_linear_basis.npy'
-            file_params   = self.outputdir+'/ROQ_data/Linear/preselection_linear_basis_waveform_params.npy'
+            file_basis    = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
+            file_params   = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
             tolerance_pre = self.tolerance_pre_basis_lin
         elif term=='qua':
-            file_basis    = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_basis.npy'
-            file_params   = self.outputdir+'/ROQ_data/Quadratic/preselection_quadratic_basis_waveform_params.npy'
+            file_basis    = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis.npy'
+            file_params   = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
             tolerance_pre = self.tolerance_pre_basis_qua
         else:
             raise TermError
@@ -450,16 +450,16 @@ class PyROQ:
         # Initialise iteration and create paths in which to store the output.
         if term == 'lin':
             tol                  = self.tolerance_lin
-            file_interpolant     = self.outputdir+'/ROQ_data/Linear/basis_interpolant_linear.npy'
-            file_empirical_freqs = self.outputdir+'/ROQ_data/Linear/empirical_frequencies_linear.npy'
-            file_basis           = self.outputdir+'/ROQ_data/Linear/basis_linear.npy'
-            file_params          = self.outputdir+'/ROQ_data/Linear/basis_waveform_params_linear.npy'
+            file_interpolant     = self.outputdir+'/ROQ_data/linear/basis_interpolant_linear.npy'
+            file_empirical_freqs = self.outputdir+'/ROQ_data/linear/empirical_frequencies_linear.npy'
+            file_basis           = self.outputdir+'/ROQ_data/linear/basis_linear.npy'
+            file_params          = self.outputdir+'/ROQ_data/linear/basis_waveform_params_linear.npy'
         elif term == 'qua':
             tol                  = self.tolerance_qua
-            file_interpolant     = self.outputdir+'/ROQ_data/Quadratic/basis_interpolant_quadratic.npy'
-            file_empirical_freqs = self.outputdir+'/ROQ_data/Quadratic/empirical_frequencies_quadratic.npy'
-            file_basis           = self.outputdir+'/ROQ_data/Quadratic/basis_quadratic.npy'
-            file_params          = self.outputdir+'/ROQ_data/Quadratic/basis_waveform_params_quadratic.npy'
+            file_interpolant     = self.outputdir+'/ROQ_data/quadratic/basis_interpolant_quadratic.npy'
+            file_empirical_freqs = self.outputdir+'/ROQ_data/quadratic/empirical_frequencies_quadratic.npy'
+            file_basis           = self.outputdir+'/ROQ_data/quadratic/basis_quadratic.npy'
+            file_params          = self.outputdir+'/ROQ_data/quadratic/basis_waveform_params_quadratic.npy'
         else:
             raise TermError
 

@@ -48,7 +48,7 @@ to be intended as part of the default value.
        * Parameters to be passed to the [Parallel] section.                     *
        **************************************************************************
 
-               parallel                Flag to activate parallelisation. Allowed values: [0, 1, 2] corrsponding to [serial, multiprocessing, MPI]. Default: 0.
+               parallel                Option to activate parallelisation. Allowed values: [0, 1, 2] corrsponding to [serial, multiprocessing, MPI]. Default: 0.
                n-processes             Number of processes on which the parallelisation is carried on. Default: 4.
        
        **************************************************************************
@@ -291,6 +291,8 @@ def read_config(config_file, directory, logger):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
+
+    if((input_par['Parallel']['parallel']) and (input_par['Parallel']['n-processes']<2)): raise ValueError('When parallelisation is active, at least two processes have to be requested.')
 
     # Set run types
     input_par['I/O']['run-types'] = []
