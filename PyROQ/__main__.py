@@ -75,8 +75,8 @@ if __name__ == '__main__':
         os.makedirs(os.path.join(directory_tmp, 'Plots/Basis_parameters'))
         os.makedirs(os.path.join(directory_tmp, 'Plots/Waveform_comparisons'))
         os.makedirs(os.path.join(directory_tmp, 'ROQ_data'))
-        os.makedirs(os.path.join(directory_tmp, 'ROQ_data/Linear'))
-        os.makedirs(os.path.join(directory_tmp, 'ROQ_data/Quadratic'))
+        os.makedirs(os.path.join(directory_tmp, 'ROQ_data/linear'))
+        os.makedirs(os.path.join(directory_tmp, 'ROQ_data/quadratic'))
 
     # set logger(s)
     if debug_tmp:
