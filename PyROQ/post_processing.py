@@ -2,7 +2,7 @@
 #!/usr/bin/env python
 
 # General python imports
-import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns
+import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns, time
 import logging
 from itertools import repeat
 
@@ -233,6 +233,7 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
     logger.info('Tolerance           : {}'.format(tol))
     logger.info('')
 
+    if(pyroq.timing): execution_time_validation_tests = time.time()
     xy = Pool.map(eval_func_tuple, zip(repeat(compute_mismatch_of_all_terms),
                                                           paramspoints,
                                                           repeat(b),
@@ -240,6 +241,8 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
                                                           repeat(term),
                                                           repeat(pyroq)
                                                           ))
+    if(pyroq.timing): logger.info('Timing: validation tests, generating {} waveforms with parallel={} [minutes]: {}'.format(nsamples, pyroq.parallel, (time.time() - execution_time_validation_tests)/60.0))
+
 
     eies_hp = [x[0] for x in xy]
     eies_hc = [x[1] for x in xy]
