@@ -5,4 +5,4 @@ build
 .DS_Store
 config_files/seglen_computation.py
 config_files/PE_config_GW170817.sub
-config_files/Debug
+config_files/Runs_completed
