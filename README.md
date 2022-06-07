@@ -19,16 +19,19 @@ The user can see the full list  of options at:
 
 A simple example can be run by:
 
+    python -m PyROQ --config-file config_files/Test_configs/test_config_IMRPv2_GW150914_LVK.ini
 
-    python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+Other examples are available in the `config_files` directory, see the relative [README file](https://github.com/bernuzzi/PyROQ/blob/master/config_files/Test_configs/README.md).
 
 The debugging mode can be activated including the `--debug` flag.
 For MPI-based parallelisation, the command should be modified as follows:
     
-    mpiexec -n NTASKS python -m PyROQ --config-file config_files/test_config_IMRPv2_GW150914_LVK.ini
+    mpiexec -n NTASKS python -m PyROQ --config-file config_files/Test_configs/test_config_IMRPv2_GW150914_LVK.ini
     
 Where `NTASKS`  corresponds to the requested number of parallel tasks. 
 Moreover, the config file should specify the related flag `parallel=2` for MPI-based parallelisation.  
+
+
         
 # Output
 
