@@ -412,29 +412,9 @@ class PyROQ:
             emp_nodes = sorted(emp_nodes)
 
             if(self.debug):
-                
-                id = np.dot(Vtmp, inverse_Vtmp)
+                id          = np.dot(Vtmp, inverse_Vtmp)
                 id_minus_id = id - np.identity(len(Vtmp[0]))
                 print('maximum inversion error', np.max(np.absolute(id_minus_id)))
-
-                print('new emp node:', new_emp_node)
-                print('emp nodes:',    emp_nodes)
-                
-                import matplotlib.pyplot as plt
-
-                plt.figure()
-                plt.plot(np.real(interpolant),    label='interpolant')
-                plt.plot(np.real(known_basis[k]), label='basis element')
-                plt.xlim([0,150])
-                plt.legend()
-                plt.savefig(os.path.join(self.outputdir,'Debug/comparison_{}.png'.format(k)))
-
-                plt.figure()
-                plt.plot(np.real(r),    label='interpolant')
-                plt.plot(np.argmax(r), np.real(r[np.argmax(r)]), 'ro')
-                plt.xlim([0,150])
-                plt.legend()
-                plt.savefig(os.path.join(self.outputdir,'Debug/residuals_{}.png'.format(k)))
 
         # There should be no repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation. Check for them as a consistency check, since previous PyROQ implementations had them.
         if not(len(np.unique(emp_nodes))==len(emp_nodes)): raise ValueError("Repeated empirical interpolation node. The implementation of the algorithm is not correct?")

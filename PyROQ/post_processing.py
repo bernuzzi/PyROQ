@@ -2,7 +2,9 @@
 #!/usr/bin/env python
 
 # General python imports
-import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns, time
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt, numpy as np, os, seaborn as sns, time
 import logging
 from itertools import repeat
 
