@@ -179,9 +179,6 @@ if __name__ == '__main__':
             post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n, term)
             post_processing.histogram_frequencies(data[run_type]['{}_f'.format(term)], pyroq.outputdir, term)
 
-            # Validation tests.
-            post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq, pool)
-
             # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
             logger.info('Testing the waveform using the parameters:')
             parampoint_test = []
@@ -192,6 +189,9 @@ if __name__ == '__main__':
             parampoint_test = np.array(parampoint_test)
 
             post_processing.plot_representation_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term, pyroq.outputdir, freq, pyroq.paramspoint_to_wave)
+
+            # Validation tests.
+            post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq, pool)
 
     # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()
