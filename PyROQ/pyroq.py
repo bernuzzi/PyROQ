@@ -414,7 +414,9 @@ class PyROQ:
             if(self.debug):
                 id          = np.dot(Vtmp, inverse_Vtmp)
                 id_minus_id = id - np.identity(len(Vtmp[0]))
-                print('DEBUGGING: Maximum inversion error (should be 1e-16): ', np.max(np.absolute(id_minus_id)))
+                cond_num    = np.linalg.cond(Vtmp)
+                logger.info('DEBUGGING: Basis matrix maximum inversion error (should be O(1e-16) ): {}'.format(np.max(np.absolute(id_minus_id))))
+                logger.info('DEBUGGING: Basis matrix conditioning number     (should be O(1)     ): {}'.format(cond_num))
 
         # There should be no repetitions, otherwise duplicates on the frequency axis will bias likelihood computation during parameter estimation. Check for them as a consistency check, since previous PyROQ implementations had them.
         if not(len(np.unique(emp_nodes))==len(emp_nodes)): raise ValueError("Repeated empirical interpolation node. The implementation of the algorithm is not correct?")

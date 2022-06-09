@@ -6,3 +6,4 @@ build
 config_files/seglen_computation.py
 config_files/PE_config_GW170817.sub
 config_files/Runs_completed
+config_files/PE_run_GW170817_MLGW_BNS
