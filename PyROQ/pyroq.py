@@ -518,6 +518,9 @@ class PyROQ:
             # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, term)
         elif(self.start_values=='pre-selected-basis'):
+
+            logger.info('Loading previously computed pre-selected basis.')
+
             # Load a previously computed pre-selected basis
             if term == 'lin':
                 file_basis_stored  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
