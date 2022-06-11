@@ -30,7 +30,6 @@ class PyROQ:
     def __init__(self,
                  config_pars                      ,
                  params_ranges                    ,
-                 start_values               = None,
                  distance                   = 10  , # [Mpc]. Dummy value, distance does not enter the interpolants construction
                  additional_waveform_params = {}  , # Dictionary with any parameter needed for the waveform approximant
                  pool                       = None, # Parallel processing pool
@@ -39,7 +38,6 @@ class PyROQ:
         self.distance                   = distance
         self.additional_waveform_params = additional_waveform_params
         self.params_ranges              = params_ranges
-        self.start_values               = start_values
         
         # Read input params
         self.approximant                = config_pars['Waveform_and_parametrisation']['approximant']
@@ -53,6 +51,7 @@ class PyROQ:
         
         self.gram_schmidt               = config_pars['ROQ']['gram-schmidt']
         
+        self.start_values               = config_pars['ROQ']['pre-basis']
         self.tolerance_pre_basis_lin    = config_pars['ROQ']['tolerance-pre-basis-lin']
         self.tolerance_pre_basis_qua    = config_pars['ROQ']['tolerance-pre-basis-qua']
         self.n_pre_basis_search_iter    = config_pars['ROQ']['n-pre-basis-search-iter']
@@ -513,15 +512,28 @@ class PyROQ:
 
         # Initialise basis, either using a previously constructed one or pre-selecting one from corners of the parameter space plus a user-determined number of iterations..
         execution_time_presel_basis = time.time()
-        if(self.start_values==None):
+        if(self.start_values=='corners'):
             # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note that corner does not mean the N-D corners of the parameter space N-cube, but simply upper-lower bounds.
             initial_basis, initial_params, initial_residual_modula = self.construct_corner_basis(term)
             # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, term)
+        elif(self.start_values=='pre-selected-basis'):
+            # Load a previously computed pre-selected basis
+            if term == 'lin':
+                file_basis_stored  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
+                file_params_stored = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
+            elif term=='qua':
+                file_basis_stored  = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis.npy'
+                file_params_stored = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
+            else:
+                raise TermError
+        
+            # FIXME: store and load residual modula too
+            preselection_basis, preselection_params, preselection_residual_modula = np.load(file_basis_stored), np.load(file_params_stored), None
+        
         else:
-            # FIXME: load a previously constructed basis.
-            preselection_basis, preselection_params, preselection_residual_modula = None, None, None
-            raise Exception('User-input initial basis has not been implemented yet.')
+            raise ValueError('Pre-basis option not recognised.')
+        
         if(self.timing):
             execution_time_presel_basis = (time.time() - execution_time_presel_basis)/60.0
             logger.info('Timing: pre-selection basis with parallel={} [minutes]: {}'.format(self.parallel, execution_time_presel_basis))

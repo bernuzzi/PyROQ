@@ -137,13 +137,9 @@ if __name__ == '__main__':
                 pool.wait()
                 sys.exit(0)
 
-        # Point(s) of the parameter space on which to initialise the basis.
-        # If not passed by the user, defaults to upper/lower corner of the parameter space.
-        start_values = None
-
         # Initialise ROQ parameters and structures.
         from . import pyroq as roq
-        pyroq = roq.PyROQ(config_pars, params_ranges, start_values=start_values, pool=pool)
+        pyroq = roq.PyROQ(config_pars, params_ranges, pool=pool)
         freq  = pyroq.freq
 
         data = {}

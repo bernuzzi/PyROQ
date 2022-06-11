@@ -70,7 +70,7 @@ to be intended as part of the default value.
        **************************************************************************
        
                gram-schmidt            Flag to activate gram-schmidt orthonormalisation on a new basis element. Default: 0.
-       
+              
                basis-lin               Flag to activate linear    basis construction. Default: 1.
                basis-qua               Flag to activate quadratic basis construction. Default: 1.
        
@@ -78,6 +78,7 @@ to be intended as part of the default value.
                minimum-speedup         Minimum ratio of X:=len(Original-frequency-axis)/len(ROQ-frequency-axis), implying a minimum speedup during parameter estimation. The ROQ construction is interrupted if X < `minimum-speedup`. Default: 1.0.
                error-version           DESCRIPTION MISSING. Default: 'v1'.
            
+               pre-basis               Option determining the pre-basis computation. Available options: ['corners', 'pre-selected-basis']. Default: 'corners'.
                tolerance-pre-basis-lin Basis projection error threshold for linear basis elements. Default: 1e-8.
                tolerance-pre-basis-qua Same as above, for quadratic basis. Default: 1e-10.
                n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
@@ -238,6 +239,7 @@ def read_config(config_file, directory, logger):
                                                  'basis-lin'               : 1,
                                                  'basis-qua'               : 1,
 
+                                                 'pre-basis'               : 'corners',
                                                  'tolerance-pre-basis-lin' : 1e-8,
                                                  'tolerance-pre-basis-qua' : 1e-10,
                                                  'n-pre-basis'             : 80,
