@@ -533,7 +533,12 @@ class PyROQ:
         
             # FIXME: store and load residual modula too
             preselection_basis, preselection_params, preselection_residual_modula = np.load(file_basis_stored), np.load(file_params_stored), None
-        
+
+            logger.info('')
+            logger.info('########################################')
+            logger.info('# \u001b[\u001b[38;5;39mLoaded input pre-basis ({} elements)\u001b[0m #'.format(len(preselection_params)))
+            logger.info('########################################')
+            logger.info('')
         else:
             raise ValueError('Pre-basis option not recognised.')
         
