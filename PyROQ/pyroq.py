@@ -433,12 +433,14 @@ class PyROQ:
             tol                  = self.tolerance_lin
             file_interpolant     = self.outputdir+'/ROQ_data/linear/basis_interpolant_linear.npy'
             file_empirical_freqs = self.outputdir+'/ROQ_data/linear/empirical_frequencies_linear.npy'
+            file_empirical_nodes = self.outputdir+'/ROQ_data/linear/empirical_nodes_linear.npy'
             file_basis           = self.outputdir+'/ROQ_data/linear/basis_linear.npy'
             file_params          = self.outputdir+'/ROQ_data/linear/basis_waveform_params_linear.npy'
         elif term == 'qua':
             tol                  = self.tolerance_qua
             file_interpolant     = self.outputdir+'/ROQ_data/quadratic/basis_interpolant_quadratic.npy'
             file_empirical_freqs = self.outputdir+'/ROQ_data/quadratic/empirical_frequencies_quadratic.npy'
+            file_empirical_nodes = self.outputdir+'/ROQ_data/quadratic/empirical_nodes_quadratic.npy'
             file_basis           = self.outputdir+'/ROQ_data/quadratic/basis_quadratic.npy'
             file_params          = self.outputdir+'/ROQ_data/quadratic/basis_waveform_params_quadratic.npy'
         else:
@@ -500,8 +502,9 @@ class PyROQ:
         frequencies = self.freq[emp_nodes]
         np.save(file_interpolant,     basis_interpolant)
         np.save(file_empirical_freqs, frequencies)
-        
-        return frequencies, basis_interpolant, known_params, maximum_eies, n_outliers
+        np.save(file_empirical_nodes, emp_nodes)
+
+        return frequencies, emp_nodes, basis_interpolant, known_params, maximum_eies, n_outliers
 
     ## Main function handling the ROQ construction.
 
@@ -552,12 +555,12 @@ class PyROQ:
         d['{}_pre_res_mod'.format(term)] = preselection_residual_modula
 
         # Start the series of loops in which the pre-selected basis is enriched by the outliers found on ever increasing training sets.
-        frequencies, basis_interpolant, basis_parameters, maximum_eies, n_outliers = self.roqs(preselection_basis, preselection_params, term)
+        frequencies, emp_nodes, basis_interpolant, basis_parameters, maximum_eies, n_outliers = self.roqs(preselection_basis, preselection_params, term)
 
         # Internally store the output data for later testing.
         d['{}_interpolant'.format(term)] = basis_interpolant
         d['{}_f'.format(term)]           = frequencies
-        d['{}_emp_nodes'.format(term)]   = np.searchsorted(self.freq, d['{}_f'.format(term)])
+        d['{}_emp_nodes'.format(term)]   = emp_nodes
         d['{}_params'.format(term)]      = basis_parameters
         d['{}_max_eies'.format(term)]    = maximum_eies
         d['{}_n_outliers'.format(term)]  = n_outliers

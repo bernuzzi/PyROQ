@@ -160,8 +160,10 @@ if __name__ == '__main__':
                 # Read ROQ from previous run.
                 data[run_type]                                = {}
                 data[run_type]['{}_f'.format(term)]           = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_frequencies_{type}.npy'.format(type=run_type)))
+                # For the moment, preserve backwards compatibility with initial runs that did not store empirical nodes.
+                try:    data[run_type]['{}_emp_nodes'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_nodes_{type}.npy'.format(type=run_type)))
+                except: data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
                 data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
-                data[run_type]['{}_emp_nodes'.format(term)]   = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
                 data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
 
             # Output the basis reduction factor.
