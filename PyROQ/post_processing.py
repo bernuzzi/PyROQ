@@ -2,7 +2,9 @@
 #!/usr/bin/env python
 
 # General python imports
-import matplotlib, matplotlib.pyplot as plt, numpy as np, os, seaborn as sns
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt, numpy as np, os, seaborn as sns, time
 import logging
 from itertools import repeat
 
@@ -41,7 +43,8 @@ def compute_mismatch_of_all_terms(paramspoint, b, emp_nodes, term, pyroq):
     hc_emp    = hc[emp_nodes]
     hc_rep    = np.dot(b,hc_emp)
 
-    # Compute the representation error. This is the same measure employed to stop adding elements to the basis.
+    # Compute the representation error. This is related to the same measure employed to stop adding elements to the basis.
+
     eie_hp = 2. * (1 - linear_algebra.scalar_product(hp, hp_rep, pyroq.deltaF))
     eie_hc = 2. * (1 - linear_algebra.scalar_product(hc, hc_rep, pyroq.deltaF))
 #        if term == 'qua':
@@ -219,7 +222,7 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
     elif term == 'qua':
         # FIXME: currently unused
         eies_hphc = np.zeros(nsamples)
-        tol      = pyroq.tolerance_qua
+        tol       = pyroq.tolerance_qua
     else:
         raise TermError
     
@@ -232,6 +235,7 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
     logger.info('Tolerance           : {}'.format(tol))
     logger.info('')
 
+    if(pyroq.timing): execution_time_validation_tests = time.time()
     xy = Pool.map(eval_func_tuple, zip(repeat(compute_mismatch_of_all_terms),
                                                           paramspoints,
                                                           repeat(b),
@@ -239,6 +243,8 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
                                                           repeat(term),
                                                           repeat(pyroq)
                                                           ))
+    if(pyroq.timing): logger.info('Timing: validation tests, generating {} waveforms with parallel={} [minutes]: {}'.format(nsamples, pyroq.parallel, (time.time() - execution_time_validation_tests)/60.0))
+
 
     eies_hp = [x[0] for x in xy]
     eies_hc = [x[1] for x in xy]
@@ -282,3 +288,11 @@ def histogram_basis_params(params_basis, outputdir, i2n, term):
         plt.xlabel(k, fontsize=labels_fontsize)
         plt.savefig(os.path.join(outputdir,'Plots/Basis_parameters/Basis_parameters_{}_{}.pdf'.format(term, k)), bbox_inches='tight')
         plt.close()
+
+def histogram_frequencies(frequencies, outputdir, term):
+    
+    plt.figure()
+    sns.displot(frequencies, color='darkred')
+    plt.xlabel('$\mathrm{f\,[Hz]}$', fontsize=labels_fontsize)
+    plt.savefig(os.path.join(outputdir,'Plots/Frequencies_{}.pdf'.format(term)), bbox_inches='tight')
+    plt.close()

@@ -7,9 +7,6 @@ try:
 except ImportError:
     import ConfigParser as configparser
 
-import logging
-logger = logging.getLogger(__name__)
-
 def store_git_info(output):
 
     git_info = open(os.path.join(output, 'git_info.txt'), 'w')
@@ -41,6 +38,7 @@ to be intended as part of the default value.
 
                output                  Output directory. Default: './'.
                verbose                 Option to regulate logger verbose mode. Available options: [0,1, ???]. Default: 1.
+               debug                   Flag to activate debugging additional checks. Default: 0.
                timing                  Flag to activate timing profiling. Default: 0.
                show-plots              Flag to show produced plots. Default: 0.
                post-processing-only    Flag to skip interpolants constructions, running post-processing tests and plots. Default: 0.
@@ -50,7 +48,7 @@ to be intended as part of the default value.
        * Parameters to be passed to the [Parallel] section.                     *
        **************************************************************************
 
-               parallel                Flag to activate parallelisation. Allowed values: [0, 1, 2] corrsponding to [serial, multiprocessing, MPI]. Default: 0.
+               parallel                Option to activate parallelisation. Allowed values: [0, 1, 2] corrsponding to [serial, multiprocessing, MPI]. Default: 0.
                n-processes             Number of processes on which the parallelisation is carried on. Default: 4.
        
        **************************************************************************
@@ -71,6 +69,8 @@ to be intended as part of the default value.
        * Parameters to be passed to the [ROQ] section.                          *
        **************************************************************************
        
+               gram-schmidt            Flag to activate gram-schmidt orthonormalisation on a new basis element. Default: 0.
+              
                basis-lin               Flag to activate linear    basis construction. Default: 1.
                basis-qua               Flag to activate quadratic basis construction. Default: 1.
        
@@ -78,6 +78,7 @@ to be intended as part of the default value.
                minimum-speedup         Minimum ratio of X:=len(Original-frequency-axis)/len(ROQ-frequency-axis), implying a minimum speedup during parameter estimation. The ROQ construction is interrupted if X < `minimum-speedup`. Default: 1.0.
                error-version           DESCRIPTION MISSING. Default: 'v1'.
            
+               pre-basis               Option determining the pre-basis computation. Available options: ['corners', 'pre-selected-basis']. Default: 'corners'.
                tolerance-pre-basis-lin Basis projection error threshold for linear basis elements. Default: 1e-8.
                tolerance-pre-basis-qua Same as above, for quadratic basis. Default: 1e-10.
                n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
@@ -179,7 +180,7 @@ default_test_values = {
         'nrpmw-df2'   : 0.   ,
 }
 
-def read_config(config_file):
+def read_config(config_file, directory, logger):
 
     if not config_file:
         parser.print_help()
@@ -189,26 +190,18 @@ def read_config(config_file):
     Config = configparser.ConfigParser()
     Config.read(config_file)
 
-    try:                                directory = str(Config.get('I/O','output'))
-    except(configparser.NoOptionError): directory = './'
-
-    # Create dir structure.
-    if not os.path.exists(directory):
-        os.makedirs(directory)
-        os.makedirs(os.path.join(directory, 'Plots'))
-        os.makedirs(os.path.join(directory, 'Plots/Basis_parameters'))
-        os.makedirs(os.path.join(directory, 'Plots/Waveform_comparisons'))
-        os.makedirs(os.path.join(directory, 'ROQ_data'))
-        os.makedirs(os.path.join(directory, 'ROQ_data/Linear'))
-        os.makedirs(os.path.join(directory, 'ROQ_data/Quadratic'))
-
     # Store configuration file and git info to allow for run reproducibility.
     os.system('cp {} {}/.'.format(config_file, directory))
     store_git_info(directory)
 
+    logger.info('')
     logger.info('Reading config file: {}'.format(config_file)+'.')
     logger.info('With sections: '+str(Config.sections())+'.')
-    logger.info('Input parameters')
+    logger.info('')
+    logger.info('####################')
+    logger.info('# \u001b[\u001b[38;5;39mInput parameters\u001b[0m #')
+    logger.info('####################')
+    logger.info('')
     logger.info('I\'ll be running with the following values:')
 
     # ==========================================================#
@@ -221,6 +214,7 @@ def read_config(config_file):
     input_par['I/O']                           = {
                                                  'output'                  : './',
                                                  'verbose'                 : 1,
+                                                 'debug'                   : 0,
                                                  'timing'                  : 0,
                                                  'show-plots'              : 0,
                                                  'post-processing-only'    : 0,
@@ -243,9 +237,13 @@ def read_config(config_file):
                                                  'seglen'                  : 128,
                                                 }
     input_par['ROQ']                          = {
-                                                 'basis-lin': 1,
-                                                 'basis-qua': 1,
+        
+                                                 'gram-schmidt'            : 0,
+                                                 
+                                                 'basis-lin'               : 1,
+                                                 'basis-qua'               : 1,
 
+                                                 'pre-basis'               : 'corners',
                                                  'tolerance-pre-basis-lin' : 1e-8,
                                                  'tolerance-pre-basis-qua' : 1e-10,
                                                  'n-pre-basis'             : 80,
@@ -267,7 +265,9 @@ def read_config(config_file):
 
     max_len_keyword = len('n-pre-basis-search-iter')
     for section in sections:
-        logger.info('[{}]'.format(section))
+        logger.info('')
+        logger.info('[\u001b[\u001b[38;5;39m{}\u001b[0m]'.format(section))
+        logger.info('')
         for key in input_par[section]:
             try:
                 keytype = type(input_par[section][key])
@@ -298,17 +298,25 @@ def read_config(config_file):
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
 
+    if((input_par['Parallel']['parallel']) and (input_par['Parallel']['n-processes']<2)): raise ValueError('When parallelisation is active, at least two processes have to be requested.')
+
     # Set run types
     input_par['I/O']['run-types'] = []
     if(input_par['ROQ']['basis-lin']): input_par['I/O']['run-types'].append('linear')
     if(input_par['ROQ']['basis-qua']): input_par['I/O']['run-types'].append('quadratic')
+
+    if((input_par['I/O']['debug']) and not os.path.exists(os.path.join(directory, 'Debug'))):
+        os.makedirs(os.path.join(directory, 'Debug'))
 
     # ====================================#
     # Read training range and test point. #
     # ====================================#
 
     params_ranges = {}
-    logger.info('[Training_range]')
+    logger.info('')
+    logger.info('[\u001b[\u001b[38;5;39mTraining_range\u001b[0m]')
+    logger.info('')
+
     for key in default_params_ranges:
         
         if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
@@ -390,6 +398,8 @@ def read_config(config_file):
             test_values[key]=default_test_values[key]
         if key in params_ranges.keys():
             if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
-                warnings.warn('Chosen test value for {} outside training range.'.format(key))
+                logger.info('WARNING: Chosen test value for {} outside training range.'.format(key))
+
+    logger.info('')
 
     return input_par, params_ranges, test_values

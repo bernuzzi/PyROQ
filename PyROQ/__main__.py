@@ -5,6 +5,11 @@
 import multiprocessing as mp, numpy as np, os, sys, random, time, warnings
 from optparse import OptionParser
 
+try:
+    import configparser
+except ImportError:
+    import ConfigParser as configparser
+
 # Package internal imports
 from . import initialise, post_processing
 
@@ -50,23 +55,46 @@ if __name__ == '__main__':
     # Initialise and read config.
     parser      = OptionParser(initialise.usage)
     parser.add_option('--config-file',  type   = 'string',      metavar = 'config_file',    default = None)
-    parser.add_option('--debug',        action = 'store_true',  metavar = 'debug',          default = False)
     (opts,args) = parser.parse_args()
     config_file = opts.config_file
     
-    config_pars, params_ranges, test_values = initialise.read_config(config_file)
+    # FIXME: Manual and ugly. Assumes default values.
+    Config = configparser.ConfigParser()
+    Config.read(config_file)
+    try:                                debug_tmp     = int(Config.get('I/O','debug'))
+    except(configparser.NoOptionError): debug_tmp     = 0
+    try:                                directory_tmp = str(Config.get('I/O','output'))
+    except(configparser.NoOptionError): directory_tmp = './'
+    try:                                verbose_tmp   = int(Config.get('I/O','verbose'))
+    except(configparser.NoOptionError): verbose_tmp   = 1
     
+    # Create dir structure.
+
+    dirs_list = [directory_tmp,
+                 os.path.join(directory_tmp, 'Plots'),
+                 os.path.join(directory_tmp, 'Plots/Basis_parameters'),
+                 os.path.join(directory_tmp, 'Plots/Waveform_comparisons'),
+                 os.path.join(directory_tmp, 'ROQ_data'),
+                 os.path.join(directory_tmp, 'ROQ_data/linear'),
+                 os.path.join(directory_tmp, 'ROQ_data/quadratic')]
+    
+    for dir_to_create in dirs_list:
+        if not os.path.exists(dir_to_create): os.makedirs(dir_to_create)
+
     # set logger(s)
-    if opts.debug:
-        logger =    set_logger(label='PyROQ',
-                               level='DEBUG',
-                               outdir=config_pars['I/O']['output'],
-                               verbose=bool(config_pars['I/O']['verbose']),)
+    if debug_tmp:
+        logger = set_logger(label='PyROQ',
+                            level='DEBUG',
+                            outdir=directory_tmp,
+                            verbose=bool(verbose_tmp),)
     else:
-        logger =    set_logger(label='PyROQ',
-                               outdir=config_pars['I/O']['output'],
-                               verbose=bool(config_pars['I/O']['verbose']),)
+        logger = set_logger(label='PyROQ',
+                            outdir=directory_tmp,
+                            verbose=bool(verbose_tmp),)
     
+    config_pars, params_ranges, test_values = initialise.read_config(config_file, directory_tmp, logger)
+
+    logger.info('')
     # Get parallel processing pool
     if (int(config_pars['Parallel']['parallel'])==0):
         logger.info('Initialising serial pool.')
@@ -109,13 +137,9 @@ if __name__ == '__main__':
                 pool.wait()
                 sys.exit(0)
 
-        # Point(s) of the parameter space on which to initialise the basis.
-        # If not passed by the user, defaults to upper/lower corner of the parameter space.
-        start_values = None
-
         # Initialise ROQ parameters and structures.
         from . import pyroq as roq
-        pyroq = roq.PyROQ(config_pars, params_ranges, start_values=start_values, pool=pool)
+        pyroq = roq.PyROQ(config_pars, params_ranges, pool=pool)
         freq  = pyroq.freq
 
         data = {}
@@ -136,8 +160,10 @@ if __name__ == '__main__':
                 # Read ROQ from previous run.
                 data[run_type]                                = {}
                 data[run_type]['{}_f'.format(term)]           = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_frequencies_{type}.npy'.format(type=run_type)))
+                # For the moment, preserve backwards compatibility with initial runs that did not store empirical nodes.
+                try:    data[run_type]['{}_emp_nodes'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/empirical_nodes_{type}.npy'.format(type=run_type)))
+                except: data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
                 data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
-                data[run_type]['{}_emp_nodes'.format(term)]   = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
                 data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
 
             # Output the basis reduction factor.
@@ -152,9 +178,7 @@ if __name__ == '__main__':
 
             # Plot the basis parameters corresponding to the selected basis (only the first N elements determined during the interpolant construction procedure).
             post_processing.histogram_basis_params(data[run_type]['{}_params'.format(term)][:len(data[run_type]['{}_f'.format(term)])], pyroq.outputdir, pyroq.i2n, term)
-
-            # Validation tests.
-            post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq, pool)
+            post_processing.histogram_frequencies(data[run_type]['{}_f'.format(term)], pyroq.outputdir, term)
 
             # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
             logger.info('Testing the waveform using the parameters:')
@@ -166,6 +190,9 @@ if __name__ == '__main__':
             parampoint_test = np.array(parampoint_test)
 
             post_processing.plot_representation_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], parampoint_test, term, pyroq.outputdir, freq, pyroq.paramspoint_to_wave)
+
+            # Validation tests.
+            post_processing.test_roq_error(data[run_type]['{}_interpolant'.format(term)], data[run_type]['{}_emp_nodes'.format(term)], term, pyroq, pool)
 
     # Show plots, if requested.
     if(config_pars['I/O']['show-plots']): plt.show()

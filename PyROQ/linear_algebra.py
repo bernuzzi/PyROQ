@@ -20,7 +20,7 @@ def projection(u, v):
 def gram_schmidt(basis, vec, df):
     
     """
-        Calculating the normalized residual (= a new basis term) of a vector vec from the known basis.
+        Calculating the normalized residual (= a new basis term) of a vector `vec` from the known `basis`.
     """
     
     for i in np.arange(0,len(basis)):
