@@ -19,4 +19,7 @@ def seglen_from_freq(f_0,
               
     return 2 ** (np.ceil(np.log2(seglen))) if power_of_two else seglen
 
+print(seglen_from_freq(5, m_tot= 2.8, margin_percent=0.0, maximum_mass_ratio=3.0))
+print(seglen_from_freq(10, m_tot= 2.8, margin_percent=0.0, maximum_mass_ratio=3.0))
+print(seglen_from_freq(15, m_tot= 2.8, margin_percent=0.0, maximum_mass_ratio=3.0))
 print(seglen_from_freq(20, m_tot= 2.8, margin_percent=0.0, maximum_mass_ratio=3.0))
