@@ -152,6 +152,7 @@ default_params_ranges = {
     'phiref'  : [0.0, 2*np.pi] ,
     'nrpmw-tcoll' : [0,3000]    ,
     'nrpmw-df2'   : [-1e-5,1e-5],
+    'nrpmw-phi' : [0,2*np.pi]    ,
 }
 
 default_test_values = {
@@ -178,6 +179,7 @@ default_test_values = {
         'phiref'  : 0.6      ,
         'nrpmw-tcoll' : 1000 ,
         'nrpmw-df2'   : 0.   ,
+        'nrpmw-phi'   : 0.   ,
 }
 
 def read_config(config_file, directory, logger):
@@ -345,6 +347,7 @@ def read_config(config_file, directory, logger):
         if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
         if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
         if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+        if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
 
         keytype = type(default_params_ranges[key][0])
         try:
@@ -377,6 +380,7 @@ def read_config(config_file, directory, logger):
         if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
         if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
         if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+        if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
     
         keytype = type(default_test_values[key])
         try:
@@ -394,6 +398,7 @@ def read_config(config_file, directory, logger):
             if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
             if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
             if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+            if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
             
             test_values[key]=default_test_values[key]
         if key in params_ranges.keys():

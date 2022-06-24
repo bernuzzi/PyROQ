@@ -378,7 +378,7 @@ try:
         def __init__(self,
                      approximant,
                      additional_waveform_params = {}):
-                     
+            
             # Currently unused for this waveform
             self.approximant     = approximant
             self.waveform_params = additional_waveform_params
@@ -432,11 +432,11 @@ try:
             p['NRPMw_phi_pm']   = 0. # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
             p['NRPMw_t_coll']   = p['nrpmw-tcoll']
             p['NRPMw_df_2']     = p['nrpmw-df2']
-            
+
             # Call it
             frequencies = np.arange(f_min, f_max, step=deltaF)
             hp, hc      = NRPMw(frequencies, p, recalib=False)
-            
+
             if any(np.isnan(hp)):
                 raise RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
             else:
@@ -448,3 +448,92 @@ try:
 
 except ModuleNotFoundError:
     print('bajes module not found')
+
+
+# TEOBSPA-NRPMw
+# --------
+try:
+
+    # NRPMw imports
+    # Note: the NRPMw_attach method does not include merger/fusion wavelet
+    from bajes.obs.gw.approx.teobresums import teobresums_spa_nrpmw_wrapper
+
+    # Add the approximants that can be called
+    approximants = []
+    approximants.append('teobresums-nrpmw')
+
+    class WfTEOBResumSNRPMw:
+        def __init__(self,
+                     approximant,
+                     additional_waveform_params = {}):
+
+            # Currently unused for this waveform
+            self.approximant     = approximant
+            self.waveform_params = additional_waveform_params
+
+        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
+
+            # Impose the correct convention on masses
+            m1,m2       = p['m1'],p['m2']
+            q           = p['m1']/p['m2']
+            p['mtot']   = m1 + m2
+#            p['q']      = q
+            p['nu']     = m1*m2/(m1+m2)**2
+
+            if 's1z' not in p.keys():
+               raise ValueError('spin1 parameters missing')
+            if 's2z' not in p.keys():
+               raise ValueError('spin2 parameters missing')
+
+            if 's1x' in p.keys():
+                # Precessing spins are not supported
+                if((abs(p['s1x']) > 1e-6) or (abs(p['s1y']) > 1e-6)):
+                    raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
+                if((abs(p['s2x']) > 1e-6) or (abs(p['s2y']) > 1e-6)):
+                    raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
+
+            lambda1,lambda2 = 0.,0.
+            if 'lambda1' not in p.keys():
+               raise ValueError('lambda1 parameters missing')
+            if 'lambda2' not in p.keys():
+               raise ValueError('lambda2 parameters missing')
+            if((abs(lambda1) < 0.) or (abs(lambda2) < 0.)):
+                raise ValueError("lambdas>0 but ({},{}) were passed.".format(lambda1, lambda2))
+            if((abs(lambda1) > 5000.) or (abs(lambda2) > 5000.)):
+                raise ValueError("lambdas<5000 but ({},{}) were passed.".format(lambda1, lambda2))
+
+            if 'ecc' not in p.keys():
+                p['ecc'] = 0.
+            if(abs(p['ecc']) > 1e-12):
+                raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
+
+            if p['q'] < 1. :
+               p['q']                       = 1./p['q']
+               p['s1z'],p['s2z']            = p['s2z'],p['s1z']
+               p['lambda1'],p['lambda2']    = p['lambda2'],p['lambda1']
+
+            p['seglen']     = 1./deltaF
+            p['distance']   = distance
+            p['cosi']       = np.cos(p['iota'])
+            p['phi_ref']    = p['phiref']
+
+            p['NRPMw_phi_pm']   = p['nrpmw-phi']        # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
+            p['NRPMw_t_coll']   = p['nrpmw-tcoll']
+            p['NRPMw_df_2']     = p['nrpmw-df2']
+
+            # Call it
+            frequencies = np.arange(f_min, f_max, step=deltaF)
+            hp, hc      = teobresums_spa_nrpmw_wrapper(frequencies, p)
+
+            if any(np.isnan(hp)):
+                raise RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
+            else:
+                return hp, hc
+
+    # Add a wrapper for each approximant
+    for a in approximants:
+        WfWrapper[a] = WfTEOBResumSNRPMw
+
+except ModuleNotFoundError:
+    print('bajes module not found')
+
