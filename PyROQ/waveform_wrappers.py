@@ -6,7 +6,7 @@ import numpy as np, warnings
 # Waveform approximants
 # =====================
 
-__non_lal_approx_names__ = ['teobresums-giotto', 'mlgw-bns', 'nrpmw']
+__non_lal_approx_names__ = ['teobresums-giotto', 'mlgw-bns', 'nrpmw', 'teobresums-nrpmw']
 
 WfWrapper = {} # collect all the wvf wrappers
 
@@ -512,7 +512,6 @@ try:
                p['s1z'],p['s2z']            = p['s2z'],p['s1z']
                p['lambda1'],p['lambda2']    = p['lambda2'],p['lambda1']
 
-            p['seglen']     = 1./deltaF
             p['distance']   = distance
             p['cosi']       = np.cos(p['iota'])
             p['phi_ref']    = p['phiref']
@@ -520,6 +519,13 @@ try:
             p['NRPMw_phi_pm']   = p['nrpmw-phi']        # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
             p['NRPMw_t_coll']   = p['nrpmw-tcoll']
             p['NRPMw_df_2']     = p['nrpmw-df2']
+
+            p['f_min']           = f_min
+            p['f_max']           = f_max
+            p['seglen']     = 1./deltaF
+            p['srate']          = f_max*2
+
+            p['lmax']           = 0
 
             # Call it
             frequencies = np.arange(f_min, f_max, step=deltaF)
