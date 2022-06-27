@@ -141,6 +141,7 @@ if __name__ == '__main__':
         from . import pyroq as roq
         pyroq = roq.PyROQ(config_pars, params_ranges, pool=pool)
         freq  = pyroq.freq
+        np.save(pyroq.outputdir+'/ROQ_data/full_frequencies.npy', freq)
 
         data = {}
 
@@ -165,6 +166,12 @@ if __name__ == '__main__':
                 except: data[run_type]['{}_emp_nodes'.format(term)] = np.searchsorted(freq, data[run_type]['{}_f'.format(term)])
                 data[run_type]['{}_interpolant'.format(term)] = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_interpolant_{type}.npy'.format(type=run_type)))
                 data[run_type]['{}_params'.format(term)]      = np.load(os.path.join(config_pars['I/O']['output'],'ROQ_data/{type}/basis_waveform_params_{type}.npy'.format(type=run_type)))
+
+            # Store ROQ metadata
+            outFile_ROQ_metadata = open(os.path.join(config_pars['I/O']['output'],'ROQ_data/ROQ_metadata.txt'), 'w')
+            outFile_ROQ_metadata.write('f-min \t f-max \t seglen\n')
+            outFile_ROQ_metadata.write('{} \t {} \t {} \n'.format(pyroq.f_min, pyroq.f_max, pyroq.seglen))
+            outFile_ROQ_metadata.close()
 
             # Output the basis reduction factor.
             logger.info('')
