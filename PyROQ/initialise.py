@@ -80,7 +80,9 @@ to be intended as part of the default value.
                pre-basis               Option determining the pre-basis computation. Available options: ['corners', 'pre-selected-basis']. Default: 'corners'.
                tolerance-pre-basis-lin Basis projection error threshold for linear basis elements. Default: 1e-8.
                tolerance-pre-basis-qua Same as above, for quadratic basis. Default: 1e-10.
-               n-pre-basis             Total number (including corner elements) of basis elements to be constructed in the pre-selection loop, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
+               n-pre-basis-lin         Total number (including corner elements) of basis elements to be constructed in the pre-selection loop for the linear case, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
+               n-pre-basis-qua         Total number (including corner elements) of basis elements to be constructed in the pre-selection loop for the quadratic case, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
+
                n-pre-basis-search-iter Number of points for each search of a new basis element during basis construction. Typical values: 30-100 for testing; 300-2000 for production. Typically roughly comparable to the number of basis elements. Depends on complexity of waveform features, parameter space and signal length. Increasing it slows down offline construction time, but decreases number of basis elements. Default: 80.
            
                n-training-set-cycles   Number of basis enrichment cycles, each using `training-set-sizes` number of training elements, and stopping until `training-set-n-outliers` are below `training-set-rel-tol` Default: 4.
@@ -247,7 +249,8 @@ def read_config(config_file, directory, logger):
                                                  'pre-basis'               : 'corners',
                                                  'tolerance-pre-basis-lin' : 1e-8,
                                                  'tolerance-pre-basis-qua' : 1e-10,
-                                                 'n-pre-basis'             : 80,
+                                                 'n-pre-basis-lin'         : 80,
+                                                 'n-pre-basis-qua'         : 5,
                                                  'n-pre-basis-search-iter' : 80,
                                                  
                                                  'n-training-set-cycles'   : 4,
@@ -292,7 +295,7 @@ def read_config(config_file, directory, logger):
 
     if(np.any(np.array(input_par['ROQ']['training-set-n-outliers']) < 0)): raise ValueError('The `training-set-n-outliers` variable cannot be negative.')
     if(input_par['ROQ']['minimum-speedup'] < 1.0): raise ValueError('The speedup factor has to be larger than unity, otherwise the ROQ construction will not accelerate parameter estimation.')
-    if not(input_par['ROQ']['n-pre-basis']>1): raise ValueError('The minimum number of basis elements has to be larger than 1, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).')
+    if not((input_par['ROQ']['n-pre-basis-lin']>1) and (input_par['ROQ']['n-pre-basis-qua']>1)): raise ValueError('The minimum number of basis elements has to be larger than 1, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).')
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
         raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
