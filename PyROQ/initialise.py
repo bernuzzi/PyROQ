@@ -76,7 +76,6 @@ to be intended as part of the default value.
        
                n-tests-post            Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
                minimum-speedup         Minimum ratio of X:=len(Original-frequency-axis)/len(ROQ-frequency-axis), implying a minimum speedup during parameter estimation. The ROQ construction is interrupted if X < `minimum-speedup`. Default: 1.0.
-               error-version           DESCRIPTION MISSING. Default: 'v1'.
            
                pre-basis               Option determining the pre-basis computation. Available options: ['corners', 'pre-selected-basis']. Default: 'corners'.
                tolerance-pre-basis-lin Basis projection error threshold for linear basis elements. Default: 1e-8.
@@ -260,7 +259,6 @@ def read_config(config_file, directory, logger):
                                                  'tolerance-qua'           : 1e-10,
                               
                                                  'n-tests-post'            : 1000,
-                                                 'error-version'           : 'v1',
                                                  'minimum-speedup'         : 1.0,
                               
                                                 }

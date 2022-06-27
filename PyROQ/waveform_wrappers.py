@@ -15,23 +15,20 @@ WfWrapper = {} # collect all the wvf wrappers
 # -------------------------------------------------------
 
 class ZeroWf:
+    
     def __init__(self,
                  approximant,
                  waveform_params = {}):
-        self.approximant = approximant
+        
+        self.approximant     = approximant
         self.waveform_params = waveform_params
+    
     def generate_waveform(self, p, deltaF, f_min, f_max):
-        # Note: in PyROQ p is built from a copy of waveform_params
-        #       but if empty there, waveform_params is initialized here
-        if (('m1' not in p.keys()) or ('m2' not in p.keys())):
-            print('masses must be always passed')
-            raise
-        if (('iota' not in p.keys()) or ('phiRef' not in p.keys())):
-            print('iota and phiRef must be always passed')
-            raise
-        freq = np.arange(f_min,f_max,deltaF)
-        hp = np.zeros(len(freq))
-        hc = np.zeros(len(freq))
+        
+        freq = np.arange(f_min, f_max+deltaF, deltaF)
+        hp   = np.zeros(len(freq))
+        hc   = np.zeros(len(freq))
+        
         return hp, hc
 
 # LAL
@@ -105,8 +102,8 @@ try:
                                                                       self.approximant)
             hp = plus.data.data
             hc = cross.data.data
-            hp = hp[np.int(f_min/deltaF):np.int(f_max/deltaF)]
-            hc = hc[np.int(f_min/deltaF):np.int(f_max/deltaF)]
+            hp = hp[np.int(f_min/deltaF):np.int(f_max/deltaF)+1]
+            hc = hc[np.int(f_min/deltaF):np.int(f_max/deltaF)+1]
             
             return hp, hc
 
@@ -261,7 +258,7 @@ try:
             else:
                 f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(self.waveform_params)
                 # Adapt len to PyROQ frequency axis conventions
-                hp, hc = rhplus[:-1]-1j*ihplus[:-1], rhcross[:-1]-1j*ihcross[:-1]
+                hp, hc = rhplus-1j*ihplus, rhcross-1j*ihcross
 
             return hp, hc
     
@@ -340,7 +337,8 @@ try:
 
             # Call it
             model       = Model.default() # FIXME: here you can use self.approximant to call any MLGW-BNS Model
-            frequencies = np.arange(f_min, f_max, step=deltaF)
+            frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
+            
             params      = ParametersWithExtrinsic(p['q'],
                                                   lambda1,
                                                   lambda2,
@@ -351,6 +349,7 @@ try:
                                                   p['m1']+p['m2'],
                                                   reference_phase=p['phiref'])
             hp, hc      = model.predict(frequencies, params)
+            
             return hp, hc
 
     # Add a wrapper for each approximant

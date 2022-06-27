@@ -47,7 +47,8 @@ class PyROQ:
 
         self.f_min                      = config_pars['Waveform_and_parametrisation']['f-min']
         self.f_max                      = config_pars['Waveform_and_parametrisation']['f-max']
-        self.deltaF                     = 1./config_pars['Waveform_and_parametrisation']['seglen']
+        self.seglen                     = config_pars['Waveform_and_parametrisation']['seglen']
+        self.deltaF                     = 1./self.seglen
         
         self.gram_schmidt               = config_pars['ROQ']['gram-schmidt']
         
@@ -65,7 +66,6 @@ class PyROQ:
         self.tolerance_qua              = config_pars['ROQ']['tolerance-qua']
 
         self.n_tests_post               = config_pars['ROQ']['n-tests-post']
-        self.error_version              = config_pars['ROQ']['error-version']
         self.minumum_speedup            = config_pars['ROQ']['minimum-speedup']
 
         self.parallel                   = config_pars['Parallel']['parallel']
@@ -93,10 +93,10 @@ class PyROQ:
         self.map_params_indexs()  # Declares: self.i2n, self.n2i, self.nparams
         
         # Initial basis
-        self.freq = np.arange(self.f_min, self.f_max, self.deltaF)
+        self.freq = np.arange(self.f_min, self.f_max+self.deltaF, self.deltaF)
         self.set_training_range() # Declares: self.params_low, self.params_hig
 
-        logger.info('Initial number of frequency points: {}'.format(int((self.f_max-self.f_min)*(1./self.deltaF))))
+        logger.info('Initial number of frequency points: {}'.format(len(self.freq)))
 
     ## Parameters transformations utils
 
@@ -521,6 +521,9 @@ class PyROQ:
             # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, term)
         elif(self.start_values=='pre-selected-basis'):
+
+            logger.info('Loading previously computed pre-selected basis.')
+
             # Load a previously computed pre-selected basis
             if term == 'lin':
                 file_basis_stored  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
