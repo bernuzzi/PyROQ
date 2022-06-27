@@ -257,7 +257,6 @@ try:
                 warnings.warn("\n\nCheck waveform lenght\n\n")
             else:
                 f, rhplus, ihplus, rhcross, ihcross = EOBRun_module.EOBRunPy(self.waveform_params)
-                # Adapt len to PyROQ frequency axis conventions
                 hp, hc = rhplus-1j*ihplus, rhcross-1j*ihcross
 
             return hp, hc
@@ -433,7 +432,7 @@ try:
             p['NRPMw_df_2']     = p['nrpmw-df2']
 
             # Call it
-            frequencies = np.arange(f_min, f_max, step=deltaF)
+            frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
             hp, hc      = NRPMw(frequencies, p, recalib=False)
 
             if any(np.isnan(hp)):
@@ -527,7 +526,7 @@ try:
             p['lmax']           = 0
 
             # Call it
-            frequencies = np.arange(f_min, f_max, step=deltaF)
+            frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
             hp, hc      = teobresums_spa_nrpmw_wrapper(frequencies, p)
 
             if any(np.isnan(hp)):
