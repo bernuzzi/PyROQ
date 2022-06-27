@@ -55,8 +55,9 @@ class PyROQ:
         self.start_values               = config_pars['ROQ']['pre-basis']
         self.tolerance_pre_basis_lin    = config_pars['ROQ']['tolerance-pre-basis-lin']
         self.tolerance_pre_basis_qua    = config_pars['ROQ']['tolerance-pre-basis-qua']
+        self.n_pre_basis_lin            = config_pars['ROQ']['n-pre-basis-lin']
+        self.n_pre_basis_qua            = config_pars['ROQ']['n-pre-basis-qua']
         self.n_pre_basis_search_iter    = config_pars['ROQ']['n-pre-basis-search-iter']
-        self.n_pre_basis                = config_pars['ROQ']['n-pre-basis']
 
         self.n_training_set_cycles      = config_pars['ROQ']['n-training-set-cycles']
         self.training_set_sizes         = config_pars['ROQ']['training-set-sizes']
@@ -244,10 +245,12 @@ class PyROQ:
             file_basis    = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
             file_params   = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
             tolerance_pre = self.tolerance_pre_basis_lin
+            pre_basis_n   = self.n_pre_basis_lin
         elif term=='qua':
             file_basis    = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis.npy'
             file_params   = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
             tolerance_pre = self.tolerance_pre_basis_qua
+            pre_basis_n   = self.n_pre_basis_qua
         else:
             raise TermError
     
@@ -259,10 +262,10 @@ class PyROQ:
         logger.info('')
         logger.info('N points per iter  : {}'.format(self.n_pre_basis_search_iter))
         logger.info('Tolerance          : {}'.format(tolerance_pre))
-        logger.info('Maximum iterations : {}'.format(self.n_pre_basis-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
+        logger.info('Maximum iterations : {}'.format(pre_basis_n-2)) # The -2 comes from the fact that the corner basis is composed by two elements.
         logger.info('')
 
-        if not(self.n_pre_basis==2):
+        if not(pre_basis_n==2):
             k = 0
             while(residual_modula[-1] > tolerance_pre):
                 
@@ -280,7 +283,7 @@ class PyROQ:
                 residual_modula     = np.append(residual_modula, rm_new)
 
                 # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
-                if(len(known_basis[:,0]) >= self.n_pre_basis): break
+                if(len(known_basis[:,0]) >= pre_basis_n): break
                 else                                         : k = k+1
 
         # Store the pre-selected basis.
