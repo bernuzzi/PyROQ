@@ -183,6 +183,23 @@ default_test_values = {
         'nrpmw-phi'   : 0.   ,
 }
 
+# include recalibration parameters for NRPMw
+# and set NRPMW_FLAG for parameters space initialiaziation
+try:
+    
+    from bajes.obs.gw.approx.nrpmw import __recalib_names_attach__ as nrpmw_recalib_names
+    from bajes.obs.gw.approx.nrpmw import __BNDS__ as nrpmw_recalib_bounds
+
+    for ni in nrpmw_recalib_names:
+        default_params_ranges['nrpmw-{}'.format(ni)] = nrpmw_recalib_bounds[ni]
+        default_test_values['nrpmw-{}'.format(ni)]   = 0.
+
+    NRPMW_FLAG = True
+
+except ImportError:
+    
+    NRPMW_FLAG = False
+
 def read_config(config_file, directory, logger):
 
     if not config_file:
@@ -349,6 +366,12 @@ def read_config(config_file, directory, logger):
         if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
         if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
         if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+        
+        # set NRPMW recalibration parameters
+        # note. if NRPMW_FLAG=False, nrpmw-recalibrations are not in the param dict
+        if NRPMW_FLAG:
+            for ni in nrpmw_recalib_names:
+                if((key=='nrpmw-{}'.format(ni))   and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
 
         keytype = type(default_params_ranges[key][0])
         try:
@@ -382,6 +405,12 @@ def read_config(config_file, directory, logger):
         if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
         if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
         if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
+        
+        # set NRPMW recalibration parameters
+        # note. if NRPMW_FLAG=False, nrpmw-recalibrations are not in the param dict
+        if NRPMW_FLAG:
+            for ni in nrpmw_recalib_names:
+                if((key=='nrpmw-{}'.format(ni)) and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
     
         keytype = type(default_test_values[key])
         try:
@@ -400,7 +429,13 @@ def read_config(config_file, directory, logger):
             if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
             if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
             if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-            
+
+            # set NRPMW recalibration parameters
+            # note. if NRPMW_FLAG=False, nrpmw-recalibrations are not in the param dict
+            if NRPMW_FLAG:
+                for ni in nrpmw_recalib_names:
+                    if((key=='nrpmw-{}'.format(ni)) and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
+
             test_values[key]=default_test_values[key]
         if key in params_ranges.keys():
             if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
