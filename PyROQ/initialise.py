@@ -122,9 +122,9 @@ to be intended as part of the default value.
                iota              : inclination
                phiref            : reference phase
                
-               nrpmw-tcoll       : time of collapse for the NRPMw model [Msun]
-               nrpmw-df2         : frequency shift  for the NRPMw model [?]
-               nrpmw-phi         : phase            for the NRPMw model
+               nrpmw-tcoll       : time of collapse     for the NRPMw model [Msun]
+               nrpmw-df2         : frequency derivative for the NRPMw model [Msun^2]
+               nrpmw-phi         : phase                for the NRPMw model
                
                distance          : distance [Mpc] (dummy value fixed at 10Mpc, unused in ROQ construction)
                
