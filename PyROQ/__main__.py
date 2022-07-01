@@ -188,7 +188,8 @@ if __name__ == '__main__':
             post_processing.histogram_frequencies(data[run_type]['{}_f'.format(term)], pyroq.outputdir, term)
 
             # Plot the representation error for a random waveform, using the interpolant built from the constructed basis. Useful for visual diagnostics.
-            logger.info('Testing the waveform using the parameters:\n')
+            logger.info('Testing the waveform using the parameters:')
+            logger.info('')
             parampoint_test = []
             logger.info('name    | value | index')
             for name, val in test_values.items():
