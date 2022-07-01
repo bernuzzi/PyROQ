@@ -365,8 +365,8 @@ try:
     approximants = []
     approximants.append('nrpmw')
     approximants.append('nrpmw-recal')
-    approximants.append('teobresums-nrpmw')
-    approximants.append('teobresums-nrpmw-recal')
+    approximants.append('teobresums-spa-nrpmw')
+    approximants.append('teobresums-spa-nrpmw-recal')
 
     class WfNRPMw:
         def __init__(self,
