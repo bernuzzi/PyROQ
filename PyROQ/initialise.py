@@ -55,10 +55,11 @@ to be intended as part of the default value.
        * Parameters to be passed to the [Waveform_and_parametrisation] section. *
        **************************************************************************
 
-               approximant             Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns', 'IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
+               approximant             Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns', 'nrpmw', 'teobresums-nrpmw', 'teobresums-nrpmw-recal', 'IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
                spins                   Option to select spin degrees of freedom. Allowed values: ['no-spins', 'aligned', 'precessing']. Default: 'aligned'.
                tides                   Flag to activate tides training. Default: 0.
                eccentricity            Flag to activate eccentricity training. Default: 0.
+               post-merger             Flag to activate post-merger parameters training. Default: 0.
                mc-q-par                Flag to activate parametrisation in Mchirp and mass ratio. Default: 1.
                spin-sph                Flag to activate parametrisation in spins spherical components. Default: 0.
                f-min                   Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
@@ -99,10 +100,10 @@ to be intended as part of the default value.
        
        Allowed parameter names and units are:
        
-               mc   (mc-q-par=1) : chirp mass
+               mc   (mc-q-par=1) : chirp mass [Msun]
                q    (mc-q-par=1) : mass ratio
-               m1   (mc-q-par=0) : mass object 1 [Mo]
-               m2   (mc-q-par=0) : mass object 2 [Mo]
+               m1   (mc-q-par=0) : mass object 1 [Msun]
+               m2   (mc-q-par=0) : mass object 2 [Msun]
                s1s1 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
                s1s2 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
                s1s3 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
@@ -121,6 +122,10 @@ to be intended as part of the default value.
                iota              : inclination
                phiref            : reference phase
                
+               nrpmw-tcoll       : time of collapse for the NRPMw model [Msun]
+               nrpmw-df2         : frequency shift  for the NRPMw model [?]
+               nrpmw-phi         : phase            for the NRPMw model
+               
                distance          : distance [Mpc] (dummy value fixed at 10Mpc, unused in ROQ construction)
                
       Waveform wrappers must work with these keywords.
@@ -128,77 +133,92 @@ to be intended as part of the default value.
 
     """
 
-# This is the training range of the 'mlgw-bns' approximant
-default_params_ranges = {
-    'mc'      : [0.9, 1.4]     ,
-    'q'       : [1.0, 3.0]     ,
-    'm1'      : [1.0, 3.0]     ,
-    'm2'      : [0.5, 2.0]     ,
-    's1x'     : [0.0, 0.0]     ,
-    's1y'     : [0.0, 0.0]     ,
-    's1z'     : [-0.5, 0.5]    ,
-    's2x'     : [0.0, 0.0]     ,
-    's2y'     : [0.0, 0.0]     ,
-    's2z'     : [-0.5, 0.5]    ,
-    's1s1'    : [0.0, 0.5]     , # mlgw-bns is non-precessing, but these values are to set conventions and it won't be called with spherical spin coords anyway (an error will be raised in such a case).
-    's1s2'    : [0.0, np.pi]   ,
-    's1s3'    : [0.0, 2*np.pi] ,
-    's2s1'    : [0.0, 0.5]     ,
-    's2s2'    : [0.0, np.pi]   ,
-    's2s3'    : [0.0, 2*np.pi] ,
-    'lambda1' : [5.0, 5000.0]  ,
-    'lambda2' : [5.0, 5000.0]  ,
-    'ecc'     : [0.0, 0.0]     ,
-    'iota'    : [0.0, np.pi]   ,
-    'phiref'  : [0.0, 2*np.pi] ,
-    'nrpmw-tcoll' : [0,3000]    ,
-    'nrpmw-df2'   : [-1e-5,1e-5],
-    'nrpmw-phi' : [0,2*np.pi]    ,
+def check_skip_parameter(key, input_par, nrpmw_recalib_names):
+
+    result = 0
+
+    if((key=='m1')          and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): result = 1
+    if((key=='m2')          and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): result = 1
+    if((key=='mc')          and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): result = 1
+    if((key=='q')           and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): result = 1
+    if((key=='s1s1')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s1s2')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s1s3')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s2s1')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s2s2')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s2s3')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s1x')         and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s1y')         and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s1z')         and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s2x')         and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s2y')         and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='s2z')         and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): result = 1
+    if((key=='ecc')         and not(input_par['Waveform_and_parametrisation']['eccentricity'])       ): result = 1
+    if(('lambda' in key)    and not(input_par['Waveform_and_parametrisation']['tides'])              ): result = 1
+    if((key=='s1x')         and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): result = 1
+    if((key=='s2x')         and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): result = 1
+    if((key=='s1y')         and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): result = 1
+    if((key=='s2y')         and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): result = 1
+    if((key=='s1z')         and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): result = 1
+    if((key=='s2z')         and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): result = 1
+    if((key=='nrpmw-tcoll') and not(input_par['Waveform_and_parametrisation']['post-merger'])        ): result = 1
+    if((key=='nrpmw-df2')   and not(input_par['Waveform_and_parametrisation']['post-merger'])        ): result = 1
+    if((key=='nrpmw-phi')   and not(input_par['Waveform_and_parametrisation']['post-merger'])        ): result = 1
+
+    # Set NRPMW recalibration parameters.
+    add_par = 0
+    for ni in nrpmw_recalib_names:
+        if((key=='nrpmw-{}'.format(ni)) and not(input_par['Waveform_and_parametrisation']['post-merger']) and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
+        else:
+            add_par = 1
+            break
+    if not(add_par): continue
+
+    return result
+
+# This is the training range of the 'mlgw-bns' approximant for the inspiral parameters, and of the 'NRPMw' approximant for the post-merger parameters.
+default_params = {
+    'mc'          : {'range' : [  0.9,     1.4], 'test-value': 1.3    }
+    'q'           : {'range' : [  1.0,     3.0], 'test-value': 2.0    }
+    'm1'          : {'range' : [  1.0,     3.0], 'test-value': 1.5    }
+    'm2'          : {'range' : [  0.5,     2.0], 'test-value': 1.5    }
+    's1x'         : {'range' : [  0.0,     0.0], 'test-value': 0.0    }
+    's1y'         : {'range' : [  0.0,     0.0], 'test-value': 0.0    }
+    's1z'         : {'range' : [ -0.5,     0.5], 'test-value': 0.2    }
+    's2x'         : {'range' : [  0.0,     0.0], 'test-value': 0.0    }
+    's2y'         : {'range' : [  0.0,     0.0], 'test-value': 0.0    }
+    's2z'         : {'range' : [ -0.5,     0.5], 'test-value': 0.1    }
+    's1s1'        : {'range' : [  0.0,     0.5], 'test-value': 0.3    }
+    's1s2'        : {'range' : [  0.0,   np.pi], 'test-value': 0.4    }
+    's1s3'        : {'range' : [  0.0, 2*np.pi], 'test-value': 0.5    }
+    's2s1'        : {'range' : [  0.0,     0.5], 'test-value': 0.3    }
+    's2s2'        : {'range' : [  0.0,   np.pi], 'test-value': 0.4    }
+    's2s3'        : {'range' : [  0.0, 2*np.pi], 'test-value': 0.5    }
+    'lambda1'     : {'range' : [  5.0,  5000.0], 'test-value': 1000.0 }
+    'lambda2'     : {'range' : [  5.0,  5000.0], 'test-value': 1000.0 }
+    'ecc'         : {'range' : [  0.0,     0.0], 'test-value': 0.0    }
+    'iota'        : {'range' : [  0.0,   np.pi], 'test-value': 1.9    }
+    'phiref'      : {'range' : [  0.0, 2*np.pi], 'test-value': 0.6    }
+    'nrpmw-tcoll' : {'range' : [    0,    3000], 'test-value': 1000   }
+    'nrpmw-df2'   : {'range' : [-1e-5,    1e-5], 'test-value': 0.0    }
+    'nrpmw-phi'   : {'range' : [    0, 2*np.pi], 'test-value': 0.0    }
 }
 
-default_test_values = {
-        'mc'      : 1.3    ,
-        'q'       : 2.0    ,
-        'm1'      : 1.5    , 
-        'm2'      : 1.5    ,
-        's1x'     : 0.0    ,
-        's1y'     : 0.0    ,
-        's1z'     : 0.2    ,
-        's2x'     : 0.0    ,
-        's2y'     : 0.0    ,
-        's2z'     : 0.1    ,
-        's1s1'    : 0.3    ,
-        's1s2'    : 0.4    ,
-        's1s3'    : 0.5    ,
-        's2s1'    : 0.3    ,
-        's2s2'    : 0.4    ,
-        's2s3'    : 0.5    ,
-        'lambda1' : 1000.0 ,
-        'lambda2' : 1000.0 ,
-        'ecc'     : 0.0    ,
-        'iota'    : 1.9      ,
-        'phiref'  : 0.6      ,
-        'nrpmw-tcoll' : 1000 ,
-        'nrpmw-df2'   : 0.   ,
-        'nrpmw-phi'   : 0.   ,
-}
-
-# include recalibration parameters for NRPMw
-# and set NRPMW_FLAG for parameters space initialiaziation
+# Include recalibration parameters for NRPMw.
+# This initialisation differs from the other parameters to avoid writing explicitly the recalibration parameters.
 try:
     
     from bajes.obs.gw.approx.nrpmw import __recalib_names_attach__ as nrpmw_recalib_names
-    from bajes.obs.gw.approx.nrpmw import __BNDS__ as nrpmw_recalib_bounds
+    from bajes.obs.gw.approx.nrpmw import __BNDS__                 as nrpmw_recalib_bounds
 
     for ni in nrpmw_recalib_names:
-        default_params_ranges['nrpmw-{}'.format(ni)] = nrpmw_recalib_bounds[ni]
-        default_test_values['nrpmw-{}'.format(ni)]   = 0.
-
-    NRPMW_FLAG = True
+        default_params['nrpmw-{}'.format(ni)]['range']      = nrpmw_recalib_bounds[ni]
+        default_params['nrpmw-{}'.format(ni)]['test-value'] = 0.
 
 except ImportError:
-    
-    NRPMW_FLAG = False
+    nrpmw_recalib_names = []
+    print('\nWarning: bajes module not found. Cannot initialise NRPMw recalibration parameters.\n')
+
 
 def read_config(config_file, directory, logger):
 
@@ -250,6 +270,7 @@ def read_config(config_file, directory, logger):
                                                  'spins'                   :'aligned',
                                                  'tides'                   : 0,
                                                  'eccentricity'            : 0,
+                                                 'post-merger'             : 0,
                                                  'mc-q-par'                : 1,
                                                  'spin-sph'                : 0,
                                                  'f-min'                   : 20.0,
@@ -295,7 +316,7 @@ def read_config(config_file, directory, logger):
                 leg = ''
             except (KeyError, configparser.NoOptionError, TypeError):
                 leg = '(default)'
-            # Format lists
+            # Format lists.
             if((key=='training-set-sizes') or (key=='training-set-n-outliers') or (key=='training-set-rel-tol')):
                 input_par[section][key] = input_par[section][key].split(',')
                 if(key=='training-set-rel-tol'):
@@ -313,14 +334,13 @@ def read_config(config_file, directory, logger):
     if(np.any(np.array(input_par['ROQ']['training-set-n-outliers']) < 0)): raise ValueError('The `training-set-n-outliers` variable cannot be negative.')
     if(input_par['ROQ']['minimum-speedup'] < 1.0): raise ValueError('The speedup factor has to be larger than unity, otherwise the ROQ construction will not accelerate parameter estimation.')
     if not((input_par['ROQ']['n-pre-basis-lin']>1) and (input_par['ROQ']['n-pre-basis-qua']>1)): raise ValueError('The minimum number of basis elements has to be larger than 1, since currently the initial basis is composed by the lower/upper corner of the parameter space (hence two waveforms).')
-    if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')):
-        raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
+    if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
 
     if((input_par['Parallel']['parallel']) and (input_par['Parallel']['n-processes']<2)): raise ValueError('When parallelisation is active, at least two processes have to be requested.')
 
-    # Set run types
+    # Set run types.
     input_par['I/O']['run-types'] = []
     if(input_par['ROQ']['basis-lin']): input_par['I/O']['run-types'].append('linear')
     if(input_par['ROQ']['basis-qua']): input_par['I/O']['run-types'].append('quadratic')
@@ -332,114 +352,29 @@ def read_config(config_file, directory, logger):
     # Read training range and test point. #
     # ====================================#
 
-    params_ranges = {}
+    params_ranges, test_values = {}, {}
+
     logger.info('')
     logger.info('[\u001b[\u001b[38;5;39mTraining_range\u001b[0m]')
     logger.info('')
 
-    for key in default_params_ranges:
+    for key in default_params:
         
-        if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='m2')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='mc')       and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='q')        and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='s1s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])       ): continue
-        if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])              ): continue
-        if((key=='s1x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-        if((key=='s2x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-        if((key=='s1y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-        if((key=='s2y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-        if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
-        if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
-        if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-        if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-        if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-        
-        # set NRPMW recalibration parameters
-        # note. if NRPMW_FLAG=False, nrpmw-recalibrations are not in the param dict
-        if NRPMW_FLAG:
-            for ni in nrpmw_recalib_names:
-                if((key=='nrpmw-{}'.format(ni))   and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
+        if(check_skip_parameter(key, input_par, nrpmw_recalib_names)): continue
 
-        keytype = type(default_params_ranges[key][0])
+        keytype = type(default_params[key]['range'][0])
         try:
-            params_ranges[key]=[keytype(Config.get('Training_range',key+'-min')), keytype(Config.get('Training_range',key+'-max'))]
+            params_ranges[key] = [keytype(Config.get('Training_range',key+'-min')), keytype(Config.get('Training_range',key+'-max'))]
             logger.info('{name} : [{min},{max}]'.format(          name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
         except (KeyError, configparser.NoOptionError, TypeError):
-            params_ranges[key]=default_params_ranges[key]
+            params_ranges[key] = default_params[key]['range']
             logger.info('{name} : [{min},{max}] (default)'.format(name=key.ljust(max_len_keyword), min=params_ranges[key][0], max=params_ranges[key][1]))
 
-        if(params_ranges[key][1] < params_ranges[key][0]): raise ValueError('{} upper bound is smaller than its lower bound.'.format(key))
+        try:                                                      test_values[key] = keytype(Config.get('Test_values',key))
+        except (KeyError, configparser.NoOptionError, TypeError): test_values[key] = default_params[key]['test-value']
 
-    test_values = {}
-    for key in default_test_values:
-        
-        if((key=='m1')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='m2')       and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='mc')       and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='q')        and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): continue
-        if((key=='s1s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2s1')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2s2')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2s3')     and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2x')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2y')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spin-sph'])           ): continue
-        if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-        if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-        if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-        
-        # set NRPMW recalibration parameters
-        # note. if NRPMW_FLAG=False, nrpmw-recalibrations are not in the param dict
-        if NRPMW_FLAG:
-            for ni in nrpmw_recalib_names:
-                if((key=='nrpmw-{}'.format(ni)) and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
-    
-        keytype = type(default_test_values[key])
-        try:
-            test_values[key]=keytype(Config.get('Test_values',key))
-        except (KeyError, configparser.NoOptionError, TypeError):
-            
-            # Putting this block here allows to test the accuracy of the ROQ against regimes outside the training range (e.g. trained with tides=0 and checking the error with non-zero tides)
-            if((key=='ecc')      and not(input_par['Waveform_and_parametrisation']['eccentricity'])       ): continue
-            if(('lambda' in key) and not(input_par['Waveform_and_parametrisation']['tides'])              ): continue
-            if((key=='s1x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-            if((key=='s2x')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-            if((key=='s1y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-            if((key=='s2y')      and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): continue
-            if((key=='s1z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
-            if((key=='s2z')      and    (input_par['Waveform_and_parametrisation']['spins']=='no-spins'  )): continue
-            if((key=='nrpmw-tcoll') and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-            if((key=='nrpmw-df2')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-            if((key=='nrpmw-phi')   and not('nrpmw' in input_par['Waveform_and_parametrisation']['approximant'])   ): continue
-
-            # set NRPMW recalibration parameters
-            # note. if NRPMW_FLAG=False, nrpmw-recalibrations are not in the param dict
-            if NRPMW_FLAG:
-                for ni in nrpmw_recalib_names:
-                    if((key=='nrpmw-{}'.format(ni)) and not('nrpmw-recal' in input_par['Waveform_and_parametrisation']['approximant'])): continue
-
-            test_values[key]=default_test_values[key]
-        if key in params_ranges.keys():
-            if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]):
-                logger.info('WARNING: Chosen test value for {} outside training range.'.format(key))
+        if    (params_ranges[key][1] < params_ranges[key][0]):                      raise ValueError('{} upper bound is smaller than its lower bound.'.format(key))
+        if not(params_ranges[key][0] <= test_values[key] <= params_ranges[key][1]): logger.info('WARNING: Chosen test value for {} outside training range.'.format(key))
 
     logger.info('')
 

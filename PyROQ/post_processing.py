@@ -227,7 +227,7 @@ def test_roq_error(b, emp_nodes, term, pyroq, Pool):
         raise TermError
     
     # Start looping over test points
-    logger.info('###########################################')
+    logger.info('\n\n###########################################')
     logger.info('# \u001b[\u001b[38;5;39mStarting validation tests {} iteration\u001b[0m #'.format(term))
     logger.info('###########################################')
     logger.info('')

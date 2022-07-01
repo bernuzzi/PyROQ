@@ -313,7 +313,7 @@ class PyROQ:
             self.params_low.append(self.params_ranges[n][0])
             self.params_hig.append(self.params_ranges[n][1])
             
-            logger.info('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2), n.ljust(len('lambda1')), self.params_low[i], self.params_hig[i]))
+            logger.info('{}    | {} | ( {:.6f} - {:.6f} ) '.format(str(i).ljust(2), n.ljust(len('nrpmw-tcoll')), self.params_low[i], self.params_hig[i]))
         logger.info('')
         
         return 
