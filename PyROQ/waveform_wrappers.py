@@ -435,12 +435,12 @@ try:
 
             # Call it
             frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
-            if(  self.approximant=='nrpmw'                 ): hp, hc = NRPMw(                             frequencies, p, recalib=False)
-            elif(self.approximant=='nrpmw-recal'           ): hp, hc = NRPMw(                             frequencies, p, recalib=True)
+            if(  self.approximant=='nrpmw'                     ): hp, hc = NRPMw(                             frequencies, p, recalib=False)
+            elif(self.approximant=='nrpmw-recal'               ): hp, hc = NRPMw(                             frequencies, p, recalib=True)
             elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
 
-            if any(np.isnan(hp)): raise RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
+            if any(np.isnan(hp)): raise  RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
             else:                 return hp, hc
 
     # Add a wrapper for each approximant
