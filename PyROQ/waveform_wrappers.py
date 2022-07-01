@@ -7,7 +7,7 @@ import numpy as np, warnings
 # Waveform approximants #
 # ===================== #
 
-__non_lal_approx_names__ = ['teobresums-giotto', 'mlgw-bns', 'nrpmw', 'teobresums-nrpmw', 'teobresums-nrpmw-recal']
+__non_lal_approx_names__ = ['teobresums-giotto', 'mlgw-bns', 'nrpmw', 'nrpmw-recal', 'teobresums-spa-nrpmw', 'teobresums-spa-nrpmw-recal']
 
 WfWrapper = {} # collect all the wvf wrappers
 
@@ -414,15 +414,15 @@ try:
             p['phi_ref']      = p['phiref']
 
             # Post-merger parameters
-            if(self.approximant=='nrpmw'               ): p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
-            elif('teobresums-nrpmw' in self.approximant): p['NRPMw_phi_pm'] = p['nrpmw-phi'] # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
+            if('teobresums-nrpmw' in self.approximant): p['NRPMw_phi_pm'] = p['nrpmw-phi']
+            else                                      : p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
 
             p['NRPMw_t_coll'] = p['nrpmw-tcoll']
             p['NRPMw_df_2']   = p['nrpmw-df2']
 
             # Auxiliary parameters
             p['seglen']       = 1./deltaF
-            if(self.approximant=='teobresums-nrpmw'):
+            if('teobresums-nrpmw' in self.approximant):
                 p['f_min']  = f_min
                 p['f_max']  = f_max
                 p['srate']  = f_max*2
