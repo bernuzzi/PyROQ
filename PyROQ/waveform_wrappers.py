@@ -414,7 +414,7 @@ try:
             p['phi_ref']      = p['phiref']
 
             # Post-merger parameters
-            if('teobresums-nrpmw' in self.approximant): p['NRPMw_phi_pm'] = p['nrpmw-phi']
+            if('teobresums-spa-nrpmw' in self.approximant): p['NRPMw_phi_pm'] = p['nrpmw-phi']
             else                                      : p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
 
             p['NRPMw_t_coll'] = p['nrpmw-tcoll']
@@ -422,7 +422,7 @@ try:
 
             # Auxiliary parameters
             p['seglen']       = 1./deltaF
-            if('teobresums-nrpmw' in self.approximant):
+            if('teobresums-spa-nrpmw' in self.approximant):
                 p['f_min']  = f_min
                 p['f_max']  = f_max
                 p['srate']  = f_max*2
@@ -437,8 +437,8 @@ try:
             frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
             if(  self.approximant=='nrpmw'                 ): hp, hc = NRPMw(                             frequencies, p, recalib=False)
             elif(self.approximant=='nrpmw-recal'           ): hp, hc = NRPMw(                             frequencies, p, recalib=True)
-            elif(self.approximant=='teobresums-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
-            elif(self.approximant=='teobresums-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
+            elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
+            elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
 
             if any(np.isnan(hp)): raise RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
             else:                 return hp, hc
