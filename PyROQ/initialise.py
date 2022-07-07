@@ -2,10 +2,8 @@
 #!/usr/bin/env python
 
 import numpy as np, os, subprocess, sys, warnings
-try:
-    import configparser
-except ImportError:
-    import ConfigParser as configparser
+try:                import configparser
+except ImportError: import ConfigParser as configparser
 
 def store_git_info(output):
 
@@ -77,7 +75,7 @@ to be intended as part of the default value.
                n-tests-post            Number of random validation test waveforms checked to be below tolerance a-posteriori. Typically same as `n_tests_basis`. Default: 1000.
                minimum-speedup         Minimum ratio of X:=len(Original-frequency-axis)/len(ROQ-frequency-axis), implying a minimum speedup during parameter estimation. The ROQ construction is interrupted if X < `minimum-speedup`. Default: 1.0.
            
-               pre-basis               Option determining the pre-basis computation. Available options: ['corners', 'pre-selected-basis']. Default: 'corners'.
+               pre-basis               Option determining the pre-basis computation. Available options: ['corners', 'pre-selected-basis', 'pre-enriched-basis']; 'corners' initialise the basis using the lower and upper values of all parameters simultaneously; 'pre-selected-basis' uses a previously computed pre-selected basis; 'pre-enriched-basis' uses a previously enriched basis (typically used when the code crashed in the middle of one of the enrichment cycles). Default: 'corners'.
                tolerance-pre-basis-lin Basis projection error threshold for linear basis elements. Default: 1e-8.
                tolerance-pre-basis-qua Same as above, for quadratic basis. Default: 1e-10.
                n-pre-basis-lin         Total number (including corner elements) of basis elements to be constructed in the pre-selection loop for the linear case, before starting the cycles of basis enrichments over training sets. Cannot be smaller than 2 (number of `corner waveforms`). If larger than 2, overrides `tolerance-pre-basis`. Default 80.
@@ -179,11 +177,6 @@ default_test_values = {
 
 def read_config(config_file, directory, logger):
 
-    if not config_file:
-        parser.print_help()
-        parser.error('Please specify a config file.')
-    if not os.path.exists(config_file):
-        parser.error('Config file {} not found.'.format(config_file))
     Config = configparser.ConfigParser()
     Config.read(config_file)
 
