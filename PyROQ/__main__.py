@@ -58,6 +58,12 @@ if __name__ == '__main__':
     (opts,args) = parser.parse_args()
     config_file = opts.config_file
     
+    if not config_file:
+        parser.print_help()
+        parser.error('Please specify a config file.')
+    if not os.path.exists(config_file):
+        parser.error('Config file {} not found.'.format(config_file))
+    
     # FIXME: Manual and ugly. Assumes default values.
     Config = configparser.ConfigParser()
     Config.read(config_file)
