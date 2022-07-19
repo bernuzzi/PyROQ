@@ -284,7 +284,7 @@ class PyROQ:
 
                 # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
                 if(len(known_basis[:,0]) >= pre_basis_n): break
-                else                                         : k = k+1
+                else                                    : k = k+1
 
         # Store the pre-selected basis.
         np.save(file_basis,  known_basis)
@@ -522,6 +522,7 @@ class PyROQ:
             initial_basis, initial_params, initial_residual_modula = self.construct_corner_basis(term)
             # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, term)
+
         elif(self.start_values=='pre-selected-basis'):
 
             logger.info('Loading previously computed pre-selected basis.')
