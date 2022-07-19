@@ -284,7 +284,7 @@ class PyROQ:
 
                 # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
                 if(len(known_basis[:,0]) >= pre_basis_n): break
-                else                                         : k = k+1
+                else                                    : k = k+1
 
         # Store the pre-selected basis.
         np.save(file_basis,  known_basis)
@@ -482,8 +482,7 @@ class PyROQ:
                 np.save(file_params, known_params)
                 
                 # If no outliers were found at the previous iteration, hence no new basis elements have been added, there is no new empirical point to be constructed.
-                if not(len(emp_nodes)==len(known_basis)):
-                    basis_interpolant, emp_nodes = self.interpolant_and_empirical_nodes(known_basis, emp_nodes)
+                if not(len(emp_nodes)==len(known_basis)): basis_interpolant, emp_nodes = self.interpolant_and_empirical_nodes(known_basis, emp_nodes)
 
                 # Out of the remaining outliers, select the worst represented point.
                 worst_represented_param_point, maximum_eie, outliers = self.search_worst_represented_point(outliers, basis_interpolant, emp_nodes, training_set_tol, term)
@@ -516,18 +515,19 @@ class PyROQ:
         # Initialise data.
         d = {}
 
-        # Initialise basis, either using a previously constructed one or pre-selecting one from corners of the parameter space plus a user-determined number of iterations..
+        # Initialise basis, either using a previously constructed one or pre-selecting one from corners of the parameter space plus a user-determined number of iterations.
         execution_time_presel_basis = time.time()
         if(self.start_values=='corners'):
             # We choose the first elements of the basis to correspond to the lower and upper values of the parameters range. Note that corner does not mean the N-D corners of the parameter space N-cube, but simply upper-lower bounds.
             initial_basis, initial_params, initial_residual_modula = self.construct_corner_basis(term)
             # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, term)
+
         elif(self.start_values=='pre-selected-basis'):
 
             logger.info('Loading previously computed pre-selected basis.')
 
-            # Load a previously computed pre-selected basis
+            # Load a previously computed pre-selected basis.
             if term == 'lin':
                 file_basis_stored  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
                 file_params_stored = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
@@ -536,14 +536,36 @@ class PyROQ:
                 file_params_stored = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
             else:
                 raise TermError
-        
+            
+            # FIXME: store and load residual modula too.
+            preselection_basis, preselection_params, preselection_residual_modula = np.load(file_basis_stored), np.load(file_params_stored), None
+
+            logger.info('')
+            logger.info('################################################')
+            logger.info('# \u001b[\u001b[38;5;39mLoaded input pre-computed basis ({} elements)\u001b[0m #'.format(len(preselection_params)))
+            logger.info('################################################')
+            logger.info('')
+        elif(self.start_values=='pre-enriched-basis'):
+
+            logger.info('Loading previously computed enriched basis.')
+
+            # Load a previously computed pre-enriched basis.
+            if term == 'lin':
+                file_basis_stored  = self.outputdir+'/ROQ_data/linear/basis_linear.npy'
+                file_params_stored = self.outputdir+'/ROQ_data/linear/basis_waveform_params_linear.npy'
+            elif term=='qua':
+                file_basis_stored  = self.outputdir+'/ROQ_data/quadratic/basis_quadratic.npy'
+                file_params_stored = self.outputdir+'/ROQ_data/quadratic/basis_waveform_params_quadratic.npy'
+            else:
+                raise TermError
+
             # FIXME: store and load residual modula too
             preselection_basis, preselection_params, preselection_residual_modula = np.load(file_basis_stored), np.load(file_params_stored), None
 
             logger.info('')
-            logger.info('########################################')
-            logger.info('# \u001b[\u001b[38;5;39mLoaded input pre-basis ({} elements)\u001b[0m #'.format(len(preselection_params)))
-            logger.info('########################################')
+            logger.info('################################################')
+            logger.info('# \u001b[\u001b[38;5;39mLoaded input pre-enriched basis ({} elements)\u001b[0m #'.format(len(preselection_params)))
+            logger.info('################################################')
             logger.info('')
         else:
             raise ValueError('Pre-basis option not recognised.')

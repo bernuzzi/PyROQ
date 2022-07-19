@@ -19,27 +19,24 @@ def initialize_serial_pool():
     pool = SerialPool()
     return  pool
 
-def close_pool_mpi(pool):
-    'close processes before the end of the pool, with mpi4py'
-    pool.close()
+def initialize_mp_pool(nprocs):
+    from multiprocessing import Pool
+    pool = Pool(nprocs-1)
+    return  pool
+
+def close_pool_mp(pool):
+    'close processes before the end of the pool, with multiprocessing'
+    try:     pool.close()
+    except:  pool.terminate()
+    finally: pool.join()
 
 def initialize_mpi_pool(parallel_comms=False):
     pool = MPIPool(parallel_comms=parallel_comms)
     return  pool
 
-def close_pool_mp(pool):
-    'close processes before the end of the pool, with multiprocessing'
-    try:
-        pool.close()
-    except:
-        pool.terminate()
-    finally:
-        pool.join()
-
-def initialize_mp_pool(nprocs):
-    from multiprocessing import Pool
-    pool = Pool(nprocs-1)
-    return  pool
+def close_pool_mpi(pool):
+    'close processes before the end of the pool, with mpi4py'
+    pool.close()
 
 # MPI-related function
 def get_mpi_world():
