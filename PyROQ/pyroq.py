@@ -305,7 +305,7 @@ class PyROQ:
         logger.info('')
         logger.info('nparams = {}'.format(self.nparams))
         logger.info('')
-        logger.info('index | name    | ( min - max )           ')
+        logger.info('index | name        | ( min - max )           ')
 
         self.params_low, self.params_hig = [], []
         # Set bounds
