@@ -416,7 +416,7 @@ try:
 
             # Post-merger parameters
             if('teobresums-spa-nrpmw' in self.approximant): p['NRPMw_phi_pm'] = p['nrpmw-phi']
-            else                                      : p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
+            else                                          : p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
 
             p['NRPMw_t_coll'] = p['nrpmw-tcoll']
             p['NRPMw_df_2']   = p['nrpmw-df2']
@@ -478,12 +478,9 @@ try:
         
             # Note: init values of bajes waveform wrappers are not used in waveform generation
             # Obs.  avoid multple initialization of Model.default()
-            if self.approximant=='mlgw-bns-nrpmw-recal':
-                self.waveform_func = mlgw_bns_nrpmw_recal_wrapper([0,1,2], 1, 1)
-            elif self.approximant=='mlgw-bns-nrpmw':
-                self.waveform_func = mlgw_bns_nrpmw_wrapper([0,1,2], 1, 1)
-            elif self.approximant=='mlgw-bns':
-                self.waveform_func = mlgw_bns_wrapper([0,1,2], 1, 1)
+            if   self.approximant=='mlgw-bns'            : self.waveform_func = mlgw_bns_wrapper(            [0,1,2], 1, 1)
+            elif self.approximant=='mlgw-bns-nrpmw'      : self.waveform_func = mlgw_bns_nrpmw_wrapper(      [0,1,2], 1, 1)
+            elif self.approximant=='mlgw-bns-nrpmw-recal': self.waveform_func = mlgw_bns_nrpmw_recal_wrapper([0,1,2], 1, 1)
 
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
 
@@ -520,16 +517,18 @@ try:
             p['distance']     = distance
             p['cosi']         = np.cos(p['iota'])
             p['phi_ref']      = p['phiref']
+            
             p['seglen']       = 1./deltaF
+            p['f_min']        = f_min
+            p['f_max']        = f_max
+            p['srate']        = f_max*2
 
             # Post-merger parameters
             if('nrpmw' in self.approximant) :
                 p['NRPMw_phi_pm'] = p['nrpmw-phi']
                 p['NRPMw_t_coll'] = p['nrpmw-tcoll']
                 p['NRPMw_df_2']   = p['nrpmw-df2']
-                p['f_min']  = f_min
-                p['f_max']  = f_max
-                p['srate']  = f_max*2
+
                 # 22-mode only
                 p['lmax']   = 0
 
