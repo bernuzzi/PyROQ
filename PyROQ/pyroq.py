@@ -244,11 +244,13 @@ class PyROQ:
         if term == 'lin':
             file_basis    = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
             file_params   = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
+            file_res_mod  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_residual_modula.npy'
             tolerance_pre = self.tolerance_pre_basis_lin
             pre_basis_n   = self.n_pre_basis_lin
         elif term=='qua':
             file_basis    = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis.npy'
             file_params   = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
+            file_res_mod  = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_residual_modula.npy'
             tolerance_pre = self.tolerance_pre_basis_qua
             pre_basis_n   = self.n_pre_basis_qua
         else:
@@ -282,13 +284,19 @@ class PyROQ:
                 known_basis, params = self.add_new_element_to_basis(params_new, known_basis, params, term)
                 residual_modula     = np.append(residual_modula, rm_new)
 
+                # Store the pre-selected basis.
+                np.save(file_basis,   known_basis    )
+                np.save(file_params,  params         )
+                np.save(file_res_mod, residual_modula)
+
                 # If a maximum number of iterations was given, stop at that number, otherwise continue until tolerance is reached.
                 if(len(known_basis[:,0]) >= pre_basis_n): break
                 else                                    : k = k+1
 
         # Store the pre-selected basis.
-        np.save(file_basis,  known_basis)
-        np.save(file_params, params     )
+        np.save(file_basis,   known_basis    )
+        np.save(file_params,  params         )
+        np.save(file_res_mod, residual_modula)
 
         return known_basis, params, residual_modula
     
@@ -523,28 +531,34 @@ class PyROQ:
             # Run a first pre-selection loop, building a basis of dimension `n_pre_basis`.
             preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(initial_basis, initial_params, initial_residual_modula, term)
 
-        elif(self.start_values=='pre-selected-basis'):
+        elif('pre-selected-basis' in self.start_values):
 
             logger.info('Loading previously computed pre-selected basis.')
 
             # Load a previously computed pre-selected basis.
             if term == 'lin':
-                file_basis_stored  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
-                file_params_stored = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
+                file_basis_stored   = self.outputdir+'/ROQ_data/linear/preselection_linear_basis.npy'
+                file_params_stored  = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_waveform_params.npy'
+                file_res_mod_stored = self.outputdir+'/ROQ_data/linear/preselection_linear_basis_residual_modula.npy'
             elif term=='qua':
-                file_basis_stored  = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis.npy'
-                file_params_stored = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
+                file_basis_stored   = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis.npy'
+                file_params_stored  = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_waveform_params.npy'
+                file_res_mod_stored = self.outputdir+'/ROQ_data/quadratic/preselection_quadratic_basis_residual_modula.npy'
             else:
                 raise TermError
             
             # FIXME: store and load residual modula too.
-            preselection_basis, preselection_params, preselection_residual_modula = np.load(file_basis_stored), np.load(file_params_stored), None
+            preselection_basis, preselection_params, preselection_residual_modula = np.load(file_basis_stored), np.load(file_params_stored), np.load(file_res_mod_stored)
 
             logger.info('')
             logger.info('################################################')
             logger.info('# \u001b[\u001b[38;5;39mLoaded input pre-computed basis ({} elements)\u001b[0m #'.format(len(preselection_params)))
             logger.info('################################################')
             logger.info('')
+            
+            if(self.start_values=='partial-pre-selected-basis'):
+                preselection_basis, preselection_params, preselection_residual_modula = self.construct_preselection_basis(preselection_basis, preselection_params, preselection_residual_modula, term)
+            
         elif(self.start_values=='pre-enriched-basis'):
 
             logger.info('Loading previously computed enriched basis.')
