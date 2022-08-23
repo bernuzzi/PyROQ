@@ -53,7 +53,7 @@ to be intended as part of the default value.
        * Parameters to be passed to the [Waveform_and_parametrisation] section. *
        **************************************************************************
 
-               approximant             Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns', 'nrpmw', 'nrpmw-recal', 'teobresums-spa-nrpmw', 'teobresums-spa-nrpmw-recal', 'mlgw-bns-nrpmw', 'mlgw-nrpmw-recal','IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'IMRPhenomXPHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
+               approximant             Waveform approximant. Allowed values: ['teobresums-giotto', 'mlgw-bns-standalone', 'mlgw-bns' (called through bajes), 'nrpmw', 'nrpmw-recal', 'teobresums-spa-nrpmw', 'teobresums-spa-nrpmw-recal', 'mlgw-bns-nrpmw', 'mlgw-nrpmw-recal','IMRPhenomPv2', 'IMRPhenomPv3', 'IMRPhenomXHM', 'IMRPhenomXPHM', 'TaylorF2Ecc', 'IMRPhenomPv2_NRTidal', 'IMRPhenomNSBH']. Default: 'teobresums-giotto'.
                spins                   Option to select spin degrees of freedom. Allowed values: ['no-spins', 'aligned', 'precessing']. Default: 'aligned'.
                tides                   Flag to activate tides training. Default: 0.
                eccentricity            Flag to activate eccentricity training. Default: 0.

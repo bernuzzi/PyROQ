@@ -7,7 +7,7 @@ import numpy as np, warnings
 # Waveform approximants #
 # ===================== #
 
-__non_lal_approx_names__ = ['teobresums-giotto',    'mlgw-bns',
+__non_lal_approx_names__ = ['teobresums-giotto',    'mlgw-bns', 'mlgw-bns-standalone',
                             'nrpmw',                'nrpmw-recal',
                             'teobresums-spa-nrpmw', 'teobresums-spa-nrpmw-recal',
                             'mlgw-bns-nrpmw',       'mlgw-bns-nrpmw-recal']
@@ -209,7 +209,8 @@ try:
                 if 's2z' not in p.keys(): raise ValueError('spin2 parameters missing')
                 s1z = p['s1z']
                 s2z = p['s2z']
-                           
+            
+            if((abs(p['lambda1']) < 0.) or (abs(p['lambda2']) < 0.)): raise ValueError("The lambda parameters have to be larger than 0, but ({},{}) were passed.".format(p['lambda1'], p['lambda2']))
             lambda1,lambda2 = 0.,0.
             if 'lambda1' in p.keys(): lambda1 = p['lambda1']
             if 'lambda2' in p.keys(): lambda2 = p['lambda2']
@@ -269,93 +270,96 @@ try:
 
 except ModuleNotFoundError: print('\nWarning: `TEOBResumS` module not found.\n')
 
-## -------- #
-## MLGW-BNS #
-## -------- #
-#try:
-#    # MLGW imports
-#    from mlgw_bns import ParametersWithExtrinsic, Model
-#
-#    # Add the approximants that can be called
-#    approximants = []
-#    approximants.append('mlgw-bns')
-#
-#    # MLGW-BNS wrapper
-#    class WfMLGW:
-#        def __init__(self,
-#                     approximant,
-#                     additional_waveform_params = {}):
-#
-#            # Currently unused for this waveform
-#            self.approximant     = approximant
-#            self.waveform_params = additional_waveform_params
-#
-#        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
-#
-#            m1,m2 = p['m1'],p['m2']
-#            q     = p['m1']/p['m2']
-#
-#            s1x,s1y,s1z = 0,0,0
-#            s2x,s2y,s2z = 0,0,0
-#            if 's1z' not in p.keys(): raise ValueError('spin1 parameters missing')
-#            if 's2z' not in p.keys(): raise ValueError('spin2 parameters missing')
-#            s1z = p['s1z']
-#            s2z = p['s2z']
-#
-#            # Precessing spins are not supported
-#            if 's1x' in p.keys(): s1x = p['s1x']
-#            if 's1y' in p.keys(): s1y = p['s1y']
-#            if 's2x' in p.keys(): s2x = p['s2x']
-#            if 's2y' in p.keys(): s2y = p['s2y']
-#            if((abs(s1x) > 1e-6) or (abs(s1y) > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
-#            if((abs(s2x) > 1e-6) or (abs(s2y) > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
-#
-#            lambda1,lambda2 = 0.,0.
-#            if 'lambda1' in p.keys(): lambda1 = p['lambda1']
-#            if 'lambda2' in p.keys(): lambda2 = p['lambda2']
-#            if((abs(lambda1) < 5.) or (abs(lambda2) < 5.)):       raise ValueError("lambdas>5 but ({},{}) were passed.".format(lambda1, lambda2))
-#            if((abs(lambda1) > 5000.) or (abs(lambda2) > 5000.)): raise ValueError("lambdas<5000 but ({},{}) were passed.".format(lambda1, lambda2))
-#
-#            if 'ecc' not in p.keys(): p['ecc'] = 0.
-#            if(abs(p['ecc']) > 1e-12): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
-#
-#            # Impose the correct convention on masses
-#            if q < 1. :
-#               m1,m2           = m2,m1
-#               q               = 1./q
-#               s1z,s2z         = s2z,s1z
-#               lambda1,lambda2 = lambda2,lambda1
-#
-#            # Call it
-#            model       = Model.default() # FIXME: here you can use self.approximant to call any MLGW-BNS Model
-#            frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
-#
-#            params      = ParametersWithExtrinsic(q,
-#                                                  lambda1,
-#                                                  lambda2,
-#                                                  s1z,
-#                                                  s2z,
-#                                                  distance,
-#                                                  p['iota'],
-#                                                  m1+m2,
-#                                                  reference_phase=p['phiref'])
-#            hp, hc      = model.predict(frequencies, params)
-#
-#            return hp, hc
-#
-#    # Add a wrapper for each approximant
-#    for a in approximants:
-#        WfWrapper[a] = WfMLGW
-#
-#except ModuleNotFoundError: print('\nWarning: `mlgw-bns module` not found.\n')
+# FIXME: This has been left for testing reasons, and should be removed once the implementation is stable.
 
-# ------------------------ #
-# NRPMw & TEOBResumS+NRPMw #
-# ------------------------ #
+# -------- #
+# MLGW-BNS #
+# -------- #
+try:
+    # MLGW imports
+    from mlgw_bns import ParametersWithExtrinsic, Model
+
+    # Add the approximants that can be called
+    approximants = []
+    approximants.append('mlgw-bns-standalone')
+
+    # MLGW-BNS wrapper
+    class WfMLGW:
+        def __init__(self,
+                     approximant,
+                     additional_waveform_params = {}):
+
+            # Currently unused for this waveform
+            self.approximant     = approximant
+            self.waveform_params = additional_waveform_params
+
+        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
+
+            m1,m2 = p['m1'],p['m2']
+            q     = p['m1']/p['m2']
+
+            s1x,s1y,s1z = 0,0,0
+            s2x,s2y,s2z = 0,0,0
+            if 's1z' not in p.keys(): raise ValueError('spin1 parameters missing')
+            if 's2z' not in p.keys(): raise ValueError('spin2 parameters missing')
+            s1z = p['s1z']
+            s2z = p['s2z']
+
+            # Precessing spins are not supported
+            if 's1x' in p.keys(): s1x = p['s1x']
+            if 's1y' in p.keys(): s1y = p['s1y']
+            if 's2x' in p.keys(): s2x = p['s2x']
+            if 's2y' in p.keys(): s2y = p['s2y']
+            if((abs(s1x) > 1e-6) or (abs(s1y) > 1e-6)): raise ValueError("Precession is not supported, but (spin1x, spin1y)=({},{}) were passed.".format(s1x, s1y))
+            if((abs(s2x) > 1e-6) or (abs(s2y) > 1e-6)): raise ValueError("Precession is not supported, but (spin2x, spin2y)=({},{}) were passed.".format(s2x, s2y))
+
+            lambda1,lambda2 = 0.,0.
+            if 'lambda1' in p.keys(): lambda1 = p['lambda1']
+            if 'lambda2' in p.keys(): lambda2 = p['lambda2']
+            if((abs(lambda1) < 5.) or (abs(lambda2) < 5.)):       raise ValueError("lambdas>5 but ({},{}) were passed.".format(lambda1, lambda2))
+            if((abs(lambda1) > 5000.) or (abs(lambda2) > 5000.)): raise ValueError("lambdas<5000 but ({},{}) were passed.".format(lambda1, lambda2))
+
+            if 'ecc' not in p.keys(): p['ecc'] = 0.
+            if(abs(p['ecc']) > 1e-12): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
+
+            # Impose the correct convention on masses
+            if q < 1. :
+               m1,m2           = m2,m1
+               q               = 1./q
+               s1z,s2z         = s2z,s1z
+               lambda1,lambda2 = lambda2,lambda1
+
+            # Call it
+            model       = Model.default() # FIXME: here you can use self.approximant to call any MLGW-BNS Model
+            frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
+
+            params      = ParametersWithExtrinsic(q,
+                                                  lambda1,
+                                                  lambda2,
+                                                  s1z,
+                                                  s2z,
+                                                  distance,
+                                                  p['iota'],
+                                                  m1+m2,
+                                                  reference_phase=p['phiref'])
+            hp, hc      = model.predict(frequencies, params)
+
+            return hp, hc
+
+    # Add a wrapper for each approximant
+    for a in approximants:
+        WfWrapper[a] = WfMLGW
+
+except ModuleNotFoundError: print('\nWarning: `mlgw-bns module` not found.\n')
+
+# ---------------------------------------------------- #
+# NRPMw & MLGW-BNS & MLGW-BNS+NRPMw & TEOBResumS+NRPMw #
+# ---------------------------------------------------- #
 try:
     
     # Waveform wrappers
     from bajes.obs.gw.approx.teobresums import teobresums_spa_nrpmw_wrapper, teobresums_spa_nrpmw_recal_wrapper
+    from bajes.obs.gw.approx.mlgw       import mlgw_bns_wrapper, mlgw_bns_nrpmw_wrapper, mlgw_bns_nrpmw_recal_wrapper
     
     # Note: the NRPMw_attach method does not include merger/fusion wavelet
     from bajes.obs.gw.approx.nrpmw      import NRPMw_attach             as NRPMw
@@ -368,116 +372,21 @@ try:
     approximants.append('nrpmw-recal')
     approximants.append('teobresums-spa-nrpmw')
     approximants.append('teobresums-spa-nrpmw-recal')
-
-    class WfNRPMw:
-        def __init__(self,
-                     approximant,
-                     additional_waveform_params = {}):
-            
-            # Currently unused for this waveform
-            self.approximant     = approximant
-            self.waveform_params = additional_waveform_params
-
-        def generate_waveform(self, p, deltaF, f_min, f_max, distance):
-
-            # Note: differentely from the TEOBResumS wrapper, in this one we work directly with the dictionary that will be passed to the waveform generator.
-
-            p['q']    = p['m1']/p['m2']
-            p['mtot'] = p['m1'] + p['m2']
-            p['nu']   = p['m1']*p['m2']/(p['m1'] + p['m2'])**2
-
-            if 's1z' not in p.keys(): raise ValueError('`spin1` parameters missing.')
-            if 's2z' not in p.keys(): raise ValueError('`spin2` parameters missing.')
-
-            if('s1x' in p.keys()): raise ValueError("Precession is not supported, but spin1_x = {} was passed.".format(p['s1x']))
-            if('s1y' in p.keys()): raise ValueError("Precession is not supported, but spin1_y = {} was passed.".format(p['s1y']))
-            if('s2x' in p.keys()): raise ValueError("Precession is not supported, but spin2_x = {} was passed.".format(p['s2x']))
-            if('s2y' in p.keys()): raise ValueError("Precession is not supported, but spin2_y = {} was passed.".format(p['s2y']))
-
-            # Lambda parameters are required for this model.
-            if 'lambda1' not in p.keys(): raise ValueError('`lambda1` parameters missing.')
-            if 'lambda2' not in p.keys(): raise ValueError('`lambda2` parameters missing.')
-            if((abs(p['lambda1']) < 0.) or (abs(p['lambda1']) < 0.)): raise ValueError("The lambda parameters have to be larger than 0, but ({},{}) were passed.".format(p['lambda1'], p['lambda2']))
-            if((abs(p['lambda1']) > 5000.) or (abs(p['lambda2']) > 5000.)): raise ValueError("The model was calibrated on lambdas < 5000 but ({},{}) were passed.".format(p['lambda1'], p['lambda2']))
-
-            if 'ecc' not in p.keys(): p['ecc'] = 0.
-            if(abs(p['ecc']) > 1e-12): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
-
-            # Impose the correct convention on masses
-            if p['q'] < 1. :
-               p['q']                     = 1./p['q']
-               p['s1z'],p['s2z']          = p['s2z'],p['s1z']
-               p['lambda1'], p['lambda2'] = p['lambda2'],p['lambda1']
-
-            # Extrinsic parameters
-            p['distance']     = distance
-            p['cosi']         = np.cos(p['iota'])
-            p['phi_ref']      = p['phiref']
-
-            # Post-merger parameters
-            if('teobresums-spa-nrpmw' in self.approximant): p['NRPMw_phi_pm'] = p['nrpmw-phi']
-            else                                          : p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
-
-            p['NRPMw_t_coll'] = p['nrpmw-tcoll']
-            p['NRPMw_df_2']   = p['nrpmw-df2']
-
-            # Auxiliary parameters
-            p['seglen']       = 1./deltaF
-            if('teobresums-spa-nrpmw' in self.approximant):
-                p['f_min']  = f_min
-                p['f_max']  = f_max
-                p['srate']  = f_max*2
-                # 22-mode only
-                p['lmax']   = 0
-
-            # Add recalibration parameters
-            if('recal' in self.approximant):
-                for ni in recalib_names: p['NRPMw_recal_'+ni] = p['nrpmw-{}'.format(ni)]
-
-            # Call it
-            frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
-            if(  self.approximant=='nrpmw'                     ): hp, hc = NRPMw(                             frequencies, p, recalib=False)
-            elif(self.approximant=='nrpmw-recal'               ): hp, hc = NRPMw(                             frequencies, p, recalib=True)
-            elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
-            elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
-
-            if any(np.isnan(hp)): raise  RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
-            else:                 return hp, hc
-
-    # Add a wrapper for each approximant
-    for a in approximants: WfWrapper[a] = WfNRPMw
-
-except ModuleNotFoundError: print('\nWarning: bajes module or teobresums module not found.\n')
-
-# -------- #
-# MLGW-BNS #
-# -------- #
-try:
-
-    # Waveform wrappers
-    from bajes.obs.gw.approx.mlgw import mlgw_bns_wrapper, mlgw_bns_nrpmw_wrapper, mlgw_bns_nrpmw_recal_wrapper
-
-    # Note: the NRPMw_attach method does not include merger/fusion wavelet
-    from bajes.obs.gw.approx.nrpmw      import __recalib_names_attach__ as recalib_names
-    from bajes.obs.gw.approx.nrpmw      import __BNDS__                 as recalib_bounds
-
-    # Add the approximants that can be called
-    approximants = []
     approximants.append('mlgw-bns')
     approximants.append('mlgw-bns-nrpmw')
     approximants.append('mlgw-bns-nrpmw-recal')
 
-    class WfMLGW:
+    class WfBajes:
         def __init__(self,
                      approximant,
                      additional_waveform_params = {}):
-
-            # Currently unused for this waveform
+            
             self.approximant     = approximant
+            # Currently unused for this waveform
             self.waveform_params = additional_waveform_params
-        
+
+            # Avoid multple initialization of Model.default()
             # Note: init values of bajes waveform wrappers are not used in waveform generation
-            # Obs.  avoid multple initialization of Model.default()
             if   self.approximant=='mlgw-bns'            : self.waveform_func = mlgw_bns_wrapper(            [0,1,2], 1, 1)
             elif self.approximant=='mlgw-bns-nrpmw'      : self.waveform_func = mlgw_bns_nrpmw_wrapper(      [0,1,2], 1, 1)
             elif self.approximant=='mlgw-bns-nrpmw-recal': self.waveform_func = mlgw_bns_nrpmw_recal_wrapper([0,1,2], 1, 1)
@@ -501,34 +410,38 @@ try:
             # Lambda parameters are required for this model.
             if 'lambda1' not in p.keys(): raise ValueError('`lambda1` parameters missing.')
             if 'lambda2' not in p.keys(): raise ValueError('`lambda2` parameters missing.')
-            if((abs(p['lambda1']) < 0.) or (abs(p['lambda1']) < 0.)): raise ValueError("The lambda parameters have to be larger than 0, but ({},{}) were passed.".format(p['lambda1'], p['lambda2']))
+            if((abs(p['lambda1']) < 0.) or (abs(p['lambda2']) < 0.)): raise ValueError("The lambda parameters have to be larger than 0, but ({},{}) were passed.".format(p['lambda1'], p['lambda2']))
             if((abs(p['lambda1']) > 5000.) or (abs(p['lambda2']) > 5000.)): raise ValueError("The model was calibrated on lambdas < 5000 but ({},{}) were passed.".format(p['lambda1'], p['lambda2']))
 
             if 'ecc' not in p.keys(): p['ecc'] = 0.
             if(abs(p['ecc']) > 1e-12): raise ValueError("Eccentricity is not supported, but eccentricity={} was passed.".format(p['ecc']))
 
             # Impose the correct convention on masses
-            if p['q'] < 1. :
+            if p['q'] < 1.:
                p['q']                     = 1./p['q']
                p['s1z'],p['s2z']          = p['s2z'],p['s1z']
                p['lambda1'], p['lambda2'] = p['lambda2'],p['lambda1']
 
-            # Extrinsic and auxiliary parameters
-            p['distance']     = distance
-            p['cosi']         = np.cos(p['iota'])
-            p['phi_ref']      = p['phiref']
-            
-            p['seglen']       = 1./deltaF
-            p['f_min']        = f_min
-            p['f_max']        = f_max
-            p['srate']        = f_max*2
+            # Extrinsic parameters
+            p['distance'] = distance
+            p['cosi']     = np.cos(p['iota'])
+            p['phi_ref']  = p['phiref']
+
+            # Auxiliary parameters
+            p['seglen'] = 1./deltaF
+            p['f_min']  = f_min
+            p['f_max']  = f_max
+            p['srate']  = f_max*2
 
             # Post-merger parameters
-            if('nrpmw' in self.approximant) :
-                p['NRPMw_phi_pm'] = p['nrpmw-phi']
+            if('nrpmw' in self.approximant):
+                
+                if((self.approximant=='nrpmw') or (self.approximant=='nrpmw-recal')): p['NRPMw_phi_pm'] = 0.             # At the NRPMw level, NRPMw_phi_pm has the same effect of phi_ref
+                else                                                                : p['NRPMw_phi_pm'] = p['nrpmw-phi']
+                
                 p['NRPMw_t_coll'] = p['nrpmw-tcoll']
                 p['NRPMw_df_2']   = p['nrpmw-df2']
-
+                
                 # 22-mode only
                 p['lmax']   = 0
 
@@ -538,12 +451,16 @@ try:
 
             # Call it
             frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
-            hp, hc = self.waveform_func(frequencies, p)
+            if(  self.approximant=='nrpmw'                     ): hp, hc = NRPMw(                             frequencies, p, recalib=False)
+            elif(self.approximant=='nrpmw-recal'               ): hp, hc = NRPMw(                             frequencies, p, recalib=True)
+            elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
+            elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
+            elif('mlgw-bns' in self.approximant                ): hp, hc = self.waveform_func(                frequencies, p)
 
             if any(np.isnan(hp)): raise  RuntimeError("Waveform generator returned NaN for this parameter: {}".format(p))
             else:                 return hp, hc
 
     # Add a wrapper for each approximant
-    for a in approximants: WfWrapper[a] = WfMLGW
+    for a in approximants: WfWrapper[a] = WfBajes
 
-except ModuleNotFoundError: print('\nWarning: bajes module or mlgw-bns module not found.\n')
+except ModuleNotFoundError: print('\nWarning: `bajes` module or `teobresums` module not found.\n')
