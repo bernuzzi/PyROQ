@@ -58,7 +58,8 @@ to be intended as part of the default value.
                tides                   Flag to activate tides training. Default: 0.
                eccentricity            Flag to activate eccentricity training. Default: 0.
                post-merger             Flag to activate post-merger parameters training. Default: 0.
-               mc-q-par                Flag to activate parametrisation in Mchirp and mass ratio. Default: 1.
+               mc-q-par                Flag to activate parametrisation in chirp mass and mass ratio. Default: 1.
+               m-q-par                 Flag to activate parametrisation in total mass and mass ratio. Default: 0.
                spin-sph                Flag to activate parametrisation in spins spherical components. Default: 0.
                f-min                   Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
                f-max                   Maximum of the frequency axis on which the interpolant will be constructed. Default: 1024.
@@ -98,10 +99,11 @@ to be intended as part of the default value.
        
        Allowed parameter names and units are:
        
-               mc   (mc-q-par=1) : chirp mass [Msun]
-               q    (mc-q-par=1) : mass ratio
-               m1   (mc-q-par=0) : mass object 1 [Msun]
-               m2   (mc-q-par=0) : mass object 2 [Msun]
+               m    (m-q-par=1)                : total mass [Msun]
+               mc   (mc-q-par=1)               : chirp mass [Msun]
+               q    (mc-q-par=1 or  m-q-par=1) : mass ratio
+               m1   (mc-q-par=0 and m-q-par=0) : mass object 1 [Msun]
+               m2   (mc-q-par=0 and m-q-par=0) : mass object 2 [Msun]
                s1s1 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
                s1s2 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
                s1s3 (spin-sph=1) : spin components object 1, spherical coords (FIXME: SPECIFY)
@@ -133,10 +135,11 @@ to be intended as part of the default value.
 
 def check_skip_parameter(key, input_par, nrpmw_recalib_names):
 
-    if((key=='m1')          and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): return 1
-    if((key=='m2')          and    (input_par['Waveform_and_parametrisation']['mc-q-par'])           ): return 1
-    if((key=='mc')          and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): return 1
-    if((key=='q')           and not(input_par['Waveform_and_parametrisation']['mc-q-par'])           ): return 1
+    if((key=='m1')          and    (input_par['Waveform_and_parametrisation']['mc-q-par'] or input_par['Waveform_and_parametrisation']['m-q-par'])): return 1
+    if((key=='m2')          and    (input_par['Waveform_and_parametrisation']['mc-q-par'] or input_par['Waveform_and_parametrisation']['m-q-par'])): return 1
+    if((key=='m')           and not(input_par['Waveform_and_parametrisation']['m-q-par'])                                                         ): return 1
+    if((key=='mc')          and not(input_par['Waveform_and_parametrisation']['mc-q-par'])                                                        ): return 1
+    if((key=='q')           and not(input_par['Waveform_and_parametrisation']['mc-q-par'] or input_par['Waveform_and_parametrisation']['m-q-par'])): return 1
     if((key=='s1s1')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): return 1
     if((key=='s1s2')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): return 1
     if((key=='s1s3')        and not(input_par['Waveform_and_parametrisation']['spin-sph'])           ): return 1
@@ -170,6 +173,7 @@ def check_skip_parameter(key, input_par, nrpmw_recalib_names):
 # This is the training range of the 'mlgw-bns' approximant for the inspiral parameters, and of the 'NRPMw' approximant for the post-merger parameters.
 default_params = {
     'mc'          : {'range' : [  0.9,     1.4], 'test-value': 1.3    },
+    'm'           : {'range' : [  2.0,     4.0], 'test-value': 2.8    },
     'q'           : {'range' : [  1.0,     3.0], 'test-value': 2.0    },
     'm1'          : {'range' : [  1.0,     3.0], 'test-value': 1.5    },
     'm2'          : {'range' : [  0.5,     2.0], 'test-value': 1.5    },
@@ -259,6 +263,7 @@ def read_config(config_file, directory, logger):
                                                  'eccentricity'            : 0,
                                                  'post-merger'             : 0,
                                                  'mc-q-par'                : 1,
+                                                 'm-q-par'                 : 0,
                                                  'spin-sph'                : 0,
                                                  'f-min'                   : 20.0,
                                                  'f-max'                   : 2048.0,
@@ -324,6 +329,8 @@ def read_config(config_file, directory, logger):
     if(input_par['Waveform_and_parametrisation']['spin-sph'] and not(input_par['Waveform_and_parametrisation']['spins']=='precessing')): raise ValueError('Spherical spin coordinates are currently supported only for precessing waveforms.')
 
     if not(input_par['Waveform_and_parametrisation']['spins'] in ['no-spins', 'aligned', 'precessing']): raise ValueError('Invalid spin option requested.')
+
+    if(input_par['Waveform_and_parametrisation']['mc-q-par'] and input_par['Waveform_and_parametrisation']['m-q-par']): raise ValueError('Simultaneous parametrisations in total mass and chirp mass are incompatible.')
 
     if((input_par['Parallel']['parallel']) and (input_par['Parallel']['n-processes']<2)): raise ValueError('When parallelisation is active, at least two processes have to be requested.')
 

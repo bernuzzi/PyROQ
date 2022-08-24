@@ -43,6 +43,7 @@ class PyROQ:
         self.approximant                = config_pars['Waveform_and_parametrisation']['approximant']
 
         self.mc_q_par                   = config_pars['Waveform_and_parametrisation']['mc-q-par']
+        self.m_q_par                    = config_pars['Waveform_and_parametrisation']['m-q-par']
         self.spin_sph                   = config_pars['Waveform_and_parametrisation']['spin-sph']
 
         self.f_min                      = config_pars['Waveform_and_parametrisation']['f-min']
@@ -114,6 +115,13 @@ class PyROQ:
         
         return np.array([m1,m2])
 
+    def get_m1m2_from_mq(self, m,q):
+        
+        m1 = m*q/(1+q)
+        m2 = m/(1+q)
+        
+        return np.array([m1,m2])
+
     def mass_range(self, mc_low, mc_high, q_low, q_high):
         
         mmin = self.get_m1m2_from_mcq(mc_low,q_high)[1]
@@ -165,7 +173,8 @@ class PyROQ:
         """
         p = self.update_waveform_params(paramspoint)
 
-        if self.mc_q_par: p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
+        if   self.mc_q_par: p['m1'],p['m2'] = self.get_m1m2_from_mcq(p['mc'],p['q'])
+        elif self.m_q_par : p['m1'],p['m2'] = self.get_m1m2_from_mq( p['m'] ,p['q'])
 
         if self.spin_sph:
             s1sphere_tmp               = p['s1s1'],p['s1s2'],p['s1s3']
