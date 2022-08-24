@@ -62,7 +62,7 @@ to be intended as part of the default value.
                spin-sph                Flag to activate parametrisation in spins spherical components. Default: 0.
                f-min                   Minimum of the frequency axis on which the interpolant will be constructed. Default: 20.
                f-max                   Maximum of the frequency axis on which the interpolant will be constructed. Default: 1024.
-               seglen                  Inverse of the step of the frequency axis on which the interpolant will be constructed. Default: 4.
+               seglen                  Inverse of the step of the frequency axis on which the interpolant will be constructed. Default: 4.0.
 
        **************************************************************************
        * Parameters to be passed to the [ROQ] section.                          *
@@ -262,7 +262,7 @@ def read_config(config_file, directory, logger):
                                                  'spin-sph'                : 0,
                                                  'f-min'                   : 20.0,
                                                  'f-max'                   : 2048.0,
-                                                 'seglen'                  : 128,
+                                                 'seglen'                  : 128.0,
                                                 }
     input_par['ROQ']                          = {
         

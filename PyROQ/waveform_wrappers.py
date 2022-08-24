@@ -8,7 +8,7 @@ import numpy as np, warnings
 # ===================== #
 
 __non_lal_approx_names__ = ['teobresums-giotto',    'mlgw-bns', 'mlgw-bns-standalone',
-                            'nrpmw',                'nrpmw-recal',
+                            'nrpmw', 'nrpmw-recal', 'nrpmw-merger', 'nrpmw-recal-merger',
                             'teobresums-spa-nrpmw', 'teobresums-spa-nrpmw-recal',
                             'mlgw-bns-nrpmw',       'mlgw-bns-nrpmw-recal']
 
@@ -369,6 +369,8 @@ try:
     approximants = []
     approximants.append('nrpmw')
     approximants.append('nrpmw-recal')
+    approximants.append('nrpmw-merger')
+    approximants.append('nrpmw-recal-merger')
     approximants.append('teobresums-spa-nrpmw')
     approximants.append('teobresums-spa-nrpmw-recal')
     approximants.append('mlgw-bns')
@@ -454,7 +456,7 @@ try:
             if(  self.approximant=='nrpmw'                     ): hp, hc = nrpmw_attach_wrapper(              frequencies, p)
             elif(self.approximant=='nrpmw-recal'               ): hp, hc = nrpmw_attach_recal_wrapper(        frequencies, p)
             if(  self.approximant=='nrpmw-merger'              ): hp, hc = nrpmw_wrapper(                     frequencies, p)
-            elif(self.approximant=='nrpmw-merger-recal'        ): hp, hc = nrpmw_recal_wrapper(               frequencies, p)
+            elif(self.approximant=='nrpmw-recal-merger'        ): hp, hc = nrpmw_recal_wrapper(               frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
             elif('mlgw-bns' in self.approximant                ): hp, hc = self.waveform_func(                frequencies, p)

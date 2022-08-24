@@ -85,10 +85,8 @@ class PyROQ:
         if(not(config_pars['Waveform_and_parametrisation']['approximant'] in __non_lal_approx_names__)):
             self.approximant = lalsimulation.SimInspiralGetApproximantFromString(self.approximant)
         
-        if self.approximant in WfWrapper.keys():
-            self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
-        else:
-            raise ValueError('Unknown approximant requested.')
+        if self.approximant in WfWrapper.keys(): self.wvf = WfWrapper[self.approximant](self.approximant, self.additional_waveform_params)
+        else:                                    raise ValueError('Unknown approximant requested.')
 
         # Build the map between params names and indexes
         self.map_params_indexs()  # Declares: self.i2n, self.n2i, self.nparams
