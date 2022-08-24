@@ -358,11 +358,10 @@ except ModuleNotFoundError: print('\nWarning: `mlgw-bns module` not found.\n')
 try:
     
     # Waveform wrappers
+    from bajes.obs.gw.approx.nrpmw      import nrpmw_wrapper, nrpmw_recal_wrapper
     from bajes.obs.gw.approx.teobresums import teobresums_spa_nrpmw_wrapper, teobresums_spa_nrpmw_recal_wrapper
     from bajes.obs.gw.approx.mlgw       import mlgw_bns_wrapper, mlgw_bns_nrpmw_wrapper, mlgw_bns_nrpmw_recal_wrapper
-    
-    # Note: the NRPMw_attach method does not include merger/fusion wavelet
-    from bajes.obs.gw.approx.nrpmw      import NRPMw_attach             as NRPMw
+
     from bajes.obs.gw.approx.nrpmw      import __recalib_names_attach__ as recalib_names
     from bajes.obs.gw.approx.nrpmw      import __BNDS__                 as recalib_bounds
 
@@ -449,10 +448,11 @@ try:
             if('recal' in self.approximant):
                 for ni in recalib_names: p['NRPMw_recal_'+ni] = p['nrpmw-{}'.format(ni)]
 
-            # Call it
             frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
-            if(  self.approximant=='nrpmw'                     ): hp, hc = NRPMw(                             frequencies, p, recalib=False)
-            elif(self.approximant=='nrpmw-recal'               ): hp, hc = NRPMw(                             frequencies, p, recalib=True)
+
+            # Call it
+            if(  self.approximant=='nrpmw'                     ): hp, hc = nrpmw_wrapper(                     frequencies, p)
+            elif(self.approximant=='nrpmw-recal'               ): hp, hc = nrpmw_recal_wrapper(               frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
             elif('mlgw-bns' in self.approximant                ): hp, hc = self.waveform_func(                frequencies, p)
