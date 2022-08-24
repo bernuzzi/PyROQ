@@ -11,7 +11,10 @@ def scalar_product(vec1, vec2, df, weights=1.):
 
 def normalise_vector(vec, df):
 
-    return vec/np.sqrt(scalar_product(vec, vec, df))
+    norm = np.sqrt(scalar_product(vec, vec, df))
+
+    if not(norm==0.0): return vec/norm
+    else             : return vec
 
 def projection(u, v):
     
