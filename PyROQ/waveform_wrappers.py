@@ -358,7 +358,7 @@ except ModuleNotFoundError: print('\nWarning: `mlgw-bns module` not found.\n')
 try:
     
     # Waveform wrappers
-    from bajes.obs.gw.approx.nrpmw      import nrpmw_attach_wrapper, nrpmw_attach_recal_wrapper
+    from bajes.obs.gw.approx.nrpmw      import nrpmw_wrapper, nrpmw_recal_wrapper, nrpmw_attach_wrapper, nrpmw_attach_recal_wrapper
     from bajes.obs.gw.approx.teobresums import teobresums_spa_nrpmw_wrapper, teobresums_spa_nrpmw_recal_wrapper
     from bajes.obs.gw.approx.mlgw       import mlgw_bns_wrapper, mlgw_bns_nrpmw_wrapper, mlgw_bns_nrpmw_recal_wrapper
 
@@ -453,6 +453,8 @@ try:
             # Call it
             if(  self.approximant=='nrpmw'                     ): hp, hc = nrpmw_attach_wrapper(              frequencies, p)
             elif(self.approximant=='nrpmw-recal'               ): hp, hc = nrpmw_attach_recal_wrapper(        frequencies, p)
+            if(  self.approximant=='nrpmw-merger'              ): hp, hc = nrpmw_wrapper(                     frequencies, p)
+            elif(self.approximant=='nrpmw-merger-recal'        ): hp, hc = nrpmw_recal_wrapper(               frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
             elif('mlgw-bns' in self.approximant                ): hp, hc = self.waveform_func(                frequencies, p)
