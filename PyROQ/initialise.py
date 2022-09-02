@@ -203,7 +203,7 @@ default_params = {
 # This initialisation differs from the other parameters to avoid writing explicitly the recalibration parameters.
 try:
     
-    from bajes.obs.gw.approx.nrpmw import __recalib_names_attach__ as nrpmw_recalib_names
+    from bajes.obs.gw.approx.nrpmw import __recalib_names__        as nrpmw_recalib_names
     from bajes.obs.gw.approx.nrpmw import __BNDS__                 as nrpmw_recalib_bounds
 
     for ni in nrpmw_recalib_names:

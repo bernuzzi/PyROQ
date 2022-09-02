@@ -362,8 +362,7 @@ try:
     from bajes.obs.gw.approx.teobresums import teobresums_spa_nrpmw_wrapper, teobresums_spa_nrpmw_recal_wrapper
     from bajes.obs.gw.approx.mlgw       import mlgw_bns_wrapper, mlgw_bns_nrpmw_wrapper, mlgw_bns_nrpmw_recal_wrapper
 
-    from bajes.obs.gw.approx.nrpmw      import __recalib_names_attach__ as recalib_names
-    from bajes.obs.gw.approx.nrpmw      import __BNDS__                 as recalib_bounds
+    from bajes.obs.gw.approx.nrpmw      import __recalib_names__ as recalib_names_no_attach, __recalib_names_attach__ as recalib_names_attach
 
     # Add the approximants that can be called
     approximants = []
@@ -391,6 +390,10 @@ try:
             if   self.approximant=='mlgw-bns'            : self.waveform_func = mlgw_bns_wrapper(            [0,1,2], 1, 1)
             elif self.approximant=='mlgw-bns-nrpmw'      : self.waveform_func = mlgw_bns_nrpmw_wrapper(      [0,1,2], 1, 1)
             elif self.approximant=='mlgw-bns-nrpmw-recal': self.waveform_func = mlgw_bns_nrpmw_recal_wrapper([0,1,2], 1, 1)
+
+            if('recal' in self.approximant):
+                if('merger' in self.approximant): self.recalib_names = recalib_names_no_attach
+                else                            : self.recalib_names = recalib_names_attach
 
         def generate_waveform(self, p, deltaF, f_min, f_max, distance):
 
@@ -448,14 +451,14 @@ try:
 
             # Add recalibration parameters
             if('recal' in self.approximant):
-                for ni in recalib_names: p['NRPMw_recal_'+ni] = p['nrpmw-{}'.format(ni)]
+                for ni in self.recalib_names: p['NRPMw_recal_'+ni] = p['nrpmw-{}'.format(ni)]
 
             frequencies = np.arange(f_min, f_max+deltaF, step=deltaF)
 
             # Call it
             if(  self.approximant=='nrpmw'                     ): hp, hc = nrpmw_attach_wrapper(              frequencies, p)
             elif(self.approximant=='nrpmw-recal'               ): hp, hc = nrpmw_attach_recal_wrapper(        frequencies, p)
-            if(  self.approximant=='nrpmw-merger'              ): hp, hc = nrpmw_wrapper(                     frequencies, p)
+            elif(self.approximant=='nrpmw-merger'              ): hp, hc = nrpmw_wrapper(                     frequencies, p)
             elif(self.approximant=='nrpmw-recal-merger'        ): hp, hc = nrpmw_recal_wrapper(               frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw'      ): hp, hc = teobresums_spa_nrpmw_wrapper(      frequencies, p)
             elif(self.approximant=='teobresums-spa-nrpmw-recal'): hp, hc = teobresums_spa_nrpmw_recal_wrapper(frequencies, p)
