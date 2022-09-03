@@ -56,12 +56,13 @@ def compute_mismatch_of_all_terms(paramspoint, b, emp_nodes, term, pyroq):
 
 def plot_preselection_residual_modula(pre_residual_modula, term, outputdir):
 
-    if not (pre_residual_modula.all()==None):
-        plt.figure()
-        plt.semilogy(pre_residual_modula)
-        plt.xlabel('N basis elements')
-        plt.ylabel('Residual modulus')
-        plt.savefig(os.path.join(outputdir,'Plots/Preselection_residual_modulus_{}.pdf'.format(term)), bbox_inches='tight')
+    if not (pre_residual_modula==None):
+        if not (pre_residual_modula.all()==None):
+            plt.figure()
+            plt.semilogy(pre_residual_modula)
+            plt.xlabel('N basis elements')
+            plt.ylabel('Residual modulus')
+            plt.savefig(os.path.join(outputdir,'Plots/Preselection_residual_modulus_{}.pdf'.format(term)), bbox_inches='tight')
 
     return
 
