@@ -52,18 +52,20 @@ def compute_mismatch_of_all_terms(paramspoint, b, emp_nodes, term, pyroq):
 
     return eie_hp, eie_hc
 
-#FIXME: either specialise this plots, or define a single function for all of them
+#FIXME: either specialise these plots, or define a single function for all of them
 
 def plot_preselection_residual_modula(pre_residual_modula, term, outputdir):
 
-    if not (pre_residual_modula==None):
+    # Skip, in case an enriched basis was passed by the user, and no pre-residual modula are available.
+    try:
         if not (pre_residual_modula.all()==None):
             plt.figure()
             plt.semilogy(pre_residual_modula)
             plt.xlabel('N basis elements')
             plt.ylabel('Residual modulus')
             plt.savefig(os.path.join(outputdir,'Plots/Preselection_residual_modulus_{}.pdf'.format(term)), bbox_inches='tight')
-
+    except: pass
+    
     return
 
 def plot_maximum_empirical_interpolation_error(eies, term, outputdir):
