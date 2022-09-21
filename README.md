@@ -1,4 +1,4 @@
-*IMPORTANT* : THE DEVELOPMENT OF THIS CODE CONTINUES AS [JenapyROQ](https://github.com/GCArullo/JenpyROQ).
+**IMPORTANT** : THE DEVELOPMENT OF THIS CODE CONTINUES AS JenapyROQ [IN THIS REPO](https://github.com/GCArullo/JenpyROQ).
 
 
 # PyROQ
