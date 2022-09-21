@@ -1,4 +1,8 @@
+*IMPORTANT* : THE DEVELOPMENT OF THIS CODE CONTINUES AS [JenapyROQ](https://github.com/GCArullo/JenpyROQ).
+
+
 # PyROQ
+
 This repository implements a streamlined version of the PyROQ code, branched in March 2022 from the [main repository](https://github.com/qihongcat/PyROQ).
 Please cite the [PyROQ paper](https://arxiv.org/abs/2009.13812) if you use this code in your research. 
 
