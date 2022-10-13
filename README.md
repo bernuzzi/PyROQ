@@ -1,4 +1,4 @@
-**IMPORTANT** : THE DEVELOPMENT OF THIS CODE CONTINUES AS JenapyROQ [IN THIS REPO](https://github.com/GCArullo/JenpyROQ).
+**IMPORTANT** : The development of this code has been transferred to a new repository [JenapyROQ](https://github.com/GCArullo/JenpyROQ) and will continue there. This repository will remain freezed/archived as of 13/10/2022.
 
 
 # PyROQ
